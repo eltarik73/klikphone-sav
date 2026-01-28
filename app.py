@@ -618,8 +618,8 @@ def init_db():
         for cat, marques in MARQUES.items():
             for m in marques:
                 c.execute("INSERT OR IGNORE INTO catalog_marques (categorie, marque) VALUES (?, ?)", (cat, m))
-        for (cat, marque), modèles in MODELES.items():
-            for m in modèles:
+        for (cat, marque), modeles_list in MODELES.items():
+            for m in modeles_list:
                 c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, m))
     
     conn.commit()
@@ -646,7 +646,7 @@ def get_marques(cat):
 
 def get_modeles(cat, marque):
     conn = get_db()
-    r = [row["modèle"] for row in conn.cursor().execute(
+    r = [row["modele"] for row in conn.cursor().execute(
         "SELECT modele FROM catalog_modeles WHERE categorie=? AND marque=? ORDER BY modele", 
         (cat, marque)).fetchall()]
     conn.close()
@@ -661,7 +661,7 @@ def ajouter_marque(cat, marque):
         return True
     except: return False
 
-def ajouter_modèle(cat, marque, modele):
+def ajouter_modele(cat, marque, modele):
     try:
         conn = get_db()
         conn.cursor().execute("INSERT INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, modele))
@@ -688,13 +688,13 @@ def get_or_create_client(nom, tel, prenom="", email=""):
     conn.close()
     return cid
 
-def creer_ticket(client_id, cat, marque, modèle, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
+def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
     conn = get_db()
     c = conn.cursor()
     c.execute("""INSERT INTO tickets 
-        (client_id, categorie, marque, modèle, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
+        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
-        (client_id, cat, marque, modèle, modele_autre, imei, panne, panne_detail, pin, pattern, notes))
+        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes))
     tid = c.lastrowid
     code = f"KP-{tid:06d}"
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
@@ -755,7 +755,7 @@ def chercher_tickets(statut=None, tel=None, code=None, nom=None):
     if statut: q += " AND t.statut=?"; p.append(statut)
     if tel: q += " AND c.téléphone LIKE ?"; p.append(f"%{tel}%")
     if code: q += " AND t.ticket_code LIKE ?"; p.append(f"%{code}%")
-    if nom: q += " AND (c.nom LIKE ? OR c.prénom LIKE ?)"; p.extend([f"%{nom}%", f"%{nom}%"])
+    if nom: q += " AND (c.nom LIKE ? OR c.prenom LIKE ?)"; p.extend([f"%{nom}%", f"%{nom}%"])
     q += " ORDER BY t.date_depot DESC"
     c.execute(q, p)
     r = [dict(row) for row in c.fetchall()]
@@ -1315,28 +1315,28 @@ def client_step3():
                 st.session_state.step = 4
                 st.rerun()
             else:
-                st.warning("Veuillez preciser le modèle")
+                st.warning("Veuillez préciser le modèle")
     else:
         # Récupérer les modèles et mettre "Autre" en dernier
-        modèles_db = get_modeles(cat, marque)
-        modèles = [m for m in modèles_db if m != "Autre"]
-        modèles.append("Autre")
+        modeles_db = get_modeles(cat, marque)
+        modeles_list = [m for m in modeles_db if m != "Autre"]
+        modeles_list.append("Autre")
         # Ajouter placeholder en premier
-        modèles_final = ["-- Choisir le modèle --"] + modèles
+        modeles_final = ["-- Choisir le modèle --"] + modeles_list
         
-        mod = st.selectbox("Modèle", modèles_final, key="select_modèle", label_visibility="collapsed")
+        mod = st.selectbox("Modèle", modeles_final, key="select_modele", label_visibility="collapsed")
         
         # Si "Autre" est sélectionné, afficher champ texte
         modele_autre = ""
         if mod == "Autre":
-            st.markdown("**Precisez le modèle :**")
+            st.markdown("**Précisez le modèle :**")
             modele_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
         
         if st.button("Continuer", type="primary", use_container_width=True):
             if mod == "-- Choisir le modèle --":
-                st.warning("Veuillez sélectionnér un modèle")
+                st.warning("Veuillez sélectionner un modèle")
             elif mod == "Autre" and not modele_autre:
-                st.warning("Veuillez preciser le modèle")
+                st.warning("Veuillez préciser le modèle")
             else:
                 st.session_state.data["modèle"] = mod
                 st.session_state.data["modele_autre"] = modele_autre
@@ -1861,16 +1861,16 @@ def staff_attestation():
     col1, col2 = st.columns(2)
     with col1:
         att_nom = st.text_input("Nom du client *", key="att_nom")
-        att_prénom = st.text_input("Prénom du client *", key="att_prénom")
+        att_prenom = st.text_input("Prénom du client *", key="att_prenom")
         att_adresse = st.text_input("Adresse du client", key="att_adresse", placeholder="73000 Chambéry")
         att_email = st.text_input("Email du client", key="att_email", placeholder="client@email.com")
     with col2:
         att_marque = st.selectbox("Marque *", ["Apple", "Samsung", "Xiaomi", "Huawei", "Autre"], key="att_marque")
-        att_modèle = st.text_input("Modèle *", key="att_modèle", placeholder="iPhone 11 Pro")
+        att_modele = st.text_input("Modèle *", key="att_modele", placeholder="iPhone 11 Pro")
         att_imei = st.text_input("Numéro IMEI / Serie *", key="att_imei", placeholder="353833102642466")
     
     st.markdown("---")
-    att_état = st.text_area("État de l'appareil au moment du depot", key="att_état", 
+    att_etat = st.text_area("État de l'appareil au moment du depot", key="att_etat", 
                            placeholder="Ex: Chassis arriere endommage et écran fissure")
     att_motif = st.text_area("Motif du depot", key="att_motif",
                             placeholder="Ex: iPhone ayant subi un choc violent")
@@ -1880,7 +1880,7 @@ def staff_attestation():
     st.markdown("---")
     
     if st.button("GENERER L'ATTESTATION", type="primary", use_container_width=True):
-        if not att_nom or not att_prénom or not att_modèle or not att_imei or not att_compte_rendu:
+        if not att_nom or not att_prenom or not att_modele or not att_imei or not att_compte_rendu:
             st.error("Veuillez remplir tous les champs obligatoires (*)")
         else:
             # Générer l'attestation HTML
@@ -1921,7 +1921,7 @@ def staff_attestation():
     
     <div class="destinataire">
         <u>Attestation delivree a :</u><br>
-        <strong>M. {att_nom.upper()} {att_prénom.upper()}</strong><br>
+        <strong>M. {att_nom.upper()} {att_prenom.upper()}</strong><br>
         {att_adresse or "73000 Chambéry"}
     </div>
     
@@ -1930,12 +1930,12 @@ def staff_attestation():
     <div class="section">
         <p>La societe <strong>Klikphone</strong>, specialiste en réparation de smartphones et tablettes, basee au 79 Place Saint Léger a Chambéry;</p>
         
-        <p>Atteste que l'appareil <strong>{att_marque} {att_modèle}</strong> comportant le numéro IMEI/Serie suivant: <strong>{att_imei}</strong> a bien ete depose a notre atelier pour réparation.</p>
+        <p>Atteste que l'appareil <strong>{att_marque} {att_modele}</strong> comportant le numéro IMEI/Serie suivant: <strong>{att_imei}</strong> a bien ete depose a notre atelier pour réparation.</p>
     </div>
     
     <div class="section">
         <div class="section-title">État de l'appareil au moment du depot :</div>
-        <p>{att_état or "Non precise"}</p>
+        <p>{att_etat or "Non precise"}</p>
     </div>
     
     <div class="section">
@@ -2023,18 +2023,18 @@ def staff_nouvelle_demande():
     with col2:
         marque = st.selectbox("Marque", get_marques(cat), key="n_marque")
     with col3:
-        modèle = st.selectbox("Modèle", get_modeles(cat, marque), key="n_modèle")
+        modele = st.selectbox("Modèle", get_modeles(cat, marque), key="n_modele")
     
     modele_autre = ""
-    if modèle == "Autre" or marque == "Autre":
-        modele_autre = st.text_input("Precisez le modèle", key="n_modele_autre")
+    if modele == "Autre" or marque == "Autre":
+        modele_autre = st.text_input("Précisez le modèle", key="n_modele_autre")
     
-    imei = st.text_input("IMEI / Numéro de serie (optionnel)", key="n_imei", placeholder="Ex: 353833102642466")
+    imei = st.text_input("IMEI / Numéro de série (optionnel)", key="n_imei", placeholder="Ex: 353833102642466")
     
     panne = st.selectbox("Problème", PANNES, key="n_panne")
     panne_detail = ""
     if panne in ["Autre", "Diagnostic"]:
-        panne_detail = st.text_area("Details", key="n_panne_detail")
+        panne_detail = st.text_area("Détails", key="n_panne_detail")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -2044,14 +2044,14 @@ def staff_nouvelle_demande():
     
     col1, col2 = st.columns(2)
     with col1:
-        devis = st.number_input("Devis estimé (EUR)", min_value=0.0, step=5.0, key="n_devis")
+        devis = st.number_input("Devis estimé (€)", min_value=0.0, step=5.0, key="n_devis")
     with col2:
-        acompte = st.number_input("Acompte (EUR)", min_value=0.0, step=5.0, key="n_acompte")
+        acompte = st.number_input("Acompte (€)", min_value=0.0, step=5.0, key="n_acompte")
     
     notes = st.text_area("Notes", key="n_notes")
     
-    if st.button("CREER LA DEMANDE", type="primary", use_container_width=True):
-        if not nom or not prénom or not tel:
+    if st.button("CRÉER LA DEMANDE", type="primary", use_container_width=True):
+        if not nom or not prenom or not tel:
             st.error("Nom, prénom et téléphone obligatoires")
         else:
             cid = get_or_create_client(nom, tel, prenom, email)
@@ -2138,7 +2138,7 @@ def staff_config():
             new_mo = st.text_input("Nouveau modèle", key="new_modèle")
         with col2:
             if st.button("Ajouter modèle", key="add_modèle"):
-                if new_mo and ajouter_modèle(cat_mo, marque_mo, new_mo):
+                if new_mo and ajouter_modele(cat_mo, marque_mo, new_mo):
                     st.success("Modèle ajoute")
                     st.rerun()
     
