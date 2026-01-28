@@ -1212,7 +1212,7 @@ def ticket_staff_html(t):
 """
 
 def ticket_devis_facture_html(t, doc_type="devis"):
-    """Génère un ticket DEVIS ou FACTURE selon le type"""
+    """Génère un ticket DEVIS ou RÉCAPITULATIF DE PAIEMENT selon le type"""
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
     
@@ -1236,9 +1236,9 @@ def ticket_devis_facture_html(t, doc_type="devis"):
     
     # Type de document
     is_facture = doc_type == "facture"
-    doc_title = "FACTURE" if is_facture else "DEVIS"
+    doc_title = "RÉCAPITULATIF DE PAIEMENT" if is_facture else "DEVIS"
     doc_color = "#16a34a" if is_facture else "#3b82f6"
-    doc_num = f"F-{t['ticket_code']}" if is_facture else f"D-{t['ticket_code']}"
+    doc_num = f"R-{t['ticket_code']}" if is_facture else f"D-{t['ticket_code']}"
     
     # Ligne réparation supplémentaire
     rep_supp_line = ""
@@ -1465,7 +1465,8 @@ def ticket_devis_facture_html(t, doc_type="devis"):
         
         <div class="footer">
             <p>{"Ce devis est valable 30 jours." if not is_facture else "Merci pour votre confiance !"}</p>
-            <p>{"Devis non contractuel - Prix susceptibles de modification après diagnostic." if not is_facture else "TVA non applicable - Art. 293B du CGI" if total_ttc < 500 else ""}</p>
+            <p>{"Devis non contractuel - Prix susceptibles de modification après diagnostic." if not is_facture else ""}</p>
+            <p style="margin-top:8px; font-weight:bold; color:#dc2626;">{"" if not is_facture else "⚠️ Ce ticket ne fait pas office de facture."}</p>
         </div>
         
         <button class="print-btn" onclick="window.print()">IMPRIMER {doc_title}</button>
@@ -1780,17 +1781,21 @@ def client_step6():
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
 # =============================================================================
 def ui_accueil():
-    col1, col2 = st.columns([5, 1])
+    col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown("<h1 class='page-title'>Liste des Demandes de Réparation</h1>", unsafe_allow_html=True)
     with col2:
-        if st.button("Deconnexion", key="logout_acc"):
+        if st.button("🔧 Technicien", key="goto_tech", type="secondary"):
+            st.session_state.mode = "tech"
+            st.rerun()
+    with col3:
+        if st.button("🚪 Déconnexion", key="logout_acc"):
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
     
     # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["Demandes", "Nouvelle", "Attestation non-reparabilite", "Config"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 Demandes", "➕ Nouvelle", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
         staff_liste_demandes()
@@ -1808,22 +1813,27 @@ def staff_liste_demandes():
         return
     
     # Filtres et tri
-    col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
+    col1, col2, col3, col4, col5, col6 = st.columns([2, 1.5, 1.5, 1.5, 1.5, 1])
     with col1:
         f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="f_statut")
     with col2:
-        f_code = st.text_input("N Ticket", key="f_code")
+        f_code = st.text_input("N° Ticket", key="f_code", placeholder="KP-...")
     with col3:
-        f_tel = st.text_input("Téléphone", key="f_tel")
+        f_tel = st.text_input("Téléphone", key="f_tel", placeholder="06...")
     with col4:
-        f_nom = st.text_input("Nom", key="f_nom")
+        f_nom = st.text_input("Nom", key="f_nom", placeholder="Nom client")
     with col5:
-        tri = st.selectbox("Trier", ["Recent", "Ancien", "Statut"], key="f_tri")
+        tri = st.selectbox("Trier", ["Récent", "Ancien", "Statut"], key="f_tri")
+    with col6:
+        st.markdown("<br>", unsafe_allow_html=True)
+        rechercher = st.button("🔍", key="btn_rechercher", type="primary", use_container_width=True)
     
-    # Recherche
+    # Recherche avec les filtres
     tickets = chercher_tickets(
         statut=f_statut if f_statut != "Tous" else None,
-        code=f_code or None, tel=f_tel or None, nom=f_nom or None
+        code=f_code.strip() if f_code and f_code.strip() else None, 
+        tel=f_tel.strip() if f_tel and f_tel.strip() else None, 
+        nom=f_nom.strip() if f_nom and f_nom.strip() else None
     )
     
     # Appliquer le tri
@@ -2023,12 +2033,13 @@ def staff_traiter_demande(tid):
                 st.success("Demande mise à jour !")
                 st.rerun()
         with col_btn2:
-            if st.button("Ticket Client", use_container_width=True, key=f"print_client_{tid}"):
+            if st.button("🎫 Ticket Client", use_container_width=True, key=f"print_client_{tid}"):
                 st.session_state[f"show_ticket_{tid}"] = "client"
                 st.rerun()
         
-        # Ligne boutons tickets
-        col_t1, col_t2, col_t3 = st.columns(3)
+        # Ligne boutons tickets avec envoi par email
+        st.markdown("##### 📄 Documents")
+        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
         with col_t1:
             if st.button("📋 Ticket Staff", use_container_width=True, key=f"print_staff_{tid}"):
                 st.session_state[f"show_ticket_{tid}"] = "staff"
@@ -2038,13 +2049,56 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_ticket_{tid}"] = "devis"
                 st.rerun()
         with col_t3:
-            if st.button("🧾 FACTURE", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
+            if st.button("🧾 RÉCAPITULATIF", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
                 st.session_state[f"show_ticket_{tid}"] = "facture"
                 st.rerun()
+        with col_t4:
+            pass  # Espace réservé
+        
+        # Boutons envoi par email
+        email_client = t.get('client_email', '')
+        if email_client and get_param("SMTP_HOST"):
+            st.markdown("##### 📧 Envoyer par email")
+            col_e1, col_e2, col_e3 = st.columns(3)
+            with col_e1:
+                if st.button("📧 Envoyer Ticket", use_container_width=True, key=f"email_client_{tid}"):
+                    sujet = f"Ticket {t.get('ticket_code','')} - Klikphone"
+                    html = ticket_client_html(t)
+                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre ticket de dépôt.\n\nCordialement,\nKlikphone"
+                    success, result = envoyer_email(email_client, sujet, msg, html)
+                    if success:
+                        st.success("✅ Ticket envoyé par email!")
+                        ajouter_note(tid, f"[EMAIL] Ticket envoyé à {email_client}")
+                    else:
+                        st.error(f"Erreur: {result}")
+            with col_e2:
+                if st.button("📧 Envoyer Devis", use_container_width=True, key=f"email_devis_{tid}"):
+                    sujet = f"Devis D-{t.get('ticket_code','')} - Klikphone"
+                    html = ticket_devis_facture_html(t, "devis")
+                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre devis.\n\nCordialement,\nKlikphone"
+                    success, result = envoyer_email(email_client, sujet, msg, html)
+                    if success:
+                        st.success("✅ Devis envoyé par email!")
+                        ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_client}")
+                    else:
+                        st.error(f"Erreur: {result}")
+            with col_e3:
+                if st.button("📧 Envoyer Récap.", use_container_width=True, key=f"email_recap_{tid}"):
+                    sujet = f"Récapitulatif R-{t.get('ticket_code','')} - Klikphone"
+                    html = ticket_devis_facture_html(t, "facture")
+                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre récapitulatif de paiement.\n\nCordialement,\nKlikphone"
+                    success, result = envoyer_email(email_client, sujet, msg, html)
+                    if success:
+                        st.success("✅ Récapitulatif envoyé par email!")
+                        ajouter_note(tid, f"[EMAIL] Récapitulatif envoyé à {email_client}")
+                    else:
+                        st.error(f"Erreur: {result}")
+        elif not email_client:
+            st.info("💡 Ajoutez l'email du client pour envoyer les documents par email")
     
-    # === SECTION FACTURE ===
+    # === SECTION RÉCAPITULATIF DE PAIEMENT ===
     st.markdown("---")
-    st.markdown("### 💰 FACTURATION")
+    st.markdown("### 💰 RÉCAPITULATIF DE PAIEMENT")
     
     devis_val = t.get('devis_estime') or 0
     acompte_val = t.get('acompte') or 0
@@ -2263,10 +2317,11 @@ def staff_traiter_demande(tid):
         st.markdown("---")
         st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #16a34a;">
-            <strong>🧾 FACTURE</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
+            <strong>🧾 RÉCAPITULATIF DE PAIEMENT</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
         </div>
         """, unsafe_allow_html=True)
         st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
+        st.warning("⚠️ Ce ticket ne fait pas office de facture.")
         if st.button("Fermer", key=f"close_ticket_facture_{tid}", type="primary", use_container_width=True):
             del st.session_state[f"show_ticket_{tid}"]
             st.rerun()
@@ -2628,11 +2683,15 @@ def staff_config():
 # INTERFACE TECHNICIEN
 # =============================================================================
 def ui_tech():
-    col1, col2 = st.columns([5, 1])
+    col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown("<h1 class='page-title'>Espace Technicien</h1>", unsafe_allow_html=True)
     with col2:
-        if st.button("Deconnexion", key="logout_tech"):
+        if st.button("🏠 Accueil", key="goto_accueil", type="secondary"):
+            st.session_state.mode = "accueil"
+            st.rerun()
+    with col3:
+        if st.button("🚪 Déconnexion", key="logout_tech"):
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
@@ -3125,28 +3184,29 @@ def ui_home():
 
 def ui_auth(mode):
     titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
-    pin_key = "PIN_ACCUEIL" if mode == "accueil" else "PIN_TECH"
     target = "accueil" if mode == "accueil" else "tech"
     
     st.markdown(f"""
-    <div class="klik-header">
-        <span class="klik-title">Klikphone</span>
+    <div style="text-align:center; padding:2rem 0;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:60px; height:60px; margin-bottom:0.5rem;">
+        <div style="color:#f97316; font-size: 1.8rem; font-weight: 800;">KLIKPHONE</div>
+        <p style="color:#6b7280; font-size:1rem; margin-top:0.5rem;">{titre}</p>
     </div>
-    <p class="klik-subtitle">{titre}</p>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        pin = st.text_input("Code PIN", type="password", placeholder="••••")
+        pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input")
         
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("Retour", use_container_width=True):
+            if st.button("← Retour", use_container_width=True):
                 st.session_state.mode = None
                 st.rerun()
         with col_b:
             if st.button("Valider", type="primary", use_container_width=True):
-                if pin == get_param(pin_key):
+                # PIN unique 2626 pour accueil et technicien
+                if pin == "2626":
                     st.session_state.mode = target
                     st.session_state.auth = True
                     st.rerun()
