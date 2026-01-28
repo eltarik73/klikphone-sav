@@ -960,6 +960,56 @@ def get_or_create_client(nom, tel, prenom="", email=""):
     conn.close()
     return cid
 
+def get_all_clients():
+    """Récupère tous les clients"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""SELECT c.*, COUNT(t.id) as nb_tickets 
+                 FROM clients c 
+                 LEFT JOIN tickets t ON c.id = t.client_id 
+                 GROUP BY c.id 
+                 ORDER BY c.nom, c.prenom""")
+    clients = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return clients
+
+def get_client_by_id(client_id):
+    """Récupère un client par son ID"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM clients WHERE id=?", (client_id,))
+    r = c.fetchone()
+    conn.close()
+    return dict(r) if r else None
+
+def update_client(client_id, nom=None, prenom=None, telephone=None, email=None):
+    """Met à jour les informations d'un client"""
+    conn = get_db()
+    c = conn.cursor()
+    updates = []
+    params = []
+    if nom is not None: updates.append("nom=?"); params.append(nom)
+    if prenom is not None: updates.append("prenom=?"); params.append(prenom)
+    if telephone is not None: updates.append("telephone=?"); params.append(telephone)
+    if email is not None: updates.append("email=?"); params.append(email)
+    if updates:
+        params.append(client_id)
+        c.execute(f"UPDATE clients SET {', '.join(updates)} WHERE id=?", params)
+        conn.commit()
+    conn.close()
+
+def search_clients(query):
+    """Recherche des clients par nom, prénom ou téléphone"""
+    conn = get_db()
+    c = conn.cursor()
+    q = f"%{query}%"
+    c.execute("""SELECT * FROM clients 
+                 WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ?
+                 ORDER BY nom, prenom LIMIT 20""", (q, q, q))
+    clients = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return clients
+
 def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
     conn = get_db()
     c = conn.cursor()
@@ -1106,9 +1156,12 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
         # Corps du message en texte
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
         
-        # Corps en HTML si fourni
+        # Corps en HTML si fourni (retirer le bouton imprimer)
         if html_content:
-            msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+            # Retirer le bouton imprimer du HTML envoyé par email
+            html_clean = html_content.replace('onclick="window.print()"', 'style="display:none"')
+            html_clean = html_clean.replace('IMPRIMER', '')
+            msg.attach(MIMEText(html_clean, 'html', 'utf-8'))
         
         # Connexion et envoi
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
@@ -1120,6 +1173,152 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
         return True, "Email envoyé avec succès!"
     except Exception as e:
         return False, f"Erreur d'envoi: {str(e)}"
+
+def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="document.pdf"):
+    """Envoie un email avec une pièce jointe PDF"""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.application import MIMEApplication
+    
+    smtp_host = get_param("SMTP_HOST")
+    smtp_port = get_param("SMTP_PORT")
+    smtp_user = get_param("SMTP_USER")
+    smtp_pass = get_param("SMTP_PASS")
+    smtp_from = get_param("SMTP_FROM")
+    smtp_from_name = get_param("SMTP_FROM_NAME") or "Klikphone"
+    
+    if not smtp_host or not smtp_user or not smtp_pass:
+        return False, "Configuration SMTP incomplète."
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"{smtp_from_name} <{smtp_from or smtp_user}>"
+        msg['To'] = destinataire
+        msg['Subject'] = sujet
+        
+        msg.attach(MIMEText(message, 'plain', 'utf-8'))
+        
+        # Ajouter le PDF en pièce jointe
+        pdf_part = MIMEApplication(pdf_bytes, _subtype='pdf')
+        pdf_part.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(pdf_part)
+        
+        server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_string())
+        server.quit()
+        
+        return True, "Email avec PDF envoyé!"
+    except Exception as e:
+        return False, f"Erreur: {str(e)}"
+
+def html_to_pdf(html_content):
+    """Convertit HTML en PDF (utilise une approche simple avec base64)"""
+    try:
+        # Nettoyer le HTML - retirer les boutons d'impression
+        html_clean = html_content.replace('onclick="window.print()"', 'style="display:none !important"')
+        html_clean = html_clean.replace('>IMPRIMER', ' style="display:none !important">IMPRIMER')
+        
+        # Essayer avec weasyprint si disponible
+        try:
+            from weasyprint import HTML
+            pdf_bytes = HTML(string=html_clean).write_pdf()
+            return pdf_bytes
+        except ImportError:
+            pass
+        
+        # Essayer avec pdfkit si disponible
+        try:
+            import pdfkit
+            pdf_bytes = pdfkit.from_string(html_clean, False)
+            return pdf_bytes
+        except ImportError:
+            pass
+        
+        # Fallback: retourner None et envoyer en HTML
+        return None
+    except Exception as e:
+        return None
+
+def export_clients_excel():
+    """Exporte la liste des clients en Excel"""
+    try:
+        import io
+        clients = get_all_clients()
+        
+        # Créer le fichier Excel avec openpyxl
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+            
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Clients Klikphone"
+            
+            # Style header
+            header_font = Font(bold=True, color="FFFFFF")
+            header_fill = PatternFill(start_color="F97316", end_color="F97316", fill_type="solid")
+            header_alignment = Alignment(horizontal="center", vertical="center")
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # Headers
+            headers = ["Nom", "Prénom", "Téléphone", "Email", "Date création", "Nb tickets"]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = thin_border
+            
+            # Données
+            for row_idx, client in enumerate(clients, 2):
+                ws.cell(row=row_idx, column=1, value=client.get('nom', '')).border = thin_border
+                ws.cell(row=row_idx, column=2, value=client.get('prenom', '')).border = thin_border
+                ws.cell(row=row_idx, column=3, value=client.get('telephone', '')).border = thin_border
+                ws.cell(row=row_idx, column=4, value=client.get('email', '')).border = thin_border
+                ws.cell(row=row_idx, column=5, value=client.get('date_creation', '')[:10] if client.get('date_creation') else '').border = thin_border
+                ws.cell(row=row_idx, column=6, value=client.get('nb_tickets', 0)).border = thin_border
+            
+            # Ajuster largeur colonnes
+            ws.column_dimensions['A'].width = 20
+            ws.column_dimensions['B'].width = 20
+            ws.column_dimensions['C'].width = 15
+            ws.column_dimensions['D'].width = 30
+            ws.column_dimensions['E'].width = 15
+            ws.column_dimensions['F'].width = 12
+            
+            # Sauvegarder dans un buffer
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+            return output.getvalue(), "clients_klikphone.xlsx"
+            
+        except ImportError:
+            # Fallback: créer un CSV
+            import csv
+            output = io.StringIO()
+            writer = csv.writer(output, delimiter=';')
+            writer.writerow(["Nom", "Prénom", "Téléphone", "Email", "Date création", "Nb tickets"])
+            for client in clients:
+                writer.writerow([
+                    client.get('nom', ''),
+                    client.get('prenom', ''),
+                    client.get('telephone', ''),
+                    client.get('email', ''),
+                    client.get('date_creation', '')[:10] if client.get('date_creation') else '',
+                    client.get('nb_tickets', 0)
+                ])
+            return output.getvalue().encode('utf-8-sig'), "clients_klikphone.csv"
+            
+    except Exception as e:
+        return None, str(e)
 
 def envoyer_sms_api(tel, message):
     """Placeholder pour API SMS (à configurer selon fournisseur)"""
@@ -2061,10 +2260,12 @@ def ui_accueil():
     
     # === KPI CARDS ===
     all_tickets = chercher_tickets()
+    all_clients = get_all_clients()
     nb_total = len(all_tickets)
     nb_attente = len([t for t in all_tickets if t.get('statut') == "En attente de diagnostic"])
     nb_encours = len([t for t in all_tickets if t.get('statut') == "En cours de réparation"])
     nb_termine = len([t for t in all_tickets if t.get('statut') == "Réparation terminée"])
+    nb_clients = len(all_clients)
     
     st.markdown(f"""
     <div class="kpi-grid">
@@ -2081,22 +2282,24 @@ def ui_accueil():
             <div class="kpi-value info">{nb_encours}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Terminés</div>
-            <div class="kpi-value success">{nb_termine}</div>
+            <div class="kpi-label">Clients</div>
+            <div class="kpi-value success">{nb_clients}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # === TABS ===
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 Demandes", "➕ Nouvelle", "📄 Attestation", "⚙️ Config"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
         staff_liste_demandes()
     with tab2:
         staff_nouvelle_demande()
     with tab3:
-        staff_attestation()
+        staff_gestion_clients()
     with tab4:
+        staff_attestation()
+    with tab5:
         staff_config()
 
 def staff_liste_demandes():
@@ -2677,43 +2880,277 @@ def staff_traiter_demande(tid):
             del st.session_state[f"show_ticket_{tid}"]
             st.rerun()
 
+def staff_gestion_clients():
+    """Gestion des clients - Liste, modification, export"""
+    
+    # Header avec export
+    col_title, col_export = st.columns([4, 1])
+    with col_title:
+        st.markdown("""<div class="detail-card-header">👥 Gestion des Clients</div>""", unsafe_allow_html=True)
+    with col_export:
+        if st.button("📥 Export Excel", key="export_clients", type="primary", use_container_width=True):
+            data, filename = export_clients_excel()
+            if data:
+                st.download_button(
+                    label="💾 Télécharger",
+                    data=data,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if filename.endswith('.xlsx') else "text/csv",
+                    key="download_clients"
+                )
+            else:
+                st.error(f"Erreur export: {filename}")
+    
+    st.markdown("---")
+    
+    # Mode édition client
+    if st.session_state.get("edit_client_id"):
+        client_id = st.session_state.edit_client_id
+        client = get_client_by_id(client_id)
+        
+        if client:
+            st.markdown(f"### ✏️ Modifier le client #{client_id}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                edit_nom = st.text_input("Nom *", value=client.get('nom', ''), key="edit_client_nom")
+                edit_prenom = st.text_input("Prénom", value=client.get('prenom', ''), key="edit_client_prenom")
+            with col2:
+                edit_tel = st.text_input("Téléphone *", value=client.get('telephone', ''), key="edit_client_tel")
+                edit_email = st.text_input("Email", value=client.get('email', ''), key="edit_client_email")
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.button("💾 Enregistrer", type="primary", use_container_width=True, key="save_client"):
+                    if edit_nom and edit_tel:
+                        update_client(client_id, nom=edit_nom, prenom=edit_prenom, telephone=edit_tel, email=edit_email)
+                        st.success("✅ Client mis à jour!")
+                        st.session_state.edit_client_id = None
+                        st.rerun()
+                    else:
+                        st.error("Nom et téléphone obligatoires")
+            with col_cancel:
+                if st.button("❌ Annuler", type="secondary", use_container_width=True, key="cancel_edit_client"):
+                    st.session_state.edit_client_id = None
+                    st.rerun()
+            
+            st.markdown("---")
+        else:
+            st.session_state.edit_client_id = None
+            st.rerun()
+    
+    # Recherche
+    search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom ou téléphone...", key="search_clients")
+    
+    # Liste des clients
+    if search and len(search) >= 2:
+        clients = search_clients(search)
+    else:
+        clients = get_all_clients()
+    
+    st.markdown(f"**{len(clients)} client(s)**")
+    
+    # Table header
+    st.markdown("""
+    <div class="table-header">
+        <div style="flex:1;">Nom</div>
+        <div style="flex:1;">Prénom</div>
+        <div style="flex:1;">Téléphone</div>
+        <div style="flex:1.5;">Email</div>
+        <div style="min-width:80px;">Tickets</div>
+        <div style="min-width:100px;">Actions</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Pagination
+    ITEMS_PER_PAGE = 15
+    total_pages = max(1, (len(clients) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    
+    if "clients_page" not in st.session_state:
+        st.session_state.clients_page = 1
+    
+    current_page = st.session_state.clients_page
+    start_idx = (current_page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    clients_page = clients[start_idx:end_idx]
+    
+    for client in clients_page:
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1.5, 0.5, 0.8])
+        with col1:
+            st.markdown(f"**{client.get('nom', '')}**")
+        with col2:
+            st.write(client.get('prenom', ''))
+        with col3:
+            st.write(client.get('telephone', ''))
+        with col4:
+            email = client.get('email', '')
+            st.write(email if email else "—")
+        with col5:
+            st.write(f"{client.get('nb_tickets', 0)}")
+        with col6:
+            if st.button("✏️", key=f"edit_client_{client['id']}", help="Modifier ce client"):
+                st.session_state.edit_client_id = client['id']
+                st.rerun()
+        
+        st.markdown("<div style='height:1px;background:var(--neutral-100);margin:4px 0;'></div>", unsafe_allow_html=True)
+    
+    # Pagination
+    if total_pages > 1:
+        st.markdown("---")
+        col_prev, col_info, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if current_page > 1:
+                if st.button("← Précédent", key="clients_prev"):
+                    st.session_state.clients_page = current_page - 1
+                    st.rerun()
+        with col_info:
+            st.markdown(f"<div style='text-align:center;'>Page {current_page}/{total_pages}</div>", unsafe_allow_html=True)
+        with col_next:
+            if current_page < total_pages:
+                if st.button("Suivant →", key="clients_next"):
+                    st.session_state.clients_page = current_page + 1
+                    st.rerun()
+
 def staff_attestation():
     """Générer une attestation de non-reparabilite"""
-    st.markdown("<p class='section-title'>Attestation de Non-Reparabilite</p>", unsafe_allow_html=True)
-    st.markdown("Generez une attestation pour les appareils économiquement irréparables (utile pour les assurances).")
+    st.markdown("""<div class="detail-card-header">📄 Attestation de Non-Réparabilité</div>""", unsafe_allow_html=True)
+    st.markdown("Générez une attestation pour les appareils économiquement irréparables (utile pour les assurances).")
     
     st.markdown("---")
     
+    # Option pour sélectionner un client existant
+    st.markdown("##### 👤 Informations client")
+    
+    use_existing = st.checkbox("Rechercher un client existant", key="att_use_existing")
+    
+    if use_existing:
+        search_query = st.text_input("🔍 Rechercher par nom, prénom ou téléphone", key="att_search", placeholder="Tapez pour rechercher...")
+        
+        if search_query and len(search_query) >= 2:
+            clients_found = search_clients(search_query)
+            if clients_found:
+                options = ["-- Sélectionnez --"] + [f"{c['nom']} {c['prenom']} - {c['telephone']}" for c in clients_found]
+                selected = st.selectbox("Clients trouvés", options, key="att_client_select")
+                
+                if selected != "-- Sélectionnez --":
+                    # Trouver le client sélectionné
+                    idx = options.index(selected) - 1
+                    client = clients_found[idx]
+                    
+                    # Pré-remplir les champs
+                    st.session_state.att_nom_val = client['nom']
+                    st.session_state.att_prenom_val = client['prenom']
+                    st.session_state.att_email_val = client.get('email', '')
+                    st.success(f"✅ Client sélectionné: {client['nom']} {client['prenom']}")
+            else:
+                st.info("Aucun client trouvé")
+    
+    # Champs client (modifiables)
     col1, col2 = st.columns(2)
     with col1:
-        att_nom = st.text_input("Nom du client *", key="att_nom")
-        att_prenom = st.text_input("Prénom du client *", key="att_prenom")
+        att_nom = st.text_input("Nom du client *", 
+                                value=st.session_state.get('att_nom_val', ''),
+                                key="att_nom")
+        att_prenom = st.text_input("Prénom du client *", 
+                                   value=st.session_state.get('att_prenom_val', ''),
+                                   key="att_prenom")
         att_adresse = st.text_input("Adresse du client", key="att_adresse", placeholder="73000 Chambéry")
-        att_email = st.text_input("Email du client", key="att_email", placeholder="client@email.com")
     with col2:
+        att_email = st.text_input("Email du client", 
+                                  value=st.session_state.get('att_email_val', ''),
+                                  key="att_email", placeholder="client@email.com")
         att_marque = st.selectbox("Marque *", ["Apple", "Samsung", "Xiaomi", "Huawei", "Autre"], key="att_marque")
         att_modele = st.text_input("Modèle *", key="att_modele", placeholder="iPhone 11 Pro")
-        att_imei = st.text_input("Numéro IMEI / Serie *", key="att_imei", placeholder="353833102642466")
+    
+    att_imei = st.text_input("Numéro IMEI / Série *", key="att_imei", placeholder="353833102642466")
     
     st.markdown("---")
-    att_etat = st.text_area("État de l'appareil au moment du depot", key="att_etat", 
-                           placeholder="Ex: Chassis arriere endommage et écran fissure")
-    att_motif = st.text_area("Motif du depot", key="att_motif",
-                            placeholder="Ex: iPhone ayant subi un choc violent")
+    st.markdown("##### 📝 Détails techniques")
+    
+    att_etat = st.text_area("État de l'appareil au moment du dépôt", key="att_etat", 
+                           placeholder="Ex: Chassis arrière endommagé et écran fissuré", height=80)
+    att_motif = st.text_area("Motif du dépôt", key="att_motif",
+                            placeholder="Ex: iPhone ayant subi un choc violent", height=80)
     att_compte_rendu = st.text_area("Compte rendu du technicien *", key="att_cr",
-                                   placeholder="Ex:\n- Afficheur endommage entrainant la perte d'affichage\n- Chassis endommage\n- Carte mere trop endommagee")
+                                   placeholder="Ex:\n- Afficheur endommagé entraînant la perte d'affichage\n- Chassis endommagé\n- Carte mère trop endommagée", height=120)
     
     st.markdown("---")
     
-    if st.button("GENERER L'ATTESTATION", type="primary", use_container_width=True):
+    if st.button("📄 GÉNÉRER L'ATTESTATION", type="primary", use_container_width=True):
         if not att_nom or not att_prenom or not att_modele or not att_imei or not att_compte_rendu:
             st.error("Veuillez remplir tous les champs obligatoires (*)")
         else:
-            # Générer l'attestation HTML
             from datetime import datetime
             date_jour = datetime.now().strftime("%d/%m/%Y")
             
-            attestation_html = f"""
+            # HTML de l'attestation (version pour affichage avec bouton imprimer)
+            attestation_html = generate_attestation_html(
+                att_nom, att_prenom, att_adresse, att_marque, att_modele, 
+                att_imei, att_etat, att_motif, att_compte_rendu, date_jour, 
+                include_print_btn=True
+            )
+            
+            st.session_state.attestation_html = attestation_html
+            st.session_state.attestation_email = att_email
+            st.session_state.attestation_data = {
+                'nom': att_nom, 'prenom': att_prenom, 'adresse': att_adresse,
+                'marque': att_marque, 'modele': att_modele, 'imei': att_imei,
+                'etat': att_etat, 'motif': att_motif, 'compte_rendu': att_compte_rendu,
+                'date': date_jour
+            }
+            st.success("Attestation générée!")
+            st.rerun()
+    
+    # Afficher l'attestation si générée
+    if st.session_state.get("attestation_html"):
+        st.markdown("---")
+        st.markdown("### 📋 Aperçu de l'attestation")
+        st.components.v1.html(st.session_state.attestation_html, height=800, scrolling=True)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🔄 Nouvelle attestation", key="new_attestation", type="secondary", use_container_width=True):
+                for key in ['attestation_html', 'attestation_email', 'attestation_data', 
+                           'att_nom_val', 'att_prenom_val', 'att_email_val']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
+        with col2:
+            att_email_saved = st.session_state.get("attestation_email", "")
+            if att_email_saved and get_param("SMTP_HOST"):
+                if st.button("📧 Envoyer par email", key="send_attestation_email", type="primary", use_container_width=True):
+                    # Générer le PDF
+                    data = st.session_state.get("attestation_data", {})
+                    html_for_email = generate_attestation_html(
+                        data.get('nom',''), data.get('prenom',''), data.get('adresse',''),
+                        data.get('marque',''), data.get('modele',''), data.get('imei',''),
+                        data.get('etat',''), data.get('motif',''), data.get('compte_rendu',''),
+                        data.get('date',''), include_print_btn=False
+                    )
+                    
+                    sujet = "Attestation de non-réparabilité - Klikphone"
+                    message = "Bonjour,\n\nVeuillez trouver ci-jointe votre attestation de non-réparabilité.\n\nCordialement,\nL'équipe Klikphone\n04 79 60 89 22"
+                    
+                    # Convertir HTML en PDF
+                    pdf_bytes = html_to_pdf(html_for_email)
+                    if pdf_bytes:
+                        success, result = envoyer_email_avec_pdf(att_email_saved, sujet, message, pdf_bytes, "attestation_non_reparabilite.pdf")
+                    else:
+                        # Fallback: envoyer en HTML
+                        success, result = envoyer_email(att_email_saved, sujet, message, html_for_email)
+                    
+                    if success:
+                        st.success(f"✅ Email envoyé à {att_email_saved}!")
+                    else:
+                        st.error(result)
+            elif att_email_saved:
+                st.info("💡 Configurez SMTP dans Config > Email")
+
+def generate_attestation_html(nom, prenom, adresse, marque, modele, imei, etat, motif, compte_rendu, date_jour, include_print_btn=True):
+    """Génère le HTML de l'attestation"""
+    print_btn = '<button class="print-btn" onclick="window.print()">IMPRIMER L\'ATTESTATION</button>' if include_print_btn else ''
+    
+    return f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -2731,8 +3168,7 @@ def staff_attestation():
         .footer {{ margin-top: 40px; font-style: italic; }}
         .signature {{ margin-top: 30px; text-align: right; }}
         .print-btn {{ display: block; width: 200px; margin: 30px auto; padding: 12px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }}
-        .email-btn {{ display: block; width: 200px; margin: 10px auto; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; }}
-        @media print {{ .print-btn, .email-btn {{ display: none; }} }}
+        @media print {{ .print-btn {{ display: none; }} }}
     </style>
 </head>
 <body>
@@ -2746,91 +3182,59 @@ def staff_attestation():
     </div>
     
     <div class="destinataire">
-        <u>Attestation delivree a :</u><br>
-        <strong>M. {att_nom.upper()} {att_prenom.upper()}</strong><br>
-        {att_adresse or "73000 Chambéry"}
+        <u>Attestation délivrée à :</u><br>
+        <strong>M. {nom.upper()} {prenom.upper()}</strong><br>
+        {adresse or "73000 Chambéry"}
     </div>
     
     <div class="titre">COMPTE RENDU TECHNICIEN</div>
     
     <div class="section">
-        <p>La societe <strong>Klikphone</strong>, specialiste en réparation de smartphones et tablettes, basee au 79 Place Saint Léger a Chambéry;</p>
+        <p>La société <strong>Klikphone</strong>, spécialiste en réparation de smartphones et tablettes, basée au 79 Place Saint Léger à Chambéry;</p>
         
-        <p>Atteste que l'appareil <strong>{att_marque} {att_modele}</strong> comportant le numéro IMEI/Serie suivant: <strong>{att_imei}</strong> a bien ete depose a notre atelier pour réparation.</p>
+        <p>Atteste que l'appareil <strong>{marque} {modele}</strong> comportant le numéro IMEI/Série suivant: <strong>{imei}</strong> a bien été déposé à notre atelier pour réparation.</p>
     </div>
     
     <div class="section">
-        <div class="section-title">État de l'appareil au moment du depot :</div>
-        <p>{att_etat or "Non precise"}</p>
+        <div class="section-title">État de l'appareil au moment du dépôt :</div>
+        <p>{etat or "Non précisé"}</p>
     </div>
     
     <div class="section">
-        <div class="section-title">Motif du depot :</div>
-        <p>{att_motif or "Diagnostic demande"}</p>
+        <div class="section-title">Motif du dépôt :</div>
+        <p>{motif or "Diagnostic demandé"}</p>
     </div>
     
     <div class="section">
         <div class="section-title">Compte rendu du technicien :</div>
         <ul>
-            {"".join([f"<li>{line.strip()}</li>" for line in att_compte_rendu.split(chr(10)) if line.strip()])}
+            {"".join([f"<li>{line.strip()}</li>" for line in compte_rendu.split(chr(10)) if line.strip()])}
         </ul>
     </div>
     
     <div class="section">
         <div class="section-title">Estimation des réparations :</div>
-        <p><strong>Apres expertise, nous attestons que cet appareil est économiquement irréparable.</strong></p>
+        <p><strong>Après expertise, nous attestons que cet appareil est économiquement irréparable.</strong></p>
     </div>
     
     <div class="section">
         <div class="section-title">Valeur de l'appareil :</div>
-        <p>Se referer a la facture d'achat / devis de remplacement</p>
+        <p>Se référer à la facture d'achat / devis de remplacement</p>
     </div>
     
     <div class="footer">
         <p>Cette attestation fait office de justificatif pour votre assurance.</p>
-        <p>Tous nos diagnostics et nos réparations sont garantis et realises par un technicien certifie.</p>
+        <p>Tous nos diagnostics et nos réparations sont garantis et réalisés par un technicien certifié.</p>
     </div>
     
     <div class="signature">
-        Fait a Chambéry, le {date_jour}
+        Fait à Chambéry, le {date_jour}
     </div>
     
-    <button class="print-btn" onclick="window.print()">IMPRIMER L'ATTESTATION</button>
+    {print_btn}
 </body>
 </html>
 """
-            st.session_state.attestation_html = attestation_html
-            st.session_state.attestation_email = att_email
-            st.success("Attestation générée!")
-            st.rerun()
-    
-    # Afficher l'attestation si générée
-    if st.session_state.get("attestation_html"):
-        st.markdown("---")
-        st.markdown("### Apercu de l'attestation")
-        st.components.v1.html(st.session_state.attestation_html, height=800, scrolling=True)
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("Nouvelle attestation", key="new_attestation"):
-                del st.session_state.attestation_html
-                if "attestation_email" in st.session_state:
-                    del st.session_state.attestation_email
-                st.rerun()
-        with col2:
-            att_email_saved = st.session_state.get("attestation_email", "")
-            if att_email_saved and get_param("SMTP_HOST"):
-                if st.button("Envoyer par email", key="send_attestation_email", type="primary"):
-                    sujet = "Attestation de non-réparabilité - Klikphone"
-                    message = "Bonjour,\n\nVeuillez trouver ci-dessous votre attestation de non-réparabilité.\n\nCordialement,\nL'équipe Klikphone\n04 79 60 89 22"
-                    html_attestation = st.session_state.get("attestation_html", "")
-                    success, result = envoyer_email(att_email_saved, sujet, message, html_attestation)
-                    if success:
-                        st.success(f"Email envoyé à {att_email_saved}!")
-                    else:
-                        st.error(result)
-            elif att_email_saved:
-                st.info("Configurez SMTP dans Config > Email pour envoyer par email")
 
 def staff_nouvelle_demande():
     st.markdown("<p class='section-title'>Nouvelle demande manuelle</p>", unsafe_allow_html=True)
