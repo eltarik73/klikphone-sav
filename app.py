@@ -22,6 +22,9 @@ st.set_page_config(
 
 DB_PATH = "klikphone_sav.db"
 
+# Logo Klikphone en base64
+LOGO_B64 = "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"
+
 CATEGORIES = ["Smartphone", "Tablette", "PC Portable", "Console"]
 
 PANNES = ["Écran casse", "Batterie", "Connecteur de charge", 
@@ -564,12 +567,13 @@ def init_db():
         pin TEXT, pattern TEXT,
         notes_client TEXT, notes_internes TEXT,
         commentaire_client TEXT,
+        reparation_supp TEXT, prix_supp REAL,
         devis_estime REAL, acompte REAL DEFAULT 0, tarif_final REAL,
         personne_charge TEXT,
         statut TEXT DEFAULT 'En attente de diagnostic',
         date_depot TEXT DEFAULT CURRENT_TIMESTAMP,
         date_maj TEXT DEFAULT CURRENT_TIMESTAMP,
-        date_clôturé TEXT)""")
+        date_cloture TEXT)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS params (
         id INTEGER PRIMARY KEY, cle TEXT UNIQUE, valeur TEXT)""")
@@ -585,11 +589,21 @@ def init_db():
     try:
         c.execute("ALTER TABLE tickets ADD COLUMN commentaire_client TEXT")
     except:
-        pass  # La colonne existe deja
+        pass
     
     # Migration: ajouter imei si n'existe pas
     try:
         c.execute("ALTER TABLE tickets ADD COLUMN imei TEXT")
+    except:
+        pass
+    
+    # Migration: ajouter reparation_supp et prix_supp
+    try:
+        c.execute("ALTER TABLE tickets ADD COLUMN reparation_supp TEXT")
+    except:
+        pass
+    try:
+        c.execute("ALTER TABLE tickets ADD COLUMN prix_supp REAL")
     except:
         pass
     
@@ -999,8 +1013,8 @@ def ticket_client_html(t):
     """Ticket client style Klikphone - format impression 58mm"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modèle = t.get("modele", "")
-    if t.get("modele_autre"): modèle += f" ({t['modele_autre']})"
+    modele_txt = t.get("modele", "")
+    if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
     
     # Tarifs
     devis = t.get('devis_estime')
@@ -1012,12 +1026,16 @@ def ticket_client_html(t):
         tarif_section = f"""
     <div style="border-top: 1px solid #000; padding-top: 8px; margin-top: 8px;">
         <div style="font-weight: bold; margin-bottom: 5px;">TARIFICATION</div>
-        {"<div>Devis: " + str(devis) + " EUR</div>" if devis else ""}
-        {"<div>Tarif final: " + str(tarif) + " EUR</div>" if tarif else ""}
-        {"<div>Acompte verse: " + str(acompte) + " EUR</div>" if acompte else ""}
-        {"<div style='font-weight:bold; margin-top:5px;'>Reste a payer: " + str(round((tarif or 0) - (acompte or 0), 2)) + " EUR</div>" if tarif else ""}
+        {"<div>Devis: " + str(devis) + " €</div>" if devis else ""}
+        {"<div>Tarif final: " + str(tarif) + " €</div>" if tarif else ""}
+        {"<div>Acompte versé: " + str(acompte) + " €</div>" if acompte else ""}
+        {"<div style='font-weight:bold; margin-top:5px;'>Reste à payer: " + str(round((tarif or 0) - (acompte or 0), 2)) + " €</div>" if tarif else ""}
     </div>
         """
+    
+    # URL de suivi
+    url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={urllib.parse.quote(url_suivi)}"
     
     return f"""
 <!DOCTYPE html>
@@ -1027,13 +1045,18 @@ def ticket_client_html(t):
     <style>
         body {{ font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 15px; }}
         .ticket {{ max-width: 300px; margin: 0 auto; background: #fff; border: 2px dashed #ccc; border-radius: 8px; padding: 15px; }}
-        .header {{ text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 5px; }}
+        .logo {{ text-align: center; margin-bottom: 5px; }}
+        .logo img {{ width: 50px; height: 50px; }}
+        .header {{ text-align: center; font-weight: bold; font-size: 18px; color: #f97316; margin-bottom: 5px; }}
         .contact {{ text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #000; }}
-        .ticket-num {{ text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; padding: 5px; background: #f5f5f5; }}
+        .ticket-num {{ text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; padding: 5px; background: #fff3e0; border: 1px solid #f97316; }}
         .date {{ text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; }}
         .section {{ border-top: 1px solid #000; padding-top: 8px; margin-top: 8px; }}
         .section-title {{ font-weight: bold; margin-bottom: 5px; }}
-        .conditions {{ border-top: 1px dashed #000; padding-top: 10px; margin-top: 15px; font-size: 9px; color: #666; line-height: 1.3; }}
+        .qr-section {{ text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #000; }}
+        .qr-section img {{ width: 80px; height: 80px; }}
+        .qr-section p {{ font-size: 9px; color: #666; margin-top: 5px; }}
+        .conditions {{ border-top: 1px dashed #000; padding-top: 10px; margin-top: 15px; font-size: 8px; color: #666; line-height: 1.3; }}
         .footer {{ text-align: center; font-weight: bold; margin-top: 15px; padding-top: 10px; border-top: 1px solid #000; }}
         .print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 15px; background: #fb923c; color: white; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; }}
         .print-btn:hover {{ background: #f97316; }}
@@ -1046,39 +1069,45 @@ def ticket_client_html(t):
 </head>
 <body>
     <div class="ticket">
+        <div class="logo"><img src="data:image/png;base64,{LOGO_B64}" alt="Klikphone"></div>
         <div class="header">KLIKPHONE</div>
         <div class="contact">
-            79 Place Saint Léger<br>
-            73000 Chambéry<br>
-            Tel: 04 79 60 89 22
+            Spécialiste Apple<br>
+            79 Place Saint Léger, 73000 Chambéry<br>
+            Tél: 04 79 60 89 22
         </div>
         
-        <div class="ticket-num">TICKET N {t['ticket_code']}</div>
+        <div class="ticket-num">TICKET N° {t['ticket_code']}</div>
         <div class="date">{fmt_date(t.get('date_depot',''))}</div>
         
         <div class="section">
             <div class="section-title">CLIENT</div>
             <div>Nom: {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-            <div>Tel: {t.get('client_tel','')}</div>
+            <div>Tél: {t.get('client_tel','')}</div>
         </div>
         
         <div class="section">
             <div class="section-title">APPAREIL</div>
-            <div>{t.get('marque','')} {modèle}</div>
+            <div>{t.get('marque','')} {modele_txt}</div>
         </div>
         
         <div class="section">
-            <div class="section-title">MOTIF DU DEPOT</div>
+            <div class="section-title">MOTIF DU DÉPÔT</div>
             <div>{panne}</div>
         </div>
         
         {tarif_section}
         
+        <div class="qr-section">
+            <img src="{qr_url}" alt="QR Code">
+            <p>Scannez pour suivre votre réparation</p>
+        </div>
+        
         <div class="conditions">
-            <div class="section-title">CONDITIONS GENERALES</div>
-            <p style="margin: 3px 0;">- Klikphone ne consulte pas et n'accede pas aux donnees presentes dans votre appareil.</p>
-            <p style="margin: 3px 0;">- Une perte de donnees reste possible - pensez a sauvegarder.</p>
-            <p style="margin: 3px 0;">- Klikphone decline toute responsabilite en cas de perte de donnees ou de panne apparaissant apres réparation (oxydation, choc, FaceID, etc.).</p>
+            <div class="section-title">CONDITIONS GÉNÉRALES</div>
+            <p style="margin: 3px 0;">Klikphone ne consulte pas et n'accède pas aux données présentes dans votre appareil.</p>
+            <p style="margin: 3px 0;">Une perte de données reste possible — pensez à sauvegarder.</p>
+            <p style="margin: 3px 0;">Klikphone décline toute responsabilité en cas de perte de données ou de panne apparaissant après réparation (oxydation, choc, FaceID, etc.).</p>
         </div>
         
         <div class="footer">Merci de votre confiance !</div>
@@ -2410,7 +2439,27 @@ def tech_detail_ticket(tid):
                                   key=f"tech_client_comment_{tid}", label_visibility="collapsed")
     if st.button("Enregistrer le message", key=f"tech_save_client_comment_{tid}"):
         update_ticket(tid, commentaire_client=comment_client)
-        st.success("Message enregistre pour l'accueil!")
+        st.success("Message enregistré pour l'accueil!")
+        st.rerun()
+    
+    st.markdown("---")
+    
+    # Section réparation supplémentaire
+    st.markdown("**Réparation supplémentaire:**")
+    col_rep, col_prix = st.columns([3, 1])
+    with col_rep:
+        rep_supp = st.text_input("Description de la réparation supplémentaire", 
+                                 value=t.get('reparation_supp') or "",
+                                 placeholder="Ex: Remplacement nappe Face ID, Soudure connecteur...",
+                                 key=f"tech_rep_supp_{tid}")
+    with col_prix:
+        prix_supp = st.number_input("Prix (€)", min_value=0.0, step=5.0,
+                                    value=float(t.get('prix_supp') or 0),
+                                    key=f"tech_prix_supp_{tid}")
+    
+    if st.button("Enregistrer réparation supp.", key=f"tech_save_rep_supp_{tid}"):
+        update_ticket(tid, reparation_supp=rep_supp, prix_supp=prix_supp)
+        st.success("Réparation supplémentaire enregistrée!")
         st.rerun()
     
     st.markdown("---")
@@ -2512,10 +2561,12 @@ def ui_suivi():
 # =============================================================================
 def ui_home():
     # Logo et en-tete
-    st.markdown("""
+    st.markdown(f"""
     <div style="text-align:center; padding:2rem 0;">
-        <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3.5rem; font-weight: 800; letter-spacing: -2px;">KLIKPHONE</div>
-        <p style="color:#6b7280; font-size:1rem; margin-top:0.5rem;">79 Place Saint Léger, Chambéry - 04 79 60 89 22</p>
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:80px; height:80px; margin-bottom:1rem;">
+        <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3rem; font-weight: 800; letter-spacing: -2px;">KLIKPHONE</div>
+        <p style="color:#6b7280; font-size:0.95rem; margin-top:0.5rem;">Spécialiste Apple - 79 Place Saint Léger, Chambéry</p>
+        <p style="color:#6b7280; font-size:0.9rem;">04 79 60 89 22</p>
     </div>
     """, unsafe_allow_html=True)
     
