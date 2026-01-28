@@ -1717,6 +1717,14 @@ def staff_traiter_demande(tid):
         idx_panne = PANNES.index(panne_actuelle) if panne_actuelle in PANNES else 0
         new_panne = st.selectbox("Type de Réparation", PANNES, index=idx_panne, key=f"rep_type_{tid}")
         
+        # Si "Autre" ou "Diagnostic" est sélectionné, afficher un champ pour préciser
+        panne_detail = ""
+        if new_panne in ["Autre", "Diagnostic"]:
+            panne_detail = st.text_input("Précisez la réparation à effectuer", 
+                                         value=t.get('panne_detail') or "",
+                                         placeholder="Ex: Remplacement connecteur Lightning, Soudure carte mère...",
+                                         key=f"panne_detail_{tid}")
+        
         # Personne en charge
         personne = st.text_input("Personne en charge", value=t.get('personne_charge') or "", key=f"personne_{tid}")
         
@@ -1726,7 +1734,7 @@ def staff_traiter_demande(tid):
         # Tarifs
         col_a, col_b = st.columns(2)
         with col_a:
-            devis = st.number_input("Devis Estimé (€)", value=float(t.get('devis_estime') or 0), min_value=0.0, step=5.0, key=f"devis_{tid}")
+            devis = st.number_input("Devis Estimé TTC (€)", value=float(t.get('devis_estime') or 0), min_value=0.0, step=5.0, key=f"devis_{tid}")
         with col_b:
             acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
         
@@ -1739,7 +1747,7 @@ def staff_traiter_demande(tid):
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
-                update_ticket(tid, panne=new_panne, personne_charge=personne, 
+                update_ticket(tid, panne=new_panne, panne_detail=panne_detail, personne_charge=personne, 
                              devis_estime=devis, acompte=acompte)
                 if comment:
                     ajouter_note(tid, comment)
@@ -1764,6 +1772,7 @@ def staff_traiter_demande(tid):
     acompte_val = t.get('acompte') or 0
     rep_supp = t.get('reparation_supp') or ""
     prix_supp = t.get('prix_supp') or 0
+    panne_detail_accueil = t.get('panne_detail') or ""
     
     col_fact1, col_fact2 = st.columns(2)
     
@@ -1774,13 +1783,18 @@ def staff_traiter_demande(tid):
         </div>
         """, unsafe_allow_html=True)
         
-        # Réparation principale
+        # Réparation principale (seulement si "Autre" on affiche le détail)
+        panne_affichee = t.get('panne','')
+        if panne_affichee == "Autre" and panne_detail_accueil:
+            panne_affichee = panne_detail_accueil
+        
         st.markdown(f"""
         <table style="width:100%; margin-top:0.5rem;">
             <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="padding:8px;"><strong>Réparation principale</strong><br><span style="color:#666; font-size:0.9rem;">{t.get('panne','')}</span></td>
+                <td style="padding:8px;"><strong>Réparation principale</strong><br><span style="color:#666; font-size:0.9rem;">{panne_affichee}</span></td>
                 <td style="text-align:right; padding:8px;">{devis_val:.2f} €</td>
             </tr>
+        </table>
         """, unsafe_allow_html=True)
         
         # Réparation supplémentaire (ajoutée par technicien)
@@ -1794,14 +1808,14 @@ def staff_traiter_demande(tid):
             </table>
             """, unsafe_allow_html=True)
         else:
-            st.markdown("</table>", unsafe_allow_html=True)
             st.info("Aucune réparation supplémentaire ajoutée par le technicien")
     
     with col_fact2:
-        # Calcul des totaux
-        total_ht = devis_val + prix_supp
-        tva = total_ht * 0.20
-        total_ttc = total_ht + tva
+        # Calcul des totaux - Prix TTC (TVA incluse)
+        total_ttc = devis_val + prix_supp
+        # Calcul inverse : HT = TTC / 1.20
+        total_ht = total_ttc / 1.20
+        tva = total_ttc - total_ht
         reste = max(0, total_ttc - acompte_val)
         
         st.markdown(f"""
@@ -1809,17 +1823,17 @@ def staff_traiter_demande(tid):
             <strong style="color:#16a34a; font-size:1.1rem;">RÉCAPITULATIF</strong>
             <hr style="margin:10px 0; border-color:#22c55e;">
             <table style="width:100%;">
-                <tr>
-                    <td style="padding:5px;">Sous-total HT</td>
-                    <td style="text-align:right; padding:5px;">{total_ht:.2f} €</td>
-                </tr>
-                <tr>
-                    <td style="padding:5px;">TVA (20%)</td>
-                    <td style="text-align:right; padding:5px;">{tva:.2f} €</td>
-                </tr>
                 <tr style="font-weight:bold; font-size:1.1rem;">
                     <td style="padding:5px;">Total TTC</td>
                     <td style="text-align:right; padding:5px;">{total_ttc:.2f} €</td>
+                </tr>
+                <tr style="color:#666; font-size:0.9rem;">
+                    <td style="padding:5px;">dont HT</td>
+                    <td style="text-align:right; padding:5px;">{total_ht:.2f} €</td>
+                </tr>
+                <tr style="color:#666; font-size:0.9rem;">
+                    <td style="padding:5px;">dont TVA (20%)</td>
+                    <td style="text-align:right; padding:5px;">{tva:.2f} €</td>
                 </tr>
                 <tr style="border-top:2px solid #22c55e;">
                     <td style="padding:5px;">Acompte versé</td>
@@ -2484,6 +2498,19 @@ def tech_detail_ticket(tid):
         acompte = t.get('acompte') or 0
         rep_supp = t.get('reparation_supp') or ""
         prix_supp = t.get('prix_supp') or 0
+        panne_detail = t.get('panne_detail') or ""
+        
+        # Afficher la réparation à effectuer
+        panne_affichee = t.get('panne', '')
+        if panne_affichee == "Autre" and panne_detail:
+            panne_affichee = panne_detail
+        
+        st.markdown(f"""
+        <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
+            <strong style="color:#1d4ed8;">🔧 RÉPARATION À EFFECTUER</strong><br>
+            <span style="font-size:1.1rem;">{panne_affichee}</span>
+        </div>
+        """, unsafe_allow_html=True)
         
         st.markdown("""
         <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
@@ -2499,17 +2526,16 @@ def tech_detail_ticket(tid):
         if rep_supp:
             st.markdown(f"**Réparation supp.:** {rep_supp} - {prix_supp:.2f} €")
         
-        # Calcul total
-        total_ht = devis + prix_supp
-        tva = total_ht * 0.20
-        total_ttc = total_ht + tva
-        reste = total_ttc - acompte
+        # Calcul total - Prix TTC (TVA incluse)
+        total_ttc = devis + prix_supp
+        total_ht = total_ttc / 1.20
+        tva = total_ttc - total_ht
+        reste = max(0, total_ttc - acompte)
         
         st.markdown(f"""
         <div style="background: #fff7ed; border: 1px solid #f97316; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
-            <strong>Total HT:</strong> {total_ht:.2f} €<br>
-            <strong>TVA (20%):</strong> {tva:.2f} €<br>
             <strong>Total TTC:</strong> {total_ttc:.2f} €<br>
+            <span style="color:#666; font-size:0.9rem;">dont HT: {total_ht:.2f} € | TVA: {tva:.2f} €</span><br>
             <hr style="margin:5px 0;">
             <strong style="color:#dc2626;">Reste à payer: {reste:.2f} €</strong>
         </div>
@@ -2612,56 +2638,120 @@ def tech_detail_ticket(tid):
 # PAGE SUIVI CLIENT
 # =============================================================================
 def ui_suivi():
-    st.markdown("""
-    <div class="klik-header">
-        <span class="klik-title">Klikphone</span>
+    st.markdown(f"""
+    <div style="text-align:center; padding:1rem 0;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:60px; height:60px; margin-bottom:0.5rem;">
+        <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; font-weight: 800;">KLIKPHONE</div>
+        <p style="color:#6b7280; font-size:0.9rem;">Suivi de votre réparation</p>
     </div>
-    <p class="klik-subtitle">Suivi de votre réparation</p>
     """, unsafe_allow_html=True)
     
     params = st.query_params
     code_url = params.get("ticket", "")
     
+    # Si un ticket est dans l'URL, on affiche directement la recherche
     col1, col2 = st.columns(2)
     with col1:
         code = st.text_input("N° de ticket", value=code_url, placeholder="KP-000001")
     with col2:
         tel = st.text_input("Votre téléphone", placeholder="06 12 34 56 78")
     
-    if st.button("RECHERCHER", type="primary", use_container_width=True):
-        if code and tel:
+    # Recherche automatique si code dans URL et recherche manuelle
+    rechercher = st.button("RECHERCHER", type="primary", use_container_width=True)
+    
+    # Si on a un code (URL ou saisi) et un téléphone
+    if rechercher or (code_url and "suivi_tel" in st.session_state):
+        tel_to_check = tel or st.session_state.get("suivi_tel", "")
+        
+        if code and tel_to_check:
+            st.session_state.suivi_tel = tel_to_check  # Mémoriser le tel
+            
             t = get_ticket_full(code=code)
-            tel_clean = "".join(filter(str.isdigit, tel))
+            tel_clean = "".join(filter(str.isdigit, tel_to_check))
             client_tel_clean = "".join(filter(str.isdigit, t.get('client_tel', ''))) if t else ""
             
             if t and tel_clean == client_tel_clean:
                 status_class = get_status_class(t.get('statut', ''))
-                modèle = f"{t.get('marque','')} {t.get('modele','')}"
-                if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
+                modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+                if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
+                
+                panne = t.get('panne', '')
+                if t.get('panne_detail'): panne = t.get('panne_detail')
+                
+                # Calcul du reste à payer
+                devis = t.get('devis_estime') or 0
+                prix_supp = t.get('prix_supp') or 0
+                acompte = t.get('acompte') or 0
+                total_ttc = devis + prix_supp
+                reste = max(0, total_ttc - acompte)
                 
                 st.markdown(f"""
-                <div style="background:white; padding:1.5rem; border-radius:12px; margin-top:1.5rem; border:1px solid #e5e7eb;">
+                <div style="background:white; padding:1.5rem; border-radius:12px; margin-top:1.5rem; border:2px solid #f97316; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3 style="margin:0;">{t['ticket_code']}</h3>
-                        <span class="status-badge {status_class}">{t.get('statut','')}</span>
+                        <h2 style="margin:0; color:#f97316;">{t['ticket_code']}</h2>
+                        <span class="status-badge {status_class}" style="font-size:1rem; padding:8px 16px;">{t.get('statut','')}</span>
                     </div>
-                    <p><strong>Appareil:</strong> {modèle}</p>
-                    <p><strong>Depose le:</strong> {fmt_date(t.get('date_depot',''))}</p>
-                    <p><strong>Derniere mise à jour:</strong> {fmt_date(t.get('date_maj',''))}</p>
+                    
+                    <div style="background:#f8fafc; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                        <p style="margin:5px 0;"><strong>👤 Client:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</p>
+                        <p style="margin:5px 0;"><strong>📱 Appareil:</strong> {modele_txt}</p>
+                        <p style="margin:5px 0;"><strong>🔧 Réparation:</strong> {panne}</p>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                        <div>
+                            <p style="margin:5px 0; color:#666;"><strong>Déposé le:</strong> {fmt_date(t.get('date_depot',''))}</p>
+                            <p style="margin:5px 0; color:#666;"><strong>Mise à jour:</strong> {fmt_date(t.get('date_maj',''))}</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <p style="margin:5px 0;"><strong>Total:</strong> {total_ttc:.2f} €</p>
+                            <p style="margin:5px 0; color:#16a34a;"><strong>Acompte:</strong> -{acompte:.2f} €</p>
+                            <p style="margin:5px 0; font-size:1.2rem; color:#dc2626;"><strong>Reste à payer: {reste:.2f} €</strong></p>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Barre de progression
-                progress = {"En attente de diagnostic": 25, "En cours de réparation": 50, 
-                           "Réparation terminée": 100, "Clôturé": 100}.get(t.get('statut',''), 0)
+                statut = t.get('statut', '')
+                progress_map = {
+                    "En attente de diagnostic": 20, 
+                    "En cours de réparation": 50,
+                    "Réparation terminée": 80,
+                    "Rendu au client": 100, 
+                    "Clôturé": 100
+                }
+                progress = progress_map.get(statut, 10)
+                
+                st.markdown(f"""
+                <div style="margin-top:1rem;">
+                    <p style="text-align:center; margin-bottom:5px;"><strong>Progression: {progress}%</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
                 st.progress(progress / 100)
+                
+                # Étapes
+                st.markdown("""
+                <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:#666;">
+                    <span>Déposé</span>
+                    <span>Diagnostic</span>
+                    <span>Réparation</span>
+                    <span>Terminé</span>
+                    <span>Récupéré</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
             else:
                 st.error("Ticket non trouvé ou numéro de téléphone incorrect")
+        elif code and not tel_to_check:
+            st.warning("Veuillez entrer votre numéro de téléphone pour accéder à votre réparation")
         else:
             st.warning("Veuillez remplir les deux champs")
     
     st.markdown("---")
     if st.button("Retour à l'accueil"):
+        if "suivi_tel" in st.session_state:
+            del st.session_state.suivi_tel
         st.session_state.mode = None
         st.rerun()
 
