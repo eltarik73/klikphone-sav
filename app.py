@@ -813,6 +813,7 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nom TEXT, prenom TEXT, telephone TEXT UNIQUE, email TEXT,
+        societe TEXT,
         date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS tickets (
@@ -828,6 +829,7 @@ def init_db():
         reparation_supp TEXT, prix_supp REAL,
         devis_estime REAL, acompte REAL DEFAULT 0, tarif_final REAL,
         personne_charge TEXT,
+        commande_piece INTEGER DEFAULT 0,
         statut TEXT DEFAULT 'En attente de diagnostic',
         date_depot TEXT DEFAULT CURRENT_TIMESTAMP,
         date_maj TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -842,6 +844,21 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS catalog_modeles (
         id INTEGER PRIMARY KEY, categorie TEXT, marque TEXT, modele TEXT, 
         UNIQUE(categorie, marque, modele))""")
+    
+    # Table commandes de pièces
+    c.execute("""CREATE TABLE IF NOT EXISTS commandes_pieces (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER,
+        description TEXT,
+        fournisseur TEXT,
+        reference TEXT,
+        prix REAL,
+        statut TEXT DEFAULT 'A commander',
+        date_commande TEXT,
+        date_reception TEXT,
+        notes TEXT,
+        date_creation TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (ticket_id) REFERENCES tickets(id))""")
     
     # Migration: ajouter commentaire_client si n'existe pas
     try:
@@ -865,6 +882,18 @@ def init_db():
     except:
         pass
     
+    # Migration: ajouter societe dans clients
+    try:
+        c.execute("ALTER TABLE clients ADD COLUMN societe TEXT")
+    except:
+        pass
+    
+    # Migration: ajouter commande_piece dans tickets
+    try:
+        c.execute("ALTER TABLE tickets ADD COLUMN commande_piece INTEGER DEFAULT 0")
+    except:
+        pass
+    
     conn.commit()
     
     # Params défaut
@@ -873,6 +902,7 @@ def init_db():
         "TEL_BOUTIQUE": "04 79 60 89 22",
         "ADRESSE_BOUTIQUE": "79 Place Saint Léger, 73000 Chambéry",
         "NOM_BOUTIQUE": "Klikphone",
+        "HORAIRES_BOUTIQUE": "Lundi-Samedi 10h-19h",
         "URL_SUIVI": "https://klikphone-sav.streamlit.app",
         "SMTP_HOST": "",
         "SMTP_PORT": "587",
@@ -945,16 +975,16 @@ def ajouter_modele(cat, marque, modele):
 # =============================================================================
 # MÉTIER
 # =============================================================================
-def get_or_create_client(nom, tel, prenom="", email=""):
+def get_or_create_client(nom, tel, prenom="", email="", societe=""):
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=? WHERE id=?", (nom, prenom, email, cid))
+        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=? WHERE id=?", (nom, prenom, email, societe, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email) VALUES (?,?,?,?)", (nom, prenom, tel, email))
+        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe) VALUES (?,?,?,?,?)", (nom, prenom, tel, email, societe))
         cid = c.lastrowid
     conn.commit()
     conn.close()
@@ -982,7 +1012,7 @@ def get_client_by_id(client_id):
     conn.close()
     return dict(r) if r else None
 
-def update_client(client_id, nom=None, prenom=None, telephone=None, email=None):
+def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, societe=None):
     """Met à jour les informations d'un client"""
     conn = get_db()
     c = conn.cursor()
@@ -992,6 +1022,7 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None):
     if prenom is not None: updates.append("prenom=?"); params.append(prenom)
     if telephone is not None: updates.append("telephone=?"); params.append(telephone)
     if email is not None: updates.append("email=?"); params.append(email)
+    if societe is not None: updates.append("societe=?"); params.append(societe)
     if updates:
         params.append(client_id)
         c.execute(f"UPDATE clients SET {', '.join(updates)} WHERE id=?", params)
@@ -999,24 +1030,85 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None):
     conn.close()
 
 def search_clients(query):
-    """Recherche des clients par nom, prénom ou téléphone"""
+    """Recherche des clients par nom, prénom, téléphone ou société"""
     conn = get_db()
     c = conn.cursor()
     q = f"%{query}%"
     c.execute("""SELECT * FROM clients 
-                 WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ?
-                 ORDER BY nom, prenom LIMIT 20""", (q, q, q))
+                 WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ? OR societe LIKE ?
+                 ORDER BY nom, prenom LIMIT 20""", (q, q, q, q))
     clients = [dict(row) for row in c.fetchall()]
     conn.close()
     return clients
 
-def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
+# Fonctions commandes de pièces
+FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
+
+def get_commandes_pieces(ticket_id=None, statut=None):
+    """Récupère les commandes de pièces"""
+    conn = get_db()
+    c = conn.cursor()
+    q = """SELECT cp.*, t.ticket_code, t.marque, t.modele, 
+           c.nom as client_nom, c.prenom as client_prenom
+           FROM commandes_pieces cp
+           LEFT JOIN tickets t ON cp.ticket_id = t.id
+           LEFT JOIN clients c ON t.client_id = c.id
+           WHERE 1=1"""
+    params = []
+    if ticket_id:
+        q += " AND cp.ticket_id = ?"
+        params.append(ticket_id)
+    if statut:
+        q += " AND cp.statut = ?"
+        params.append(statut)
+    q += " ORDER BY cp.date_creation DESC"
+    c.execute(q, params)
+    commandes = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return commandes
+
+def ajouter_commande_piece(ticket_id, description, fournisseur, reference="", prix=0, notes=""):
+    """Ajoute une commande de pièce"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""INSERT INTO commandes_pieces 
+                 (ticket_id, description, fournisseur, reference, prix, notes, statut)
+                 VALUES (?, ?, ?, ?, ?, ?, 'A commander')""",
+              (ticket_id, description, fournisseur, reference, prix, notes))
+    conn.commit()
+    conn.close()
+
+def update_commande_piece(commande_id, statut=None, date_commande=None, date_reception=None, notes=None):
+    """Met à jour une commande de pièce"""
+    conn = get_db()
+    c = conn.cursor()
+    updates = []
+    params = []
+    if statut: updates.append("statut=?"); params.append(statut)
+    if date_commande: updates.append("date_commande=?"); params.append(date_commande)
+    if date_reception: updates.append("date_reception=?"); params.append(date_reception)
+    if notes is not None: updates.append("notes=?"); params.append(notes)
+    if updates:
+        params.append(commande_id)
+        c.execute(f"UPDATE commandes_pieces SET {', '.join(updates)} WHERE id=?", params)
+        conn.commit()
+    conn.close()
+
+def delete_commande_piece(commande_id):
+    """Supprime une commande de pièce"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM commandes_pieces WHERE id=?", (commande_id,))
+    conn.commit()
+    conn.close()
+
+def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei="", commande_piece=0):
     conn = get_db()
     c = conn.cursor()
     c.execute("""INSERT INTO tickets 
-        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
-        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes))
+        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, commande_piece, statut) 
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
+        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes, commande_piece))
     tid = c.lastrowid
     code = f"KP-{tid:06d}"
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
@@ -1269,7 +1361,7 @@ def export_clients_excel():
             )
             
             # Headers
-            headers = ["Nom", "Prénom", "Téléphone", "Email", "Date création", "Nb tickets"]
+            headers = ["Nom", "Prénom", "Société", "Téléphone", "Email", "Date création", "Nb tickets"]
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = header_font
@@ -1281,18 +1373,20 @@ def export_clients_excel():
             for row_idx, client in enumerate(clients, 2):
                 ws.cell(row=row_idx, column=1, value=client.get('nom', '')).border = thin_border
                 ws.cell(row=row_idx, column=2, value=client.get('prenom', '')).border = thin_border
-                ws.cell(row=row_idx, column=3, value=client.get('telephone', '')).border = thin_border
-                ws.cell(row=row_idx, column=4, value=client.get('email', '')).border = thin_border
-                ws.cell(row=row_idx, column=5, value=client.get('date_creation', '')[:10] if client.get('date_creation') else '').border = thin_border
-                ws.cell(row=row_idx, column=6, value=client.get('nb_tickets', 0)).border = thin_border
+                ws.cell(row=row_idx, column=3, value=client.get('societe', '') or '').border = thin_border
+                ws.cell(row=row_idx, column=4, value=client.get('telephone', '')).border = thin_border
+                ws.cell(row=row_idx, column=5, value=client.get('email', '')).border = thin_border
+                ws.cell(row=row_idx, column=6, value=client.get('date_creation', '')[:10] if client.get('date_creation') else '').border = thin_border
+                ws.cell(row=row_idx, column=7, value=client.get('nb_tickets', 0)).border = thin_border
             
             # Ajuster largeur colonnes
             ws.column_dimensions['A'].width = 20
             ws.column_dimensions['B'].width = 20
-            ws.column_dimensions['C'].width = 15
-            ws.column_dimensions['D'].width = 30
-            ws.column_dimensions['E'].width = 15
-            ws.column_dimensions['F'].width = 12
+            ws.column_dimensions['C'].width = 25
+            ws.column_dimensions['D'].width = 15
+            ws.column_dimensions['E'].width = 30
+            ws.column_dimensions['F'].width = 15
+            ws.column_dimensions['G'].width = 12
             
             # Sauvegarder dans un buffer
             output = io.BytesIO()
@@ -1305,11 +1399,12 @@ def export_clients_excel():
             import csv
             output = io.StringIO()
             writer = csv.writer(output, delimiter=';')
-            writer.writerow(["Nom", "Prénom", "Téléphone", "Email", "Date création", "Nb tickets"])
+            writer.writerow(["Nom", "Prénom", "Société", "Téléphone", "Email", "Date création", "Nb tickets"])
             for client in clients:
                 writer.writerow([
                     client.get('nom', ''),
                     client.get('prenom', ''),
+                    client.get('societe', '') or '',
                     client.get('telephone', ''),
                     client.get('email', ''),
                     client.get('date_creation', '')[:10] if client.get('date_creation') else '',
@@ -1331,70 +1426,87 @@ def get_messages_predefs(t):
     marque = t.get('marque', '') or 'votre appareil'
     modèle = t.get('modele', '')
     code = t.get('ticket_code', '')
-    devis = t.get('devis_estime')
-    tarif = t.get('tarif_final')
+    devis = float(t.get('devis_estime') or 0)
+    tarif = float(t.get('tarif_final') or 0)
+    prix_supp = float(t.get('prix_supp') or 0)
+    reparation_supp = t.get('reparation_supp', '')
     
-    # Formater le montant
-    if tarif and tarif > 0:
-        montant = f"{tarif} €"
-    elif devis and devis > 0:
-        montant = f"{devis} €"
+    # Paramètres dynamiques de la boutique
+    adresse = get_param("ADRESSE_BOUTIQUE") or "79 Place Saint Léger, 73000 Chambéry"
+    horaires = get_param("HORAIRES_BOUTIQUE") or "Lundi-Samedi 10h-19h"
+    tel_boutique = get_param("TEL_BOUTIQUE") or "04 79 60 89 22"
+    nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+    
+    # Calcul du montant TOTAL (inclut réparation supplémentaire)
+    total_devis = devis + prix_supp
+    total_tarif = tarif + prix_supp if tarif > 0 else 0
+    
+    # Formater le montant final
+    if total_tarif > 0:
+        montant = f"{total_tarif:.2f} €"
+    elif total_devis > 0:
+        montant = f"{total_devis:.2f} €"
     else:
         montant = "Nous consulter"
     
-    # Formater le devis
-    devis_txt = f"{devis} €" if devis and devis > 0 else "Nous consulter"
+    # Formater le devis (inclut prix_supp)
+    devis_txt = f"{total_devis:.2f} €" if total_devis > 0 else "Nous consulter"
+    
+    # Détail si réparation supplémentaire
+    detail_supp = ""
+    if reparation_supp and prix_supp > 0:
+        detail_supp = f"\n(dont {reparation_supp}: {prix_supp:.2f} €)"
     
     messages = {
         "-- Choisir un message --": "",
         
         "Appareil reçu": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modèle} a bien été réceptionné à la boutique Klikphone.
+Nous vous informons que votre appareil {marque} {modèle} a bien été réceptionné à la boutique {nom_boutique}.
 
 Numéro de suivi : {code}
 
 Nous allons procéder au diagnostic et reviendrons vers vous dans les plus brefs délais.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Diagnostic en cours": f"""Bonjour {prénom},
 
-Nous vous informons que le diagnostic de votre appareil {marque} {modèle} est actuellement en cours à la boutique Klikphone.
+Nous vous informons que le diagnostic de votre appareil {marque} {modèle} est actuellement en cours à la boutique {nom_boutique}.
 
 Numéro de suivi : {code}
 
 Nous reviendrons vers vous rapidement avec le résultat du diagnostic.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Devis à valider": f"""Bonjour {prénom},
 
 Le diagnostic de votre appareil {marque} {modèle} est terminé.
 
-Devis de réparation : {devis_txt}
+Devis de réparation : {devis_txt}{detail_supp}
 
 Merci de nous confirmer votre accord pour procéder à la réparation en répondant à ce message ou en nous appelant.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "En cours de réparation": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modèle} est actuellement en cours de réparation à la boutique Klikphone.
+Nous vous informons que votre appareil {marque} {modèle} est actuellement en cours de réparation à la boutique {nom_boutique}.
 
 Numéro de suivi : {code}
 
 Nous vous prévenons dès que la réparation sera terminée.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Attente de pièce": f"""Bonjour {prénom},
 
@@ -1405,36 +1517,36 @@ Délai estimé : 2 à 5 jours ouvrables.
 Nous vous prévenons dès réception de la pièce.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Appareil prêt": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modèle} est prêt à être récupéré à la boutique Klikphone.
+Nous vous informons que votre appareil {marque} {modèle} est prêt à être récupéré à la boutique {nom_boutique}.
 
-Montant à régler : {montant}
+Montant à régler : {montant}{detail_supp}
 
-Adresse : 79 Place Saint Léger, 73000 Chambéry
-Horaires : Lundi-Samedi 10h-19h
+Adresse : {adresse}
+Horaires : {horaires}
 
 N'oubliez pas votre pièce d'identité.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Relance récupération": f"""Bonjour {prénom},
 
-Nous vous rappelons que votre appareil {marque} {modèle} est prêt et vous attend à la boutique Klikphone depuis plusieurs jours.
+Nous vous rappelons que votre appareil {marque} {modèle} est prêt et vous attend à la boutique {nom_boutique} depuis plusieurs jours.
 
 Merci de venir le récupérer dans les meilleurs délais.
 
-Adresse : 79 Place Saint Léger, 73000 Chambéry
-Horaires : Lundi-Samedi 10h-19h
+Adresse : {adresse}
+Horaires : {horaires}
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Non réparable": f"""Bonjour {prénom},
 
@@ -1445,19 +1557,19 @@ Vous pouvez venir le récupérer à la boutique. Aucun frais ne vous sera factur
 Nous restons à votre disposition pour toute question.
 
 Cordialement,
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Rappel RDV": f"""Bonjour {prénom},
 
-Nous vous rappelons votre rendez-vous à la boutique Klikphone pour votre appareil {marque} {modèle}.
+Nous vous rappelons votre rendez-vous à la boutique {nom_boutique} pour votre appareil {marque} {modèle}.
 
-Adresse : 79 Place Saint Léger, 73000 Chambéry
+Adresse : {adresse}
 
 À bientôt !
 
-L'équipe Klikphone
-04 79 60 89 22""",
+L'équipe {nom_boutique}
+{tel_boutique}""",
 
         "Personnalisé": ""
     }
@@ -2186,7 +2298,13 @@ def client_step6():
         nom = st.text_input("Nom *")
         email = st.text_input("Email")
     
+    # Société (facultatif)
+    societe = st.text_input("Société (facultatif)", placeholder="Nom de l'entreprise si professionnel")
+    
     notes = st.text_area("Remarques", placeholder="Accessoires laisses, precisions sur le problème...")
+    
+    # Option commande de pièce
+    commande_piece = st.checkbox("⚙️ Pièce à commander pour cette réparation", help="Cochez si une pièce doit être commandée")
     
     st.markdown("---")
     
@@ -2223,10 +2341,21 @@ def client_step6():
             st.error("Veuillez accepter les conditions générales")
         else:
             d = st.session_state.data
-            cid = get_or_create_client(nom, telephone, prenom, email)
+            cid = get_or_create_client(nom, telephone, prenom, email, societe)
             code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modele",""),
                                d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
-                               d.get("pin",""), d.get("pattern",""), notes)
+                               d.get("pin",""), d.get("pattern",""), notes, "", 1 if commande_piece else 0)
+            
+            # Si commande pièce cochée, créer une entrée dans commandes_pieces
+            if commande_piece:
+                # Récupérer le ticket pour avoir l'ID
+                t = get_ticket(code=code)
+                if t:
+                    modele_txt = f"{d.get('marque','')} {d.get('modele','')}"
+                    if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
+                    panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
+                    ajouter_commande_piece(t['id'], f"Pièce pour {panne_txt} - {modele_txt}", "A définir", "", 0, "Commande créée depuis totem client")
+            
             st.session_state.done = code
             st.rerun()
 
@@ -2260,12 +2389,11 @@ def ui_accueil():
     
     # === KPI CARDS ===
     all_tickets = chercher_tickets()
-    all_clients = get_all_clients()
+    commandes_attente = get_commandes_pieces(statut="A commander")
     nb_total = len(all_tickets)
     nb_attente = len([t for t in all_tickets if t.get('statut') == "En attente de diagnostic"])
     nb_encours = len([t for t in all_tickets if t.get('statut') == "En cours de réparation"])
-    nb_termine = len([t for t in all_tickets if t.get('statut') == "Réparation terminée"])
-    nb_clients = len(all_clients)
+    nb_commandes = len(commandes_attente)
     
     st.markdown(f"""
     <div class="kpi-grid">
@@ -2282,14 +2410,14 @@ def ui_accueil():
             <div class="kpi-value info">{nb_encours}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Clients</div>
-            <div class="kpi-value success">{nb_clients}</div>
+            <div class="kpi-label">Pièces à commander</div>
+            <div class="kpi-value" style="color:{'var(--error)' if nb_commandes > 0 else 'var(--success)'};">{nb_commandes}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # === TABS ===
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📄 Attestation", "⚙️ Config"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
         staff_liste_demandes()
@@ -2298,9 +2426,18 @@ def ui_accueil():
     with tab3:
         staff_gestion_clients()
     with tab4:
-        staff_attestation()
+        staff_commandes_pieces()
     with tab5:
+        staff_attestation()
+    with tab6:
         staff_config()
+    
+    # Footer
+    st.markdown("""
+    <div style="text-align:center;padding:20px 0;margin-top:40px;border-top:1px solid var(--neutral-200);color:var(--neutral-400);font-size:12px;">
+        Créé par <strong>TkConcept26</strong>
+    </div>
+    """, unsafe_allow_html=True)
 
 def staff_liste_demandes():
     # Si un ticket est sélectionné, afficher directement le traitement
@@ -2888,18 +3025,17 @@ def staff_gestion_clients():
     with col_title:
         st.markdown("""<div class="detail-card-header">👥 Gestion des Clients</div>""", unsafe_allow_html=True)
     with col_export:
-        if st.button("📥 Export Excel", key="export_clients", type="primary", use_container_width=True):
-            data, filename = export_clients_excel()
-            if data:
-                st.download_button(
-                    label="💾 Télécharger",
-                    data=data,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if filename.endswith('.xlsx') else "text/csv",
-                    key="download_clients"
-                )
-            else:
-                st.error(f"Erreur export: {filename}")
+        data, filename = export_clients_excel()
+        if data:
+            st.download_button(
+                label="📥 Excel",
+                data=data,
+                file_name=filename,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if filename.endswith('.xlsx') else "text/csv",
+                key="download_clients",
+                type="primary",
+                use_container_width=True
+            )
     
     st.markdown("---")
     
@@ -2915,6 +3051,7 @@ def staff_gestion_clients():
             with col1:
                 edit_nom = st.text_input("Nom *", value=client.get('nom', ''), key="edit_client_nom")
                 edit_prenom = st.text_input("Prénom", value=client.get('prenom', ''), key="edit_client_prenom")
+                edit_societe = st.text_input("Société (facultatif)", value=client.get('societe', '') or '', key="edit_client_societe")
             with col2:
                 edit_tel = st.text_input("Téléphone *", value=client.get('telephone', ''), key="edit_client_tel")
                 edit_email = st.text_input("Email", value=client.get('email', ''), key="edit_client_email")
@@ -2923,7 +3060,7 @@ def staff_gestion_clients():
             with col_save:
                 if st.button("💾 Enregistrer", type="primary", use_container_width=True, key="save_client"):
                     if edit_nom and edit_tel:
-                        update_client(client_id, nom=edit_nom, prenom=edit_prenom, telephone=edit_tel, email=edit_email)
+                        update_client(client_id, nom=edit_nom, prenom=edit_prenom, telephone=edit_tel, email=edit_email, societe=edit_societe)
                         st.success("✅ Client mis à jour!")
                         st.session_state.edit_client_id = None
                         st.rerun()
@@ -2940,7 +3077,7 @@ def staff_gestion_clients():
             st.rerun()
     
     # Recherche
-    search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom ou téléphone...", key="search_clients")
+    search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom, téléphone ou société...", key="search_clients")
     
     # Liste des clients
     if search and len(search) >= 2:
@@ -2955,10 +3092,11 @@ def staff_gestion_clients():
     <div class="table-header">
         <div style="flex:1;">Nom</div>
         <div style="flex:1;">Prénom</div>
+        <div style="flex:0.8;">Société</div>
         <div style="flex:1;">Téléphone</div>
-        <div style="flex:1.5;">Email</div>
-        <div style="min-width:80px;">Tickets</div>
-        <div style="min-width:100px;">Actions</div>
+        <div style="flex:1.2;">Email</div>
+        <div style="min-width:60px;">Tickets</div>
+        <div style="min-width:60px;">Action</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2975,20 +3113,23 @@ def staff_gestion_clients():
     clients_page = clients[start_idx:end_idx]
     
     for client in clients_page:
-        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1.5, 0.5, 0.8])
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 0.8, 1, 1.2, 0.4, 0.5])
         with col1:
             st.markdown(f"**{client.get('nom', '')}**")
         with col2:
             st.write(client.get('prenom', ''))
         with col3:
-            st.write(client.get('telephone', ''))
+            societe = client.get('societe', '')
+            st.write(societe[:12] if societe else "—")
         with col4:
-            email = client.get('email', '')
-            st.write(email if email else "—")
+            st.write(client.get('telephone', ''))
         with col5:
-            st.write(f"{client.get('nb_tickets', 0)}")
+            email = client.get('email', '')
+            st.write(email[:20] if email else "—")
         with col6:
-            if st.button("✏️", key=f"edit_client_{client['id']}", help="Modifier ce client"):
+            st.write(f"{client.get('nb_tickets', 0)}")
+        with col7:
+            if st.button("✏️", key=f"edit_client_{client['id']}", help="Modifier"):
                 st.session_state.edit_client_id = client['id']
                 st.rerun()
         
@@ -3010,6 +3151,115 @@ def staff_gestion_clients():
                 if st.button("Suivant →", key="clients_next"):
                     st.session_state.clients_page = current_page + 1
                     st.rerun()
+
+def staff_commandes_pieces():
+    """Gestion des commandes de pièces"""
+    st.markdown("""<div class="detail-card-header">📦 Commandes de Pièces</div>""", unsafe_allow_html=True)
+    
+    # Onglets
+    sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🔴 À commander", "🟡 Commandées", "➕ Nouvelle commande"])
+    
+    with sub_tab1:
+        # Pièces à commander
+        commandes = get_commandes_pieces(statut="A commander")
+        
+        if not commandes:
+            st.info("✅ Aucune pièce à commander")
+        else:
+            st.markdown(f"**{len(commandes)} pièce(s) à commander**")
+            
+            for cmd in commandes:
+                with st.container():
+                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1])
+                    with col1:
+                        ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
+                        st.markdown(f"**{cmd['description']}**")
+                        st.caption(f"📋 {ticket_info}")
+                        if cmd.get('marque') and cmd.get('modele'):
+                            st.caption(f"📱 {cmd['marque']} {cmd['modele']}")
+                    with col2:
+                        st.write(f"🏪 {cmd.get('fournisseur', 'N/A')}")
+                        if cmd.get('reference'):
+                            st.caption(f"Réf: {cmd['reference']}")
+                    with col3:
+                        if cmd.get('prix') and cmd['prix'] > 0:
+                            st.write(f"💰 {cmd['prix']:.2f} €")
+                    with col4:
+                        if st.button("✅ Commandée", key=f"cmd_done_{cmd['id']}", type="primary"):
+                            from datetime import datetime
+                            update_commande_piece(cmd['id'], statut="Commandée", date_commande=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            st.rerun()
+                        if st.button("🗑️", key=f"cmd_del_{cmd['id']}", help="Supprimer"):
+                            delete_commande_piece(cmd['id'])
+                            st.rerun()
+                    
+                    st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
+    
+    with sub_tab2:
+        # Pièces commandées (en attente de réception)
+        commandes = get_commandes_pieces(statut="Commandée")
+        
+        if not commandes:
+            st.info("Aucune commande en cours")
+        else:
+            st.markdown(f"**{len(commandes)} commande(s) en cours**")
+            
+            for cmd in commandes:
+                with st.container():
+                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1])
+                    with col1:
+                        ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
+                        st.markdown(f"**{cmd['description']}**")
+                        st.caption(f"📋 {ticket_info}")
+                    with col2:
+                        st.write(f"🏪 {cmd.get('fournisseur', 'N/A')}")
+                        if cmd.get('date_commande'):
+                            st.caption(f"Commandé le {cmd['date_commande'][:10]}")
+                    with col3:
+                        if cmd.get('prix') and cmd['prix'] > 0:
+                            st.write(f"💰 {cmd['prix']:.2f} €")
+                    with col4:
+                        if st.button("📦 Reçue", key=f"cmd_recv_{cmd['id']}", type="primary"):
+                            from datetime import datetime
+                            update_commande_piece(cmd['id'], statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            st.rerun()
+                    
+                    st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
+    
+    with sub_tab3:
+        # Ajouter une nouvelle commande
+        st.markdown("##### Ajouter une commande de pièce")
+        
+        # Sélection du ticket (optionnel)
+        tickets_ouverts = [t for t in chercher_tickets() if t.get('statut') not in ['Clôturé', 'Rendu au client']]
+        ticket_options = ["-- Sans ticket --"] + [f"{t['ticket_code']} - {t.get('client_nom', '')} ({t.get('marque', '')} {t.get('modele', '')})" for t in tickets_ouverts]
+        
+        selected_ticket = st.selectbox("Associer à un ticket (optionnel)", ticket_options, key="cmd_ticket")
+        
+        ticket_id = None
+        if selected_ticket != "-- Sans ticket --":
+            idx = ticket_options.index(selected_ticket) - 1
+            ticket_id = tickets_ouverts[idx]['id']
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            cmd_description = st.text_input("Description de la pièce *", placeholder="Ex: Écran iPhone 11", key="cmd_desc")
+            cmd_fournisseur = st.selectbox("Fournisseur", FOURNISSEURS, key="cmd_fournisseur")
+            if cmd_fournisseur == "Autre":
+                cmd_fournisseur = st.text_input("Précisez le fournisseur", key="cmd_fournisseur_autre")
+        with col2:
+            cmd_reference = st.text_input("Référence (optionnel)", placeholder="Réf. fournisseur", key="cmd_ref")
+            cmd_prix = st.number_input("Prix (€)", min_value=0.0, step=1.0, key="cmd_prix")
+        
+        cmd_notes = st.text_area("Notes", placeholder="Informations complémentaires...", height=80, key="cmd_notes")
+        
+        if st.button("➕ Ajouter la commande", type="primary", use_container_width=True):
+            if cmd_description:
+                ajouter_commande_piece(ticket_id, cmd_description, cmd_fournisseur, cmd_reference, cmd_prix, cmd_notes)
+                st.success("✅ Commande ajoutée!")
+                st.rerun()
+            else:
+                st.error("La description est obligatoire")
 
 def staff_attestation():
     """Générer une attestation de non-reparabilite"""
@@ -3747,8 +3997,25 @@ def tech_detail_ticket(tid):
                 st.markdown(f'<a href="{sms_link(tel, msg_custom)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#3b82f6;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">SMS</a>', unsafe_allow_html=True)
         with col_email:
             if email:
-                sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
-                st.markdown(f'<a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#6b7280;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">Email</a>', unsafe_allow_html=True)
+                # Envoi direct si SMTP configuré
+                if get_param("SMTP_HOST"):
+                    if st.button("📧 Email", key=f"tech_send_email_{tid}", type="primary", use_container_width=True):
+                        sujet = f"Réparation {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        success, result = envoyer_email(email, sujet, msg_custom)
+                        if success:
+                            st.success(f"✅ Email envoyé à {email}!")
+                        else:
+                            st.error(result)
+                else:
+                    sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
+                    st.markdown(f'<a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#6b7280;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">Email</a>', unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown("""
+    <div style="text-align:center;padding:20px 0;margin-top:40px;border-top:1px solid var(--neutral-200);color:var(--neutral-400);font-size:12px;">
+        Créé par <strong>TkConcept26</strong>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =============================================================================
 # PAGE SUIVI CLIENT
