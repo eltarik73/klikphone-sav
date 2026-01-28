@@ -110,110 +110,138 @@ MODELES = {
 }
 
 # =============================================================================
-# CSS STYLE KLIKPHONE
+# CSS STYLE KLIKPHONE - DESIGN MÉTALLIQUE MODERNE
 # =============================================================================
 def load_css():
     st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
     --klik-orange: #fb923c;
-    --klik-orange-dark: #f97316;
+    --klik-orange-dark: #ea580c;
     --klik-orange-light: #fed7aa;
-    --klik-bg: #f0f2f5;
+    --klik-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
     --klik-white: #ffffff;
-    --klik-gray-100: #f9fafb;
+    --klik-metal-light: #e8e8e8;
+    --klik-metal: #c0c0c0;
+    --klik-metal-dark: #808080;
+    --klik-gray-100: #f3f4f6;
     --klik-gray-200: #e5e7eb;
     --klik-gray-300: #d1d5db;
     --klik-gray-500: #6b7280;
     --klik-gray-700: #374151;
-    --klik-gray-900: #1f2937;
+    --klik-gray-900: #111827;
     --klik-red: #ef4444;
     --klik-green: #10b981;
-    --klik-blue: #2563eb;
+    --klik-blue: #3b82f6;
     --klik-yellow: #fbbf24;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --shadow-metal: 0 10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1) inset;
 }
 
 * { font-family: 'Inter', sans-serif !important; }
 
-.stApp { background-color: var(--klik-bg) !important; }
+.stApp { 
+    background: var(--klik-bg) !important;
+    min-height: 100vh;
+}
 
 #MainMenu, footer, header, .stDeployButton { display: none !important; }
 
-/* Container style portail */
+/* Container style métallique */
 .staff-container {
-    background-color: var(--klik-white);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
     padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border-radius: 20px;
+    box-shadow: var(--shadow-metal);
     max-width: 1200px;
     margin: 1.5rem auto;
+    border: 1px solid rgba(255,255,255,0.3);
 }
 
 /* Titre page style */
 .page-title {
     text-align: center;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--klik-orange-dark);
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 2rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Section title */
+/* Section title avec effet métallique */
 .section-title {
     font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--klik-gray-900);
+    font-weight: 700;
+    background: linear-gradient(180deg, #4a4a4a 0%, #2d2d2d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--klik-gray-200);
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, #fb923c, #f97316, transparent) 1;
 }
 
-/* Boutons orange Klikphone */
+/* Boutons orange Klikphone avec effet 3D */
 .stButton > button {
     font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     padding: 0.75rem 1.5rem !important;
-    border-radius: 8px !important;
-    transition: all 0.3s ease !important;
+    border-radius: 12px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border: none !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
 }
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-    background-color: var(--klik-orange) !important;
+    background: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #ea580c 100%) !important;
     color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 .stButton > button[data-testid="baseButton-primary"]:hover {
-    background-color: var(--klik-orange-dark) !important;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4) !important;
 }
 
 .stButton > button[kind="secondary"],
 .stButton > button[data-testid="baseButton-secondary"] {
-    background-color: var(--klik-gray-500) !important;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
     color: white !important;
 }
 
-/* Inputs style portail */
+.stButton > button[kind="secondary"]:hover,
+.stButton > button[data-testid="baseButton-secondary"]:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Inputs style moderne */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
     border: 2px solid var(--klik-gray-300) !important;
     padding: 0.85rem 1rem !important;
-    border-radius: 8px !important;
-    background-color: white !important;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%) !important;
     transition: all 0.3s ease !important;
     font-size: 16px !important;
     color: var(--klik-gray-900) !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 
 /* Selectbox ameliore */
 .stSelectbox > div > div {
     border: 2px solid var(--klik-gray-300) !important;
-    border-radius: 8px !important;
-    background-color: white !important;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%) !important;
 }
 
 .stSelectbox > div > div > div {
@@ -227,27 +255,29 @@ def load_css():
 .stTextArea > div > div > textarea:focus,
 .stSelectbox > div > div:focus-within {
     border-color: var(--klik-orange) !important;
-    box-shadow: 0 0 0 3px rgba(251,146,60,0.2) !important;
-    background-color: white !important;
+    box-shadow: 0 0 0 4px rgba(251,146,60,0.15), inset 0 2px 4px rgba(0,0,0,0.05) !important;
+    background: white !important;
 }
 
 /* Labels */
 .label-text {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--klik-gray-700);
     margin-bottom: 0.5rem;
     display: block;
     font-size: 0.875rem;
 }
 
-/* Status badges */
+/* Status badges avec effet brillant */
 .status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+    padding: 0.35rem 1rem;
+    border-radius: 50px;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    letter-spacing: 0.5px;
     display: inline-block;
 }
 
@@ -1207,6 +1237,269 @@ def ticket_staff_html(t):
 </html>
 """
 
+def ticket_devis_facture_html(t, doc_type="devis"):
+    """Génère un ticket DEVIS ou FACTURE selon le type"""
+    modele_txt = t.get("modele", "")
+    if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
+    
+    panne = t.get('panne', '')
+    if panne == "Autre" and t.get('panne_detail'):
+        panne = t.get('panne_detail')
+    elif t.get('panne_detail'):
+        panne += f" ({t['panne_detail']})"
+    
+    # Tarifs
+    devis_val = t.get('devis_estime') or 0
+    acompte_val = t.get('acompte') or 0
+    rep_supp = t.get('reparation_supp') or ""
+    prix_supp = t.get('prix_supp') or 0
+    
+    # Calculs TVA (prix TTC)
+    total_ttc = devis_val + prix_supp
+    total_ht = total_ttc / 1.20
+    tva = total_ttc - total_ht
+    reste = max(0, total_ttc - acompte_val)
+    
+    # Type de document
+    is_facture = doc_type == "facture"
+    doc_title = "FACTURE" if is_facture else "DEVIS"
+    doc_color = "#16a34a" if is_facture else "#3b82f6"
+    doc_num = f"F-{t['ticket_code']}" if is_facture else f"D-{t['ticket_code']}"
+    
+    # Ligne réparation supplémentaire
+    rep_supp_line = ""
+    if rep_supp:
+        rep_supp_line = f"""
+        <tr>
+            <td style="padding:10px; border-bottom:1px solid #e5e7eb;">Réparation supplémentaire<br><small style="color:#666;">{rep_supp}</small></td>
+            <td style="padding:10px; text-align:right; border-bottom:1px solid #e5e7eb;">{prix_supp:.2f} €</td>
+        </tr>
+        """
+    
+    # Date du document
+    from datetime import datetime
+    date_doc = datetime.now().strftime("%d/%m/%Y")
+    
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            font-size: 12px; 
+            padding: 20px;
+            background: #f5f5f5;
+        }}
+        .document {{ 
+            max-width: 400px; 
+            margin: 0 auto; 
+            background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }}
+        .header {{
+            background: linear-gradient(135deg, {doc_color} 0%, {doc_color}dd 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }}
+        .header img {{ width: 50px; height: 50px; margin-bottom: 10px; }}
+        .header h1 {{ font-size: 24px; font-weight: 800; margin: 5px 0; letter-spacing: 2px; }}
+        .header .doc-num {{ font-size: 14px; opacity: 0.9; margin-top: 5px; }}
+        .header .date {{ font-size: 11px; opacity: 0.8; margin-top: 5px; }}
+        
+        .company-info {{
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
+        .client-section {{
+            padding: 15px 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .client-section h3 {{
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }}
+        .client-section p {{ margin: 3px 0; color: #333; }}
+        
+        .details-section {{
+            padding: 15px 20px;
+        }}
+        .details-section h3 {{
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }}
+        
+        .items-table {{
+            width: 100%;
+            border-collapse: collapse;
+        }}
+        .items-table th {{
+            background: #f3f4f6;
+            padding: 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+        }}
+        .items-table th:last-child {{ text-align: right; }}
+        
+        .totals {{
+            background: linear-gradient(180deg, #f8f9fa 0%, #f3f4f6 100%);
+            padding: 15px 20px;
+            margin-top: 10px;
+        }}
+        .total-line {{
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 12px;
+        }}
+        .total-line.small {{ color: #666; font-size: 11px; }}
+        .total-line.main {{
+            font-size: 16px;
+            font-weight: 700;
+            border-top: 2px solid {doc_color};
+            padding-top: 10px;
+            margin-top: 5px;
+        }}
+        .total-line.reste {{
+            font-size: 18px;
+            font-weight: 800;
+            color: #dc2626;
+            border-top: 2px dashed #dc2626;
+            padding-top: 10px;
+            margin-top: 10px;
+        }}
+        
+        .footer {{
+            background: #1f2937;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 10px;
+        }}
+        .footer p {{ margin: 3px 0; opacity: 0.8; }}
+        
+        .print-btn {{
+            display: block;
+            width: calc(100% - 40px);
+            margin: 20px;
+            padding: 12px;
+            background: linear-gradient(135deg, {doc_color} 0%, {doc_color}dd 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .print-btn:hover {{ opacity: 0.9; }}
+        
+        @media print {{
+            .print-btn {{ display: none; }}
+            body {{ padding: 0; background: white; }}
+            .document {{ box-shadow: none; max-width: 100%; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="document">
+        <div class="header">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="Klikphone">
+            <h1>{doc_title}</h1>
+            <div class="doc-num">{doc_num}</div>
+            <div class="date">Date: {date_doc}</div>
+        </div>
+        
+        <div class="company-info">
+            <strong>KLIKPHONE</strong> - Spécialiste Apple<br>
+            79 Place Saint Léger, 73000 Chambéry<br>
+            Tél: 04 79 60 89 22 | SIRET: XXX XXX XXX XXXXX
+        </div>
+        
+        <div class="client-section">
+            <h3>Client</h3>
+            <p><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></p>
+            <p>Tél: {t.get('client_tel','')}</p>
+            {f"<p>Email: {t.get('client_email')}</p>" if t.get('client_email') else ""}
+        </div>
+        
+        <div class="client-section">
+            <h3>Appareil</h3>
+            <p><strong>{t.get('marque','')} {modele_txt}</strong></p>
+            {f"<p>IMEI: {t.get('imei')}</p>" if t.get('imei') else ""}
+        </div>
+        
+        <div class="details-section">
+            <h3>Prestations</h3>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Prix TTC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding:10px; border-bottom:1px solid #e5e7eb;">{panne}</td>
+                        <td style="padding:10px; text-align:right; border-bottom:1px solid #e5e7eb;">{devis_val:.2f} €</td>
+                    </tr>
+                    {rep_supp_line}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="totals">
+            <div class="total-line main">
+                <span>Total TTC</span>
+                <span>{total_ttc:.2f} €</span>
+            </div>
+            <div class="total-line small">
+                <span>dont HT</span>
+                <span>{total_ht:.2f} €</span>
+            </div>
+            <div class="total-line small">
+                <span>dont TVA (20%)</span>
+                <span>{tva:.2f} €</span>
+            </div>
+            <div class="total-line">
+                <span>Acompte versé</span>
+                <span style="color:#16a34a;">- {acompte_val:.2f} €</span>
+            </div>
+            <div class="total-line reste">
+                <span>RESTE À PAYER</span>
+                <span>{reste:.2f} €</span>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>{"Ce devis est valable 30 jours." if not is_facture else "Merci pour votre confiance !"}</p>
+            <p>{"Devis non contractuel - Prix susceptibles de modification après diagnostic." if not is_facture else "TVA non applicable - Art. 293B du CGI" if total_ttc < 500 else ""}</p>
+        </div>
+        
+        <button class="print-btn" onclick="window.print()">IMPRIMER {doc_title}</button>
+    </div>
+</body>
+</html>
+"""
+
 # =============================================================================
 # INTERFACE CLIENT - STYLE PORTAIL KLIKPHONE
 # =============================================================================
@@ -1760,13 +2053,24 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_ticket_{tid}"] = "client"
                 st.rerun()
         
-        if st.button("Ticket Staff", use_container_width=True, key=f"print_staff_{tid}"):
-            st.session_state[f"show_ticket_{tid}"] = "staff"
-            st.rerun()
+        # Ligne boutons tickets
+        col_t1, col_t2, col_t3 = st.columns(3)
+        with col_t1:
+            if st.button("📋 Ticket Staff", use_container_width=True, key=f"print_staff_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "staff"
+                st.rerun()
+        with col_t2:
+            if st.button("📝 DEVIS", use_container_width=True, key=f"print_devis_{tid}", type="secondary"):
+                st.session_state[f"show_ticket_{tid}"] = "devis"
+                st.rerun()
+        with col_t3:
+            if st.button("🧾 FACTURE", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
+                st.session_state[f"show_ticket_{tid}"] = "facture"
+                st.rerun()
     
     # === SECTION FACTURE ===
     st.markdown("---")
-    st.markdown("### 💰 FACTURE")
+    st.markdown("### 💰 FACTURATION")
     
     devis_val = t.get('devis_estime') or 0
     acompte_val = t.get('acompte') or 0
@@ -1778,8 +2082,8 @@ def staff_traiter_demande(tid):
     
     with col_fact1:
         st.markdown("""
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
-            <strong>Détail des prestations</strong>
+        <div style="background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1px solid #e2e8f0; border-radius:12px; padding:1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <strong style="color:#374151;">📦 Détail des prestations</strong>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1948,8 +2252,8 @@ def staff_traiter_demande(tid):
     if st.session_state.get(f"show_ticket_{tid}") == "client":
         st.markdown("---")
         st.markdown("""
-        <div style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-            <strong>TICKET CLIENT</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
+        <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #fb923c;">
+            <strong>🎫 TICKET CLIENT</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
         </div>
         """, unsafe_allow_html=True)
         st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
@@ -1960,12 +2264,36 @@ def staff_traiter_demande(tid):
     if st.session_state.get(f"show_ticket_{tid}") == "staff":
         st.markdown("---")
         st.markdown("""
-        <div style="background: rgba(249,115,22,0.1); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-            <strong>TICKET STAFF</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
+        <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #6b7280;">
+            <strong>📋 TICKET STAFF</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
         </div>
         """, unsafe_allow_html=True)
         st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
         if st.button("Fermer", key=f"close_ticket_staff_{tid}", type="primary", use_container_width=True):
+            del st.session_state[f"show_ticket_{tid}"]
+            st.rerun()
+    
+    if st.session_state.get(f"show_ticket_{tid}") == "devis":
+        st.markdown("---")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #3b82f6;">
+            <strong>📝 DEVIS</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
+        </div>
+        """, unsafe_allow_html=True)
+        st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=800, scrolling=True)
+        if st.button("Fermer", key=f"close_ticket_devis_{tid}", type="primary", use_container_width=True):
+            del st.session_state[f"show_ticket_{tid}"]
+            st.rerun()
+    
+    if st.session_state.get(f"show_ticket_{tid}") == "facture":
+        st.markdown("---")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #16a34a;">
+            <strong>🧾 FACTURE</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
+        </div>
+        """, unsafe_allow_html=True)
+        st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
+        if st.button("Fermer", key=f"close_ticket_facture_{tid}", type="primary", use_container_width=True):
             del st.session_state[f"show_ticket_{tid}"]
             st.rerun()
 
