@@ -110,7 +110,7 @@ MODELES = {
 }
 
 # =============================================================================
-# CSS STYLE KLIKPHONE - DESIGN MÉTALLIQUE MODERNE
+# CSS STYLE KLIKPHONE - DESIGN MODERNE ÉPURÉ
 # =============================================================================
 def load_css():
     st.markdown("""
@@ -120,12 +120,10 @@ def load_css():
 :root {
     --klik-orange: #fb923c;
     --klik-orange-dark: #ea580c;
-    --klik-orange-light: #fed7aa;
-    --klik-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+    --klik-orange-light: #ffedd5;
+    --klik-bg: #f8fafc;
     --klik-white: #ffffff;
-    --klik-metal-light: #e8e8e8;
-    --klik-metal: #c0c0c0;
-    --klik-metal-dark: #808080;
+    --klik-gray-50: #f9fafb;
     --klik-gray-100: #f3f4f6;
     --klik-gray-200: #e5e7eb;
     --klik-gray-300: #d1d5db;
@@ -136,148 +134,124 @@ def load_css():
     --klik-green: #10b981;
     --klik-blue: #3b82f6;
     --klik-yellow: #fbbf24;
-    --glass-bg: rgba(255, 255, 255, 0.95);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --shadow-metal: 0 10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1) inset;
 }
 
 * { font-family: 'Inter', sans-serif !important; }
 
 .stApp { 
-    background: var(--klik-bg) !important;
-    min-height: 100vh;
+    background-color: var(--klik-bg) !important;
 }
 
 #MainMenu, footer, header, .stDeployButton { display: none !important; }
 
-/* Container style métallique */
+/* Container style moderne */
 .staff-container {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
+    background: var(--klik-white);
     padding: 2rem;
-    border-radius: 20px;
-    box-shadow: var(--shadow-metal);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     max-width: 1200px;
     margin: 1.5rem auto;
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid var(--klik-gray-200);
 }
 
 /* Titre page style */
 .page-title {
     text-align: center;
-    font-size: 2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fb923c, #f97316, #ea580c);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--klik-orange-dark);
     margin-bottom: 2rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Section title avec effet métallique */
+/* Section title */
 .section-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    background: linear-gradient(180deg, #4a4a4a 0%, #2d2d2d 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--klik-gray-900);
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 2px solid;
-    border-image: linear-gradient(90deg, #fb923c, #f97316, transparent) 1;
+    border-bottom: 2px solid var(--klik-orange);
 }
 
-/* Boutons orange Klikphone avec effet 3D */
+/* Boutons orange Klikphone */
 .stButton > button {
     font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     padding: 0.75rem 1.5rem !important;
-    border-radius: 12px !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
     border: none !important;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
 }
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #ea580c 100%) !important;
+    background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
     color: white !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.3) !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 .stButton > button[data-testid="baseButton-primary"]:hover {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4) !important;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(249,115,22,0.4) !important;
 }
 
 .stButton > button[kind="secondary"],
 .stButton > button[data-testid="baseButton-secondary"] {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
-    color: white !important;
+    background: var(--klik-gray-100) !important;
+    color: var(--klik-gray-700) !important;
+    border: 1px solid var(--klik-gray-300) !important;
 }
 
 .stButton > button[kind="secondary"]:hover,
 .stButton > button[data-testid="baseButton-secondary"]:hover {
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
-    transform: translateY(-2px) !important;
+    background: var(--klik-gray-200) !important;
 }
 
-/* Inputs style moderne */
+/* Inputs style */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
-    border: 2px solid var(--klik-gray-300) !important;
-    padding: 0.85rem 1rem !important;
-    border-radius: 12px !important;
-    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%) !important;
-    transition: all 0.3s ease !important;
-    font-size: 16px !important;
+    border: 1px solid var(--klik-gray-300) !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 10px !important;
+    background-color: white !important;
+    transition: all 0.2s ease !important;
+    font-size: 15px !important;
     color: var(--klik-gray-900) !important;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 
-/* Selectbox ameliore */
+/* Selectbox */
 .stSelectbox > div > div {
-    border: 2px solid var(--klik-gray-300) !important;
-    border-radius: 12px !important;
-    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%) !important;
+    border: 1px solid var(--klik-gray-300) !important;
+    border-radius: 10px !important;
+    background-color: white !important;
 }
 
 .stSelectbox > div > div > div {
-    padding: 0.85rem 1rem !important;
-    font-size: 16px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 15px !important;
     color: var(--klik-gray-900) !important;
-    min-height: 50px !important;
+    min-height: 48px !important;
 }
 
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus,
 .stSelectbox > div > div:focus-within {
     border-color: var(--klik-orange) !important;
-    box-shadow: 0 0 0 4px rgba(251,146,60,0.15), inset 0 2px 4px rgba(0,0,0,0.05) !important;
-    background: white !important;
+    box-shadow: 0 0 0 3px rgba(251,146,60,0.15) !important;
 }
 
-/* Labels */
-.label-text {
-    font-weight: 600;
-    color: var(--klik-gray-700);
-    margin-bottom: 0.5rem;
-    display: block;
-    font-size: 0.875rem;
-}
-
-/* Status badges avec effet brillant */
+/* Status badges */
 .status-badge {
-    padding: 0.35rem 1rem;
-    border-radius: 50px;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     display: inline-block;
 }
 
@@ -2967,38 +2941,34 @@ def tech_detail_ticket(tid):
 # =============================================================================
 def ui_suivi():
     st.markdown(f"""
-    <div style="text-align:center; padding:1rem 0;">
+    <div style="text-align:center; padding:1.5rem 0; background:white; border-radius:16px; margin-bottom:1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
         <img src="data:image/png;base64,{LOGO_B64}" style="width:60px; height:60px; margin-bottom:0.5rem;">
-        <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; font-weight: 800;">KLIKPHONE</div>
-        <p style="color:#6b7280; font-size:0.9rem;">Suivi de votre réparation</p>
+        <div style="color:#f97316; font-size: 1.8rem; font-weight: 800;">KLIKPHONE</div>
+        <p style="color:#6b7280; font-size:0.9rem; margin:0;">Suivi de votre réparation</p>
     </div>
     """, unsafe_allow_html=True)
     
     params = st.query_params
     code_url = params.get("ticket", "")
     
-    # Si un ticket est dans l'URL, on affiche directement la recherche
+    # Formulaire de recherche
     col1, col2 = st.columns(2)
     with col1:
         code = st.text_input("N° de ticket", value=code_url, placeholder="KP-000001")
     with col2:
         tel = st.text_input("Votre téléphone", placeholder="06 12 34 56 78")
     
-    # Recherche automatique si code dans URL et recherche manuelle
-    rechercher = st.button("RECHERCHER", type="primary", use_container_width=True)
+    rechercher = st.button("🔍 RECHERCHER MA RÉPARATION", type="primary", use_container_width=True)
     
-    # Si on a un code (URL ou saisi) et un téléphone
-    if rechercher or (code_url and "suivi_tel" in st.session_state):
-        tel_to_check = tel or st.session_state.get("suivi_tel", "")
-        
-        if code and tel_to_check:
-            st.session_state.suivi_tel = tel_to_check  # Mémoriser le tel
-            
+    # Recherche
+    if rechercher or (code_url and tel):
+        if code and tel:
             t = get_ticket_full(code=code)
-            tel_clean = "".join(filter(str.isdigit, tel_to_check))
+            tel_clean = "".join(filter(str.isdigit, tel))
             client_tel_clean = "".join(filter(str.isdigit, t.get('client_tel', ''))) if t else ""
             
             if t and tel_clean == client_tel_clean:
+                # Données
                 status_class = get_status_class(t.get('statut', ''))
                 modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
                 if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
@@ -3006,41 +2976,12 @@ def ui_suivi():
                 panne = t.get('panne', '')
                 if t.get('panne_detail'): panne = t.get('panne_detail')
                 
-                # Calcul du reste à payer
                 devis = t.get('devis_estime') or 0
                 prix_supp = t.get('prix_supp') or 0
                 acompte = t.get('acompte') or 0
                 total_ttc = devis + prix_supp
                 reste = max(0, total_ttc - acompte)
                 
-                st.markdown(f"""
-                <div style="background:white; padding:1.5rem; border-radius:12px; margin-top:1.5rem; border:2px solid #f97316; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h2 style="margin:0; color:#f97316;">{t['ticket_code']}</h2>
-                        <span class="status-badge {status_class}" style="font-size:1rem; padding:8px 16px;">{t.get('statut','')}</span>
-                    </div>
-                    
-                    <div style="background:#f8fafc; padding:1rem; border-radius:8px; margin-bottom:1rem;">
-                        <p style="margin:5px 0;"><strong>👤 Client:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</p>
-                        <p style="margin:5px 0;"><strong>📱 Appareil:</strong> {modele_txt}</p>
-                        <p style="margin:5px 0;"><strong>🔧 Réparation:</strong> {panne}</p>
-                    </div>
-                    
-                    <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
-                        <div>
-                            <p style="margin:5px 0; color:#666;"><strong>Déposé le:</strong> {fmt_date(t.get('date_depot',''))}</p>
-                            <p style="margin:5px 0; color:#666;"><strong>Mise à jour:</strong> {fmt_date(t.get('date_maj',''))}</p>
-                        </div>
-                        <div style="text-align:right;">
-                            <p style="margin:5px 0;"><strong>Total:</strong> {total_ttc:.2f} €</p>
-                            <p style="margin:5px 0; color:#16a34a;"><strong>Acompte:</strong> -{acompte:.2f} €</p>
-                            <p style="margin:5px 0; font-size:1.2rem; color:#dc2626;"><strong>Reste à payer: {reste:.2f} €</strong></p>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Barre de progression
                 statut = t.get('statut', '')
                 progress_map = {
                     "En attente de diagnostic": 20, 
@@ -3051,35 +2992,68 @@ def ui_suivi():
                 }
                 progress = progress_map.get(statut, 10)
                 
+                # Affichage avec Streamlit natif
+                st.markdown("---")
+                
+                # En-tête ticket
+                col_code, col_statut = st.columns([2, 1])
+                with col_code:
+                    st.markdown(f"### 🎫 {t['ticket_code']}")
+                with col_statut:
+                    st.markdown(f"<span class='status-badge {status_class}'>{statut}</span>", unsafe_allow_html=True)
+                
+                # Infos client et appareil
                 st.markdown(f"""
-                <div style="margin-top:1rem;">
-                    <p style="text-align:center; margin-bottom:5px;"><strong>Progression: {progress}%</strong></p>
-                </div>
-                """, unsafe_allow_html=True)
+                **👤 Client:** {t.get('client_nom','')} {t.get('client_prenom','')}  
+                **📱 Appareil:** {modele_txt}  
+                **🔧 Réparation:** {panne}
+                """)
+                
+                # Dates
+                col_dates, col_prix = st.columns(2)
+                with col_dates:
+                    st.markdown(f"""
+                    **Déposé le:** {fmt_date(t.get('date_depot',''))}  
+                    **Mise à jour:** {fmt_date(t.get('date_maj',''))}
+                    """)
+                with col_prix:
+                    if total_ttc > 0:
+                        st.metric("Total TTC", f"{total_ttc:.2f} €")
+                        if acompte > 0:
+                            st.caption(f"Acompte: -{acompte:.2f} €")
+                        st.markdown(f"**Reste à payer: {reste:.2f} €**")
+                
+                # Progression
+                st.markdown("---")
+                st.markdown(f"**Progression: {progress}%**")
                 st.progress(progress / 100)
                 
-                # Étapes
-                st.markdown("""
-                <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.8rem; color:#666;">
-                    <span>Déposé</span>
-                    <span>Diagnostic</span>
-                    <span>Réparation</span>
-                    <span>Terminé</span>
-                    <span>Récupéré</span>
-                </div>
-                """, unsafe_allow_html=True)
+                # Étapes visuelles
+                cols = st.columns(5)
+                etapes = ["📥 Déposé", "🔍 Diagnostic", "🔧 Réparation", "✅ Terminé", "🤝 Récupéré"]
+                etapes_done = {
+                    "En attente de diagnostic": 1,
+                    "En cours de réparation": 2,
+                    "Réparation terminée": 3,
+                    "Rendu au client": 5,
+                    "Clôturé": 5
+                }
+                done_count = etapes_done.get(statut, 0)
+                
+                for i, (col, etape) in enumerate(zip(cols, etapes)):
+                    with col:
+                        if i < done_count:
+                            st.markdown(f"<div style='text-align:center;color:#16a34a;font-size:0.8rem;'>{etape}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div style='text-align:center;color:#9ca3af;font-size:0.8rem;'>{etape}</div>", unsafe_allow_html=True)
                 
             else:
-                st.error("Ticket non trouvé ou numéro de téléphone incorrect")
-        elif code and not tel_to_check:
-            st.warning("Veuillez entrer votre numéro de téléphone pour accéder à votre réparation")
+                st.error("❌ Ticket non trouvé ou numéro de téléphone incorrect")
         else:
-            st.warning("Veuillez remplir les deux champs")
+            st.warning("⚠️ Veuillez remplir les deux champs")
     
     st.markdown("---")
-    if st.button("Retour à l'accueil"):
-        if "suivi_tel" in st.session_state:
-            del st.session_state.suivi_tel
+    if st.button("← Retour à l'accueil"):
         st.session_state.mode = None
         st.rerun()
 
@@ -3188,6 +3162,11 @@ def main():
     
     if "mode" not in st.session_state: st.session_state.mode = None
     if "auth" not in st.session_state: st.session_state.auth = False
+    
+    # Si l'URL contient un ticket, aller directement vers le suivi
+    params = st.query_params
+    if params.get("ticket") and st.session_state.mode is None:
+        st.session_state.mode = "suivi"
     
     mode = st.session_state.mode
     
