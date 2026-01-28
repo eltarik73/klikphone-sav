@@ -753,7 +753,7 @@ def chercher_tickets(statut=None, tel=None, code=None, nom=None):
            FROM tickets t JOIN clients c ON t.client_id=c.id WHERE 1=1"""
     p = []
     if statut: q += " AND t.statut=?"; p.append(statut)
-    if tel: q += " AND c.téléphone LIKE ?"; p.append(f"%{tel}%")
+    if tel: q += " AND c.telephone LIKE ?"; p.append(f"%{tel}%")
     if code: q += " AND t.ticket_code LIKE ?"; p.append(f"%{code}%")
     if nom: q += " AND (c.nom LIKE ? OR c.prenom LIKE ?)"; p.extend([f"%{nom}%", f"%{nom}%"])
     q += " ORDER BY t.date_depot DESC"
@@ -807,26 +807,26 @@ def email_link(email, sujet, msg):
     """Genere un lien mailto"""
     return f"mailto:{email}?subject={urllib.parse.quote(sujet)}&body={urllib.parse.quote(msg)}"
 
-def envoyer_email(destinataire, sujet, message):
-    """Envoie un email via SMTP"""
+def envoyer_email(destinataire, sujet, message, html_content=None):
+    """Envoie un email via SMTP avec option HTML"""
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    # Récupérer les parametres SMTP
+    # Récupérer les paramètres SMTP
     smtp_host = get_param("SMTP_HOST")
     smtp_port = get_param("SMTP_PORT")
     smtp_user = get_param("SMTP_USER")
     smtp_pass = get_param("SMTP_PASS")
     smtp_from = get_param("SMTP_FROM")
-    smtp_from_name = get_param("SMTP_FROM_NAME")
+    smtp_from_name = get_param("SMTP_FROM_NAME") or "Klikphone"
     
     if not smtp_host or not smtp_user or not smtp_pass:
-        return False, "Configuration SMTP incomplete. Allez dans Config > Email."
+        return False, "Configuration SMTP incomplète. Allez dans Config > Email."
     
     try:
-        # Créér le message
-        msg = MIMEMultipart()
+        # Créer le message
+        msg = MIMEMultipart('alternative')
         msg['From'] = f"{smtp_from_name} <{smtp_from or smtp_user}>"
         msg['To'] = destinataire
         msg['Subject'] = sujet
@@ -834,22 +834,24 @@ def envoyer_email(destinataire, sujet, message):
         # Corps du message en texte
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
         
+        # Corps en HTML si fourni
+        if html_content:
+            msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
         # Connexion et envoi
-        server = smtplib.SMTP(smtp_host, int(smtp_port))
+        server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
         server.sendmail(smtp_from or smtp_user, destinataire, msg.as_string())
         server.quit()
         
-        return True, "Email envoye avec succes!"
+        return True, "Email envoyé avec succès!"
     except Exception as e:
         return False, f"Erreur d'envoi: {str(e)}"
 
 def envoyer_sms_api(tel, message):
-    """Placeholder pour API SMS (a configurer selon fournisseur)"""
-    # Pour l'instant, retourne un lien SMS
-    # Peut etre remplace par une vraie API (Twilio, OVH, etc.)
-    return False, "API SMS non configuree. Utilisez le lien SMS."
+    """Placeholder pour API SMS (à configurer selon fournisseur)"""
+    return False, "API SMS non configurée. Utilisez le lien SMS."
 
 def get_messages_predefs(t):
     """Retourne les messages prédéfinis pour un ticket"""
@@ -1426,8 +1428,8 @@ def client_step6():
     
     col1, col2 = st.columns(2)
     with col1:
-        prénom = st.text_input("Prénom *")
-        téléphone = st.text_input("Téléphone *", placeholder="06 12 34 56 78")
+        prenom = st.text_input("Prénom *")
+        telephone = st.text_input("Téléphone *", placeholder="06 12 34 56 78")
     with col2:
         nom = st.text_input("Nom *")
         email = st.text_input("Email")
@@ -1463,13 +1465,13 @@ def client_step6():
             st.rerun()
     
     if st.button("ENVOYER LA DEMANDE", type="primary", use_container_width=True):
-        if not nom or not prénom or not téléphone:
+        if not nom or not prenom or not telephone:
             st.error("Le nom, prénom et téléphone sont obligatoires")
         elif not consent:
             st.error("Veuillez accepter les conditions générales")
         else:
             d = st.session_state.data
-            cid = get_or_create_client(nom, téléphone, prenom, email)
+            cid = get_or_create_client(nom, telephone, prenom, email)
             code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modele",""),
                                d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
                                d.get("pin",""), d.get("pattern",""), notes)
@@ -1995,11 +1997,12 @@ def staff_attestation():
             att_email_saved = st.session_state.get("attestation_email", "")
             if att_email_saved and get_param("SMTP_HOST"):
                 if st.button("Envoyer par email", key="send_attestation_email", type="primary"):
-                    sujet = "Attestation de non-reparabilite - Klikphone"
-                    message = "Bonjour,\n\nVeuillez trouver ci-joint votre attestation de non-reparabilite.\n\nCordialement,\nL'équipe Klikphone"
-                    success, result = envoyer_email(att_email_saved, sujet, message)
+                    sujet = "Attestation de non-réparabilité - Klikphone"
+                    message = "Bonjour,\n\nVeuillez trouver ci-dessous votre attestation de non-réparabilité.\n\nCordialement,\nL'équipe Klikphone\n04 79 60 89 22"
+                    html_attestation = st.session_state.get("attestation_html", "")
+                    success, result = envoyer_email(att_email_saved, sujet, message, html_attestation)
                     if success:
-                        st.success(f"Email envoye a {att_email_saved}!")
+                        st.success(f"Email envoyé à {att_email_saved}!")
                     else:
                         st.error(result)
             elif att_email_saved:
@@ -2010,7 +2013,7 @@ def staff_nouvelle_demande():
     
     col1, col2 = st.columns(2)
     with col1:
-        prénom = st.text_input("Prénom *", key="n_prénom")
+        prenom = st.text_input("Prénom *", key="n_prenom")
         tel = st.text_input("Téléphone *", key="n_tel")
     with col2:
         nom = st.text_input("Nom *", key="n_nom")
@@ -2062,30 +2065,45 @@ def staff_nouvelle_demande():
             st.success(f"Demande créée : {code}")
 
 def staff_config():
-    tab1, tab2, tab3, tab4 = st.tabs(["Boutique", "Email", "Catalogue", "Sécurité"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Boutique", "Email", "Messages", "Catalogue", "Sécurité"])
     
     with tab1:
-        nom = st.text_input("Nom boutique", value=get_param("NOM_BOUTIQUE"))
-        adresse = st.text_input("Adresse", value=get_param("ADRESSE_BOUTIQUE"))
-        tel = st.text_input("Téléphone", value=get_param("TEL_BOUTIQUE"))
-        url = st.text_input("URL suivi", value=get_param("URL_SUIVI"))
-        if st.button("Enregistrer", key="save_config"):
+        st.markdown("### Informations de la boutique")
+        nom = st.text_input("Nom boutique", value=get_param("NOM_BOUTIQUE") or "Klikphone")
+        adresse = st.text_input("Adresse", value=get_param("ADRESSE_BOUTIQUE") or "79 Place Saint Léger, 73000 Chambéry")
+        tel = st.text_input("Téléphone", value=get_param("TEL_BOUTIQUE") or "04 79 60 89 22")
+        email_boutique = st.text_input("Email boutique", value=get_param("EMAIL_BOUTIQUE") or "contact@klikphone.com")
+        horaires = st.text_input("Horaires", value=get_param("HORAIRES_BOUTIQUE") or "Lundi-Samedi 10h-19h")
+        url = st.text_input("URL suivi (QR code)", value=get_param("URL_SUIVI"))
+        
+        st.markdown("---")
+        st.markdown("### Conditions générales (ticket)")
+        cgv_ticket = st.text_area("Conditions affichées sur le ticket", 
+            value=get_param("CGV_TICKET") or """- Klikphone ne consulte pas et n'accède pas aux données présentes dans votre appareil.
+- Une perte de données reste possible — pensez à sauvegarder.
+- Klikphone décline toute responsabilité en cas de perte de données ou de panne apparaissant après réparation (oxydation, choc, FaceID, etc.).""",
+            height=120)
+        
+        if st.button("Enregistrer", key="save_config", type="primary"):
             set_param("NOM_BOUTIQUE", nom)
             set_param("ADRESSE_BOUTIQUE", adresse)
             set_param("TEL_BOUTIQUE", tel)
+            set_param("EMAIL_BOUTIQUE", email_boutique)
+            set_param("HORAIRES_BOUTIQUE", horaires)
             set_param("URL_SUIVI", url)
-            st.success("Configuration enregistree")
+            set_param("CGV_TICKET", cgv_ticket)
+            st.success("Configuration enregistrée!")
     
     with tab2:
-        st.markdown("**Configuration Email (SMTP)**")
+        st.markdown("### Configuration Email (SMTP)")
         st.markdown("Pour envoyer des emails directement depuis l'application")
         
         smtp_host = st.text_input("Serveur SMTP", value=get_param("SMTP_HOST"), placeholder="smtp.gmail.com")
         smtp_port = st.text_input("Port", value=get_param("SMTP_PORT") or "587", placeholder="587")
         smtp_user = st.text_input("Email / Utilisateur", value=get_param("SMTP_USER"), placeholder="votre@email.com")
         smtp_pass = st.text_input("Mot de passe", value=get_param("SMTP_PASS"), type="password")
-        smtp_from = st.text_input("Email expediteur (optionnel)", value=get_param("SMTP_FROM"), placeholder="contact@klikphone.com")
-        smtp_from_name = st.text_input("Nom expediteur", value=get_param("SMTP_FROM_NAME") or "Klikphone")
+        smtp_from = st.text_input("Email expéditeur (optionnel)", value=get_param("SMTP_FROM"), placeholder="contact@klikphone.com")
+        smtp_from_name = st.text_input("Nom expéditeur", value=get_param("SMTP_FROM_NAME") or "Klikphone")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -2096,7 +2114,7 @@ def staff_config():
                 set_param("SMTP_PASS", smtp_pass)
                 set_param("SMTP_FROM", smtp_from)
                 set_param("SMTP_FROM_NAME", smtp_from_name)
-                st.success("Configuration email enregistree!")
+                st.success("Configuration email enregistrée!")
         
         with col2:
             if st.button("Tester l'envoi", key="test_smtp"):
@@ -2118,7 +2136,37 @@ def staff_config():
         """)
     
     with tab3:
-        st.markdown("**Ajouter une marque**")
+        st.markdown("### Messages prédéfinis personnalisés")
+        st.markdown("Personnalisez les messages envoyés aux clients. Variables disponibles: `{prenom}`, `{marque}`, `{modele}`, `{code}`, `{montant}`")
+        
+        msg_recu = st.text_area("Message: Appareil reçu", 
+            value=get_param("MSG_APPAREIL_RECU") or "", 
+            placeholder="Laissez vide pour utiliser le message par défaut",
+            height=100)
+        
+        msg_pret = st.text_area("Message: Appareil prêt", 
+            value=get_param("MSG_APPAREIL_PRET") or "", 
+            placeholder="Laissez vide pour utiliser le message par défaut",
+            height=100)
+        
+        msg_non_reparable = st.text_area("Message: Non réparable", 
+            value=get_param("MSG_NON_REPARABLE") or "", 
+            placeholder="Laissez vide pour utiliser le message par défaut",
+            height=100)
+        
+        signature = st.text_area("Signature des messages", 
+            value=get_param("SIGNATURE_MSG") or "Cordialement,\nL'équipe Klikphone\n04 79 60 89 22",
+            height=80)
+        
+        if st.button("Enregistrer messages", key="save_messages", type="primary"):
+            set_param("MSG_APPAREIL_RECU", msg_recu)
+            set_param("MSG_APPAREIL_PRET", msg_pret)
+            set_param("MSG_NON_REPARABLE", msg_non_reparable)
+            set_param("SIGNATURE_MSG", signature)
+            st.success("Messages enregistrés!")
+    
+    with tab4:
+        st.markdown("### Ajouter une marque")
         col1, col2 = st.columns(2)
         with col1:
             cat_m = st.selectbox("Catégorie", CATEGORIES, key="cat_marque")
@@ -2126,30 +2174,37 @@ def staff_config():
         with col2:
             if st.button("Ajouter marque", key="add_marque"):
                 if new_m and ajouter_marque(cat_m, new_m):
-                    st.success("Marque ajoutee")
+                    st.success("Marque ajoutée!")
                     st.rerun()
         
         st.markdown("---")
-        st.markdown("**Ajouter un modèle**")
+        st.markdown("### Ajouter un modèle")
         col1, col2 = st.columns(2)
         with col1:
-            cat_mo = st.selectbox("Catégorie", CATEGORIES, key="cat_modèle")
-            marque_mo = st.selectbox("Marque", get_marques(cat_mo), key="marque_modèle")
-            new_mo = st.text_input("Nouveau modèle", key="new_modèle")
+            cat_mo = st.selectbox("Catégorie", CATEGORIES, key="cat_modele")
+            marque_mo = st.selectbox("Marque", get_marques(cat_mo), key="marque_modele")
+            new_mo = st.text_input("Nouveau modèle", key="new_modele")
         with col2:
-            if st.button("Ajouter modèle", key="add_modèle"):
+            if st.button("Ajouter modèle", key="add_modele"):
                 if new_mo and ajouter_modele(cat_mo, marque_mo, new_mo):
-                    st.success("Modèle ajoute")
+                    st.success("Modèle ajouté!")
                     st.rerun()
+        
+        st.markdown("---")
+        st.markdown("### Types de pannes")
+        st.markdown("Pannes actuelles: " + ", ".join(PANNES[:5]) + "...")
+        new_panne = st.text_input("Nouvelle panne (avec description)", placeholder="Ex: Caméra floue (photos pas nettes)")
+        if st.button("Ajouter panne", key="add_panne"):
+            st.info("Pour ajouter des pannes, modifiez la liste PANNES dans le code source.")
     
-    with tab4:
-        st.markdown("**Codes PIN d'acces**")
+    with tab5:
+        st.markdown("### Codes PIN d'accès")
         pin_acc = st.text_input("PIN Accueil", type="password", value=get_param("PIN_ACCUEIL"))
         pin_tech = st.text_input("PIN Technicien", type="password", value=get_param("PIN_TECH"))
-        if st.button("Enregistrer PIN", key="save_pin"):
+        if st.button("Enregistrer PIN", key="save_pin", type="primary"):
             set_param("PIN_ACCUEIL", pin_acc)
             set_param("PIN_TECH", pin_tech)
-            st.success("PIN mis a jour")
+            st.success("PIN mis à jour!")
 
 # =============================================================================
 # INTERFACE TECHNICIEN
