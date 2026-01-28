@@ -1033,9 +1033,11 @@ def ticket_client_html(t):
     </div>
         """
     
-    # URL de suivi
+    # URL de suivi avec le numéro de ticket
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={urllib.parse.quote(url_suivi)}"
+    ticket_code = t.get('ticket_code', '')
+    url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={urllib.parse.quote(url_suivi_ticket)}"
     
     return f"""
 <!DOCTYPE html>
@@ -1663,10 +1665,10 @@ def staff_traiter_demande(tid):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("<p class='section-title'>Resume Client</p>", unsafe_allow_html=True)
+        st.markdown("<p class='section-title'>Résumé Client</p>", unsafe_allow_html=True)
         
-        modèle = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
+        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
@@ -1674,14 +1676,14 @@ def staff_traiter_demande(tid):
         <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span></div>
         <div class="summary-item"><span class="summary-label">Téléphone:</span><span class="summary-value">{t.get('client_tel','')}</span></div>
         <div class="summary-item"><span class="summary-label">Email:</span><span class="summary-value">{t.get('client_email') or 'N/A'}</span></div>
-        <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modèle}</span></div>
+        <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modele_txt}</span></div>
         <div class="summary-item"><span class="summary-label">Motif:</span><span class="summary-value">{panne}</span></div>
         """, unsafe_allow_html=True)
         
         if t.get('pin') or t.get('pattern'):
             st.markdown(f"""
             <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 1rem; margin: 1rem 0;">
-                <strong>SECURITE</strong><br>
+                <strong>SÉCURITÉ</strong><br>
                 <div style="margin-top: 0.5rem;">Code PIN: {t.get('pin') or 'Aucun'}</div>
                 <div>Schéma: {t.get('pattern') or 'Aucun'}</div>
             </div>
@@ -1695,18 +1697,17 @@ def staff_traiter_demande(tid):
         if st.button("Ajouter", key=f"add_note_{tid}"):
             if note:
                 ajouter_note(tid, note)
-                st.success("Note ajoutee")
+                st.success("Note ajoutée!")
                 st.rerun()
         
         # Commentaire pour le client (du technicien)
-        st.markdown("<p class='section-title' style='margin-top:1.5rem;'>Message du technicien (a transmettre au client)</p>", unsafe_allow_html=True)
-        comment_client = st.text_area("", value=t.get('commentaire_client') or "", height=80, 
-                                      placeholder="Ex: Écran change, test OK. Batterie a surveiller...",
-                                      key=f"comment_client_{tid}", label_visibility="collapsed")
-        if st.button("Enregistrer message", key=f"save_comment_client_{tid}"):
-            update_ticket(tid, commentaire_client=comment_client)
-            st.success("Message enregistre!")
-            st.rerun()
+        if t.get('commentaire_client'):
+            st.markdown(f"""
+            <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                <strong style="color:#dc2626;">⚠️ MESSAGE DU TECHNICIEN À TRANSMETTRE:</strong><br>
+                <span style="font-style:italic; margin-top:0.5rem; display:block;">{t.get('commentaire_client')}</span>
+            </div>
+            """, unsafe_allow_html=True)
     
     with col2:
         st.markdown("<p class='section-title'>Informations de Réparation</p>", unsafe_allow_html=True)
@@ -1727,9 +1728,7 @@ def staff_traiter_demande(tid):
         with col_a:
             devis = st.number_input("Devis Estimé (€)", value=float(t.get('devis_estime') or 0), min_value=0.0, step=5.0, key=f"devis_{tid}")
         with col_b:
-            tarif = st.number_input("Tarif Final (€)", value=float(t.get('tarif_final') or 0), min_value=0.0, step=5.0, key=f"tarif_{tid}")
-        
-        acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
+            acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
         
         # Statut
         statut_actuel = t.get('statut', STATUTS[0])
@@ -1741,7 +1740,7 @@ def staff_traiter_demande(tid):
         with col_btn1:
             if st.button("ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
                 update_ticket(tid, panne=new_panne, personne_charge=personne, 
-                             devis_estime=devis, tarif_final=tarif, acompte=acompte)
+                             devis_estime=devis, acompte=acompte)
                 if comment:
                     ajouter_note(tid, comment)
                 if new_statut != statut_actuel:
@@ -1756,106 +1755,180 @@ def staff_traiter_demande(tid):
         if st.button("Ticket Staff", use_container_width=True, key=f"print_staff_{tid}"):
             st.session_state[f"show_ticket_{tid}"] = "staff"
             st.rerun()
+    
+    # === SECTION FACTURE ===
+    st.markdown("---")
+    st.markdown("### 💰 FACTURE")
+    
+    devis_val = t.get('devis_estime') or 0
+    acompte_val = t.get('acompte') or 0
+    rep_supp = t.get('reparation_supp') or ""
+    prix_supp = t.get('prix_supp') or 0
+    
+    col_fact1, col_fact2 = st.columns(2)
+    
+    with col_fact1:
+        st.markdown("""
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+            <strong>Détail des prestations</strong>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Section Messagerie complete
-        st.markdown("---")
-        st.markdown("**Contacter le client**")
+        # Réparation principale
+        st.markdown(f"""
+        <table style="width:100%; margin-top:0.5rem;">
+            <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:8px;"><strong>Réparation principale</strong><br><span style="color:#666; font-size:0.9rem;">{t.get('panne','')}</span></td>
+                <td style="text-align:right; padding:8px;">{devis_val:.2f} €</td>
+            </tr>
+        """, unsafe_allow_html=True)
         
-        tel = t.get('client_tel', '')
-        email = t.get('client_email', '')
+        # Réparation supplémentaire (ajoutée par technicien)
+        if rep_supp:
+            st.markdown(f"""
+            <table style="width:100%;">
+                <tr style="border-bottom:1px solid #e2e8f0; background:#fff7ed;">
+                    <td style="padding:8px;"><strong>Réparation supplémentaire</strong><br><span style="color:#666; font-size:0.9rem;">{rep_supp}</span></td>
+                    <td style="text-align:right; padding:8px;">{prix_supp:.2f} €</td>
+                </tr>
+            </table>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("</table>", unsafe_allow_html=True)
+            st.info("Aucune réparation supplémentaire ajoutée par le technicien")
+    
+    with col_fact2:
+        # Calcul des totaux
+        total_ht = devis_val + prix_supp
+        tva = total_ht * 0.20
+        total_ttc = total_ht + tva
+        reste = max(0, total_ttc - acompte_val)
         
-        # Messages prédéfinis
-        messages = get_messages_predefs(t)
+        st.markdown(f"""
+        <div style="background:#f0fdf4; border:2px solid #22c55e; border-radius:8px; padding:1rem;">
+            <strong style="color:#16a34a; font-size:1.1rem;">RÉCAPITULATIF</strong>
+            <hr style="margin:10px 0; border-color:#22c55e;">
+            <table style="width:100%;">
+                <tr>
+                    <td style="padding:5px;">Sous-total HT</td>
+                    <td style="text-align:right; padding:5px;">{total_ht:.2f} €</td>
+                </tr>
+                <tr>
+                    <td style="padding:5px;">TVA (20%)</td>
+                    <td style="text-align:right; padding:5px;">{tva:.2f} €</td>
+                </tr>
+                <tr style="font-weight:bold; font-size:1.1rem;">
+                    <td style="padding:5px;">Total TTC</td>
+                    <td style="text-align:right; padding:5px;">{total_ttc:.2f} €</td>
+                </tr>
+                <tr style="border-top:2px solid #22c55e;">
+                    <td style="padding:5px;">Acompte versé</td>
+                    <td style="text-align:right; padding:5px; color:#16a34a;">- {acompte_val:.2f} €</td>
+                </tr>
+                <tr style="font-weight:bold; font-size:1.2rem; color:#dc2626;">
+                    <td style="padding:10px 5px;">RESTE À PAYER</td>
+                    <td style="text-align:right; padding:10px 5px;">{reste:.2f} €</td>
+                </tr>
+            </table>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Afficher le commentaire du technicien s'il existe
-        if t.get('commentaire_client'):
-            st.markdown("""
-            <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                <strong>Message du technicien a transmettre:</strong><br>
-                <span style="font-style:italic;">{}</span>
-            </div>
-            """.format(t.get('commentaire_client')), unsafe_allow_html=True)
+        # Bouton pour mettre à jour le tarif final
+        if st.button("Mettre à jour le tarif final", key=f"update_tarif_{tid}", type="primary", use_container_width=True):
+            update_ticket(tid, tarif_final=total_ttc)
+            st.success(f"Tarif final mis à jour: {total_ttc:.2f} €")
+            st.rerun()
+    
+    # Section Messagerie
+    st.markdown("---")
+    st.markdown("**Contacter le client**")
+    
+    tel = t.get('client_tel', '')
+    email = t.get('client_email', '')
+    
+    # Messages prédéfinis
+    messages = get_messages_predefs(t)
+    
+    type_msg = st.selectbox("Message prédéfini", list(messages.keys()), key=f"msg_type_{tid}")
+    
+    # Mettre a jour le message quand le type change
+    msg_key = f"msg_text_{tid}"
+    if f"last_msg_type_{tid}" not in st.session_state:
+        st.session_state[f"last_msg_type_{tid}"] = type_msg
+    
+    # Si le type de message a change, mettre a jour la valeur
+    if st.session_state[f"last_msg_type_{tid}"] != type_msg:
+        st.session_state[f"last_msg_type_{tid}"] = type_msg
+        st.session_state[msg_key] = messages[type_msg]
+    
+    # Valeur par defaut si pas encore definie
+    if msg_key not in st.session_state:
+        st.session_state[msg_key] = messages[type_msg]
+    
+    # Zone de texte editable
+    msg_custom = st.text_area("Message à envoyer", value=st.session_state[msg_key], height=200, key=msg_key)
+    
+    if msg_custom:
+        st.markdown("**Envoyer via:**")
+        col_wa, col_sms, col_email, col_email_direct = st.columns(4)
         
-        type_msg = st.selectbox("Message prédéfini", list(messages.keys()), key=f"msg_type_{tid}")
+        with col_wa:
+            if tel:
+                st.markdown(f"""
+                <a href="{wa_link(tel, msg_custom)}" target="_blank" style="
+                    display: block; text-align: center; padding: 10px; 
+                    background: #25D366; color: white; border-radius: 8px; 
+                    text-decoration: none; font-weight: bold;">
+                    WhatsApp
+                </a>
+                """, unsafe_allow_html=True)
+            else:
+                st.button("WhatsApp", disabled=True, use_container_width=True)
         
-        # Mettre a jour le message quand le type change
-        msg_key = f"msg_text_{tid}"
-        if f"last_msg_type_{tid}" not in st.session_state:
-            st.session_state[f"last_msg_type_{tid}"] = type_msg
+        with col_sms:
+            if tel:
+                st.markdown(f"""
+                <a href="{sms_link(tel, msg_custom)}" target="_blank" style="
+                    display: block; text-align: center; padding: 10px; 
+                    background: #3b82f6; color: white; border-radius: 8px; 
+                    text-decoration: none; font-weight: bold;">
+                    SMS
+                </a>
+                """, unsafe_allow_html=True)
+            else:
+                st.button("SMS", disabled=True, use_container_width=True)
         
-        # Si le type de message a change, mettre a jour la valeur
-        if st.session_state[f"last_msg_type_{tid}"] != type_msg:
-            st.session_state[f"last_msg_type_{tid}"] = type_msg
-            st.session_state[msg_key] = messages[type_msg]
+        with col_email:
+            if email:
+                sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
+                st.markdown(f"""
+                <a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="
+                    display: block; text-align: center; padding: 10px; 
+                    background: #6b7280; color: white; border-radius: 8px; 
+                    text-decoration: none; font-weight: bold;">
+                    Mailto
+                </a>
+                """, unsafe_allow_html=True)
+            else:
+                st.button("Mailto", disabled=True, use_container_width=True)
         
-        # Valeur par defaut si pas encore definie
-        if msg_key not in st.session_state:
-            st.session_state[msg_key] = messages[type_msg]
-        
-        # Zone de texte editable
-        msg_custom = st.text_area("Message a envoyer", value=st.session_state[msg_key], height=200, key=msg_key)
-        
-        if msg_custom:
-            st.markdown("**Envoyer via:**")
-            col_wa, col_sms, col_email, col_email_direct = st.columns(4)
-            
-            with col_wa:
-                if tel:
-                    st.markdown(f"""
-                    <a href="{wa_link(tel, msg_custom)}" target="_blank" style="
-                        display: block; text-align: center; padding: 10px; 
-                        background: #25D366; color: white; border-radius: 8px; 
-                        text-decoration: none; font-weight: bold;">
-                        WhatsApp
-                    </a>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.button("WhatsApp", disabled=True, use_container_width=True)
-            
-            with col_sms:
-                if tel:
-                    st.markdown(f"""
-                    <a href="{sms_link(tel, msg_custom)}" target="_blank" style="
-                        display: block; text-align: center; padding: 10px; 
-                        background: #3b82f6; color: white; border-radius: 8px; 
-                        text-decoration: none; font-weight: bold;">
-                        SMS
-                    </a>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.button("SMS", disabled=True, use_container_width=True)
-            
-            with col_email:
-                if email:
+        with col_email_direct:
+            if email and get_param("SMTP_HOST"):
+                if st.button("Envoyer Email", key=f"send_email_{tid}", type="primary", use_container_width=True):
                     sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
-                    st.markdown(f"""
-                    <a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="
-                        display: block; text-align: center; padding: 10px; 
-                        background: #6b7280; color: white; border-radius: 8px; 
-                        text-decoration: none; font-weight: bold;">
-                        Mailto
-                    </a>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.button("Mailto", disabled=True, use_container_width=True)
-            
-            with col_email_direct:
-                if email and get_param("SMTP_HOST"):
-                    if st.button("Envoyer Email", key=f"send_email_{tid}", type="primary", use_container_width=True):
-                        sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
-                        success, result = envoyer_email(email, sujet, msg_custom)
-                        if success:
-                            st.success("Email envoye!")
-                            ajouter_note(tid, f"[EMAIL] Message envoye a {email}")
-                        else:
-                            st.error(result)
-                elif email:
-                    st.button("Email (config)", disabled=True, use_container_width=True, help="Configurez SMTP dans Config > Email")
-                else:
-                    st.button("Email", disabled=True, use_container_width=True)
-        
-        if not tel and not email:
-            st.warning("Aucun moyen de contact disponible")
+                    success, result = envoyer_email(email, sujet, msg_custom)
+                    if success:
+                        st.success("Email envoyé!")
+                        ajouter_note(tid, f"[EMAIL] Message envoyé à {email}")
+                    else:
+                        st.error(result)
+            elif email:
+                st.button("Email (config)", disabled=True, use_container_width=True, help="Configurez SMTP dans Config > Email")
+            else:
+                st.button("Email", disabled=True, use_container_width=True)
+    
+    if not tel and not email:
+        st.warning("Aucun moyen de contact disponible")
     
     # Affichage ticket dans popup/dialogue
     if st.session_state.get(f"show_ticket_{tid}") == "client":
@@ -2380,15 +2453,15 @@ def tech_detail_ticket(tid):
     
     with col1:
         # Infos client
-        modèle = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
+        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
         **Client:** {t.get('client_nom','')} {t.get('client_prenom','')}<br>
-        **Tel:** {t.get('client_tel','')}<br>
-        **Appareil:** {modèle}<br>
+        **Tél:** {t.get('client_tel','')}<br>
+        **Appareil:** {modele_txt}<br>
         **Problème:** {panne}
         """, unsafe_allow_html=True)
         
@@ -2406,6 +2479,42 @@ def tech_detail_ticket(tid):
             st.text_area("", value=t.get('notes_internes', ''), height=100, disabled=True, key=f"tech_notes_view_{tid}", label_visibility="collapsed")
     
     with col2:
+        # Afficher la tarification définie par l'accueil
+        devis = t.get('devis_estime') or 0
+        acompte = t.get('acompte') or 0
+        rep_supp = t.get('reparation_supp') or ""
+        prix_supp = t.get('prix_supp') or 0
+        
+        st.markdown("""
+        <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
+            <strong style="color:#16a34a;">💰 TARIFICATION</strong>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        **Devis initial (accueil):** {devis:.2f} €<br>
+        **Acompte versé:** {acompte:.2f} €
+        """, unsafe_allow_html=True)
+        
+        if rep_supp:
+            st.markdown(f"**Réparation supp.:** {rep_supp} - {prix_supp:.2f} €")
+        
+        # Calcul total
+        total_ht = devis + prix_supp
+        tva = total_ht * 0.20
+        total_ttc = total_ht + tva
+        reste = total_ttc - acompte
+        
+        st.markdown(f"""
+        <div style="background: #fff7ed; border: 1px solid #f97316; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
+            <strong>Total HT:</strong> {total_ht:.2f} €<br>
+            <strong>TVA (20%):</strong> {tva:.2f} €<br>
+            <strong>Total TTC:</strong> {total_ttc:.2f} €<br>
+            <hr style="margin:5px 0;">
+            <strong style="color:#dc2626;">Reste à payer: {reste:.2f} €</strong>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Changer statut
         st.markdown("**Changer le statut:**")
         statut_actuel = t.get('statut', STATUTS[0])
@@ -2414,7 +2523,7 @@ def tech_detail_ticket(tid):
             disabled = (s == statut_actuel)
             if st.button(s, key=f"tech_status_{tid}_{s}", use_container_width=True, disabled=disabled, type=btn_type if s == "Rendu au client" else "secondary"):
                 changer_statut(tid, s)
-                st.success(f"Statut mis a jour: {s}")
+                st.success(f"Statut mis à jour: {s}")
                 st.rerun()
     
     st.markdown("---")
@@ -2423,7 +2532,7 @@ def tech_detail_ticket(tid):
     st.markdown("**Ajouter une note interne:**")
     col_note, col_btn = st.columns([4, 1])
     with col_note:
-        note_tech = st.text_input("Note technique", placeholder="Ex: Pièce a commander, problème identifie...", key=f"tech_comment_{tid}", label_visibility="collapsed")
+        note_tech = st.text_input("Note technique", placeholder="Ex: Pièce à commander, problème identifié...", key=f"tech_comment_{tid}", label_visibility="collapsed")
     with col_btn:
         if st.button("Ajouter", key=f"tech_add_comment_{tid}", type="primary"):
             if note_tech:
