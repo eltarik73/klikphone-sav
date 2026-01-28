@@ -551,14 +551,14 @@ def init_db():
     
     c.execute("""CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom TEXT, prénom TEXT, téléphone TEXT UNIQUE, email TEXT,
+        nom TEXT, prenom TEXT, telephone TEXT UNIQUE, email TEXT,
         date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ticket_code TEXT UNIQUE,
         client_id INTEGER,
-        catégorie TEXT, marque TEXT, modèle TEXT, modèle_autre TEXT,
+        categorie TEXT, marque TEXT, modele TEXT, modele_autre TEXT,
         imei TEXT,
         panne TEXT, panne_detail TEXT,
         pin TEXT, pattern TEXT,
@@ -575,11 +575,11 @@ def init_db():
         id INTEGER PRIMARY KEY, cle TEXT UNIQUE, valeur TEXT)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS catalog_marques (
-        id INTEGER PRIMARY KEY, catégorie TEXT, marque TEXT, UNIQUE(catégorie, marque))""")
+        id INTEGER PRIMARY KEY, categorie TEXT, marque TEXT, UNIQUE(categorie, marque))""")
     
-    c.execute("""CREATE TABLE IF NOT EXISTS catalog_modèles (
-        id INTEGER PRIMARY KEY, catégorie TEXT, marque TEXT, modèle TEXT, 
-        UNIQUE(catégorie, marque, modèle))""")
+    c.execute("""CREATE TABLE IF NOT EXISTS catalog_modeles (
+        id INTEGER PRIMARY KEY, categorie TEXT, marque TEXT, modele TEXT, 
+        UNIQUE(categorie, marque, modele))""")
     
     # Migration: ajouter commentaire_client si n'existe pas
     try:
@@ -617,10 +617,10 @@ def init_db():
     if c.fetchone()[0] == 0:
         for cat, marques in MARQUES.items():
             for m in marques:
-                c.execute("INSERT OR IGNORE INTO catalog_marques (catégorie, marque) VALUES (?, ?)", (cat, m))
+                c.execute("INSERT OR IGNORE INTO catalog_marques (categorie, marque) VALUES (?, ?)", (cat, m))
         for (cat, marque), modèles in MODELES.items():
             for m in modèles:
-                c.execute("INSERT OR IGNORE INTO catalog_modèles (catégorie, marque, modèle) VALUES (?, ?, ?)", (cat, marque, m))
+                c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, m))
     
     conn.commit()
     conn.close()
@@ -640,14 +640,14 @@ def set_param(k, v):
 def get_marques(cat):
     conn = get_db()
     r = [row["marque"] for row in conn.cursor().execute(
-        "SELECT marque FROM catalog_marques WHERE catégorie=? ORDER BY marque", (cat,)).fetchall()]
+        "SELECT marque FROM catalog_marques WHERE categorie=? ORDER BY marque", (cat,)).fetchall()]
     conn.close()
     return r if r else ["Autre"]
 
-def get_modèles(cat, marque):
+def get_modeles(cat, marque):
     conn = get_db()
     r = [row["modèle"] for row in conn.cursor().execute(
-        "SELECT modèle FROM catalog_modèles WHERE catégorie=? AND marque=? ORDER BY modèle", 
+        "SELECT modele FROM catalog_modeles WHERE categorie=? AND marque=? ORDER BY modele", 
         (cat, marque)).fetchall()]
     conn.close()
     return r if r else ["Autre"]
@@ -655,16 +655,16 @@ def get_modèles(cat, marque):
 def ajouter_marque(cat, marque):
     try:
         conn = get_db()
-        conn.cursor().execute("INSERT INTO catalog_marques (catégorie, marque) VALUES (?, ?)", (cat, marque))
+        conn.cursor().execute("INSERT INTO catalog_marques (categorie, marque) VALUES (?, ?)", (cat, marque))
         conn.commit()
         conn.close()
         return True
     except: return False
 
-def ajouter_modèle(cat, marque, modèle):
+def ajouter_modèle(cat, marque, modele):
     try:
         conn = get_db()
-        conn.cursor().execute("INSERT INTO catalog_modèles (catégorie, marque, modèle) VALUES (?, ?, ?)", (cat, marque, modèle))
+        conn.cursor().execute("INSERT INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, modele))
         conn.commit()
         conn.close()
         return True
@@ -673,28 +673,28 @@ def ajouter_modèle(cat, marque, modèle):
 # =============================================================================
 # MÉTIER
 # =============================================================================
-def get_or_create_client(nom, tel, prénom="", email=""):
+def get_or_create_client(nom, tel, prenom="", email=""):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id FROM clients WHERE téléphone=?", (tel,))
+    c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prénom=?, email=? WHERE id=?", (nom, prénom, email, cid))
+        c.execute("UPDATE clients SET nom=?, prenom=?, email=? WHERE id=?", (nom, prenom, email, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prénom, téléphone, email) VALUES (?,?,?,?)", (nom, prénom, tel, email))
+        c.execute("INSERT INTO clients (nom, prenom, telephone, email) VALUES (?,?,?,?)", (nom, prenom, tel, email))
         cid = c.lastrowid
     conn.commit()
     conn.close()
     return cid
 
-def creer_ticket(client_id, cat, marque, modèle, modèle_autre, panne, panne_detail, pin, pattern, notes, imei=""):
+def creer_ticket(client_id, cat, marque, modèle, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
     conn = get_db()
     c = conn.cursor()
     c.execute("""INSERT INTO tickets 
-        (client_id, catégorie, marque, modèle, modèle_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
+        (client_id, categorie, marque, modèle, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
-        (client_id, cat, marque, modèle, modèle_autre, imei, panne, panne_detail, pin, pattern, notes))
+        (client_id, cat, marque, modèle, modele_autre, imei, panne, panne_detail, pin, pattern, notes))
     tid = c.lastrowid
     code = f"KP-{tid:06d}"
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
@@ -715,8 +715,8 @@ def get_ticket(tid=None, code=None):
 def get_ticket_full(tid=None, code=None):
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT t.*, c.nom as client_nom, c.prénom as client_prénom, 
-           c.téléphone as client_tel, c.email as client_email 
+    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, 
+           c.telephone as client_tel, c.email as client_email 
            FROM tickets t JOIN clients c ON t.client_id=c.id"""
     if tid: c.execute(q + " WHERE t.id=?", (tid,))
     elif code: c.execute(q + " WHERE t.ticket_code=?", (code,))
@@ -749,7 +749,7 @@ def changer_statut(tid, statut):
 def chercher_tickets(statut=None, tel=None, code=None, nom=None):
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT t.*, c.nom as client_nom, c.prénom as client_prénom, c.téléphone as client_tel 
+    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel 
            FROM tickets t JOIN clients c ON t.client_id=c.id WHERE 1=1"""
     p = []
     if statut: q += " AND t.statut=?"; p.append(statut)
@@ -853,10 +853,10 @@ def envoyer_sms_api(tel, message):
 
 def get_messages_predefs(t):
     """Retourne les messages prédéfinis pour un ticket"""
-    prénom = t.get('client_prénom', '') or 'Client'
+    prénom = t.get('client_prenom', '') or 'Client'
     nom = t.get('client_nom', '')
     marque = t.get('marque', '') or 'votre appareil'
-    modèle = t.get('modèle', '')
+    modèle = t.get('modele', '')
     code = t.get('ticket_code', '')
     devis = t.get('devis_estime')
     tarif = t.get('tarif_final')
@@ -997,8 +997,8 @@ def ticket_client_html(t):
     """Ticket client style Klikphone - format impression 58mm"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modèle = t.get("modèle", "")
-    if t.get("modèle_autre"): modèle += f" ({t['modèle_autre']})"
+    modèle = t.get("modele", "")
+    if t.get("modele_autre"): modèle += f" ({t['modele_autre']})"
     
     # Tarifs
     devis = t.get('devis_estime')
@@ -1056,7 +1056,7 @@ def ticket_client_html(t):
         
         <div class="section">
             <div class="section-title">CLIENT</div>
-            <div>Nom: {t.get('client_nom','')} {t.get('client_prénom','')}</div>
+            <div>Nom: {t.get('client_nom','')} {t.get('client_prenom','')}</div>
             <div>Tel: {t.get('client_tel','')}</div>
         </div>
         
@@ -1091,8 +1091,8 @@ def ticket_staff_html(t):
     """Ticket staff format impression"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modèle = t.get("modèle", "")
-    if t.get("modèle_autre"): modèle += f" ({t['modèle_autre']})"
+    modèle = t.get("modele", "")
+    if t.get("modele_autre"): modèle += f" ({t['modele_autre']})"
     
     return f"""
 <!DOCTYPE html>
@@ -1130,14 +1130,14 @@ def ticket_staff_html(t):
         
         <div class="section">
             <div class="section-title">CLIENT</div>
-            <div>{t.get('client_nom','')} {t.get('client_prénom','')}</div>
+            <div>{t.get('client_nom','')} {t.get('client_prenom','')}</div>
             <div>Tel: {t.get('client_tel','')}</div>
             <div>Email: {t.get('client_email') or '-'}</div>
         </div>
         
         <div class="section">
             <div class="section-title">APPAREIL</div>
-            <div>{t.get('catégorie','')}</div>
+            <div>{t.get('categorie','')}</div>
             <div>{t.get('marque','')} {modèle}</div>
         </div>
         
@@ -1307,18 +1307,18 @@ def client_step3():
     # Si "Autre" marque, demander directement le modèle
     if marque == "Autre":
         st.markdown("**Precisez la marque et le modèle :**")
-        modèle_autre = st.text_input("Ex: Huawei P30 Pro", key="input_modèle_autre", label_visibility="collapsed")
+        modele_autre = st.text_input("Ex: Huawei P30 Pro", key="input_modele_autre", label_visibility="collapsed")
         if st.button("Continuer", type="primary", use_container_width=True):
-            if modèle_autre:
+            if modele_autre:
                 st.session_state.data["modèle"] = "Autre"
-                st.session_state.data["modèle_autre"] = modèle_autre
+                st.session_state.data["modele_autre"] = modele_autre
                 st.session_state.step = 4
                 st.rerun()
             else:
                 st.warning("Veuillez preciser le modèle")
     else:
         # Récupérer les modèles et mettre "Autre" en dernier
-        modèles_db = get_modèles(cat, marque)
+        modèles_db = get_modeles(cat, marque)
         modèles = [m for m in modèles_db if m != "Autre"]
         modèles.append("Autre")
         # Ajouter placeholder en premier
@@ -1327,19 +1327,19 @@ def client_step3():
         mod = st.selectbox("Modèle", modèles_final, key="select_modèle", label_visibility="collapsed")
         
         # Si "Autre" est sélectionné, afficher champ texte
-        modèle_autre = ""
+        modele_autre = ""
         if mod == "Autre":
             st.markdown("**Precisez le modèle :**")
-            modèle_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
+            modele_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
         
         if st.button("Continuer", type="primary", use_container_width=True):
             if mod == "-- Choisir le modèle --":
                 st.warning("Veuillez sélectionnér un modèle")
-            elif mod == "Autre" and not modèle_autre:
+            elif mod == "Autre" and not modele_autre:
                 st.warning("Veuillez preciser le modèle")
             else:
                 st.session_state.data["modèle"] = mod
-                st.session_state.data["modèle_autre"] = modèle_autre
+                st.session_state.data["modele_autre"] = modele_autre
                 st.session_state.step = 4
                 st.rerun()
 
@@ -1469,9 +1469,9 @@ def client_step6():
             st.error("Veuillez accepter les conditions générales")
         else:
             d = st.session_state.data
-            cid = get_or_create_client(nom, téléphone, prénom, email)
-            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
-                               d.get("modèle_autre",""), d.get("panne",""), d.get("panne_detail",""),
+            cid = get_or_create_client(nom, téléphone, prenom, email)
+            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modele",""),
+                               d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
                                d.get("pin",""), d.get("pattern",""), notes)
             st.session_state.done = code
             st.rerun()
@@ -1564,8 +1564,8 @@ def staff_liste_demandes():
     # Liste des tickets
     for t in tickets_page:
         status_class = get_status_class(t.get('statut', ''))
-        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
-        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
         
         # Message technicien a transmettre ?
         has_message = t.get('commentaire_client')
@@ -1574,7 +1574,7 @@ def staff_liste_demandes():
         with col1:
             st.markdown(f"**{t['ticket_code']}**")
         with col2:
-            st.write(f"{t.get('client_nom','')} {t.get('client_prénom','')[:10]}")
+            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')[:10]}")
         with col3:
             st.write(modèle[:20])
         with col4:
@@ -1634,13 +1634,13 @@ def staff_traiter_demande(tid):
     with col1:
         st.markdown("<p class='section-title'>Resume Client</p>", unsafe_allow_html=True)
         
-        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
-        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
-        <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prénom','')}</span></div>
+        <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span></div>
         <div class="summary-item"><span class="summary-label">Téléphone:</span><span class="summary-value">{t.get('client_tel','')}</span></div>
         <div class="summary-item"><span class="summary-label">Email:</span><span class="summary-value">{t.get('client_email') or 'N/A'}</span></div>
         <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modèle}</span></div>
@@ -2023,11 +2023,11 @@ def staff_nouvelle_demande():
     with col2:
         marque = st.selectbox("Marque", get_marques(cat), key="n_marque")
     with col3:
-        modèle = st.selectbox("Modèle", get_modèles(cat, marque), key="n_modèle")
+        modèle = st.selectbox("Modèle", get_modeles(cat, marque), key="n_modèle")
     
-    modèle_autre = ""
+    modele_autre = ""
     if modèle == "Autre" or marque == "Autre":
-        modèle_autre = st.text_input("Precisez le modèle", key="n_modèle_autre")
+        modele_autre = st.text_input("Precisez le modèle", key="n_modele_autre")
     
     imei = st.text_input("IMEI / Numéro de serie (optionnel)", key="n_imei", placeholder="Ex: 353833102642466")
     
@@ -2054,8 +2054,8 @@ def staff_nouvelle_demande():
         if not nom or not prénom or not tel:
             st.error("Nom, prénom et téléphone obligatoires")
         else:
-            cid = get_or_create_client(nom, tel, prénom, email)
-            code = creer_ticket(cid, cat, marque, modèle, modèle_autre, panne, panne_detail, pin, pattern, notes, imei)
+            cid = get_or_create_client(nom, tel, prenom, email)
+            code = creer_ticket(cid, cat, marque, modèle, modele_autre, panne, panne_detail, pin, pattern, notes, imei)
             t = get_ticket(code=code)
             if t and (devis or acompte):
                 update_ticket(t['id'], devis_estime=devis, acompte=acompte)
@@ -2192,7 +2192,7 @@ def ui_tech():
         tickets = [t for t in tickets if 
                    recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
-                   recherche_lower in t.get('client_prénom', '').lower() or
+                   recherche_lower in t.get('client_prenom', '').lower() or
                    recherche_lower in t.get('client_tel', '').lower()]
     
     # Trier
@@ -2233,8 +2233,8 @@ def ui_tech():
     for t in tickets_page:
         tid = t['id']
         status_class = get_status_class(t.get('statut', ''))
-        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
-        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
         
         # Message technicien en attente?
         has_message = t.get('commentaire_client')
@@ -2243,7 +2243,7 @@ def ui_tech():
         with col1:
             st.markdown(f"**{t['ticket_code']}**")
         with col2:
-            st.write(f"{t.get('client_nom','')} {t.get('client_prénom','')}")
+            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')}")
         with col3:
             st.write(modèle[:25])
         with col4:
@@ -2296,13 +2296,13 @@ def tech_detail_ticket(tid):
     
     with col1:
         # Infos client
-        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
-        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
-        **Client:** {t.get('client_nom','')} {t.get('client_prénom','')}<br>
+        **Client:** {t.get('client_nom','')} {t.get('client_prenom','')}<br>
         **Tel:** {t.get('client_tel','')}<br>
         **Appareil:** {modèle}<br>
         **Problème:** {panne}
@@ -2423,8 +2423,8 @@ def ui_suivi():
             
             if t and tel_clean == client_tel_clean:
                 status_class = get_status_class(t.get('statut', ''))
-                modèle = f"{t.get('marque','')} {t.get('modèle','')}"
-                if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+                modèle = f"{t.get('marque','')} {t.get('modele','')}"
+                if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
                 
                 st.markdown(f"""
                 <div style="background:white; padding:1.5rem; border-radius:12px; margin-top:1.5rem; border:1px solid #e5e7eb;">
@@ -2572,4 +2572,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-   
