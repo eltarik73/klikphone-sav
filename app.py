@@ -24,15 +24,15 @@ DB_PATH = "klikphone_sav.db"
 
 CATEGORIES = ["Smartphone", "Tablette", "PC Portable", "Console"]
 
-PANNES = ["Ecran casse", "Batterie", "Connecteur de charge", 
+PANNES = ["Écran casse", "Batterie", "Connecteur de charge", 
           "Camera avant", "Camera arriere", 
           "Bouton volume", "Bouton power", 
           "Haut-parleur (je n'entends pas les gens ou la musique)", 
           "Microphone (les gens ne m'entendent pas)", 
-          "Vitre arriere", "Desoxydation", "Probleme logiciel", "Diagnostic", "Autre"]
+          "Vitre arriere", "Désoxydation", "Problème logiciel", "Diagnostic", "Autre"]
 
-STATUTS = ["En attente de diagnostic", "En cours de reparation", 
-           "Reparation terminee", "Rendu au client", "Cloture"]
+STATUTS = ["En attente de diagnostic", "En cours de réparation", 
+           "Réparation terminée", "Rendu au client", "Clôturé"]
 
 MARQUES = {
     "Smartphone": ["Apple", "Samsung", "Xiaomi", "Huawei", "OnePlus", "Google", "Oppo", "Autre"],
@@ -252,7 +252,7 @@ def load_css():
 .status-encours { background-color: #dbeafe; color: #2563eb; }
 .status-termine { background-color: #d1fae5; color: #065f46; }
 .status-rendu { background-color: #10b981; color: #ffffff; }
-.status-cloture { background-color: #f3f4f6; color: #6b7280; }
+.status-clôturé { background-color: #f3f4f6; color: #6b7280; }
 
 /* Table style portail */
 .repair-table {
@@ -551,14 +551,14 @@ def init_db():
     
     c.execute("""CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom TEXT, prenom TEXT, telephone TEXT UNIQUE, email TEXT,
+        nom TEXT, prénom TEXT, téléphone TEXT UNIQUE, email TEXT,
         date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ticket_code TEXT UNIQUE,
         client_id INTEGER,
-        categorie TEXT, marque TEXT, modele TEXT, modele_autre TEXT,
+        catégorie TEXT, marque TEXT, modèle TEXT, modèle_autre TEXT,
         imei TEXT,
         panne TEXT, panne_detail TEXT,
         pin TEXT, pattern TEXT,
@@ -569,17 +569,17 @@ def init_db():
         statut TEXT DEFAULT 'En attente de diagnostic',
         date_depot TEXT DEFAULT CURRENT_TIMESTAMP,
         date_maj TEXT DEFAULT CURRENT_TIMESTAMP,
-        date_cloture TEXT)""")
+        date_clôturé TEXT)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS params (
         id INTEGER PRIMARY KEY, cle TEXT UNIQUE, valeur TEXT)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS catalog_marques (
-        id INTEGER PRIMARY KEY, categorie TEXT, marque TEXT, UNIQUE(categorie, marque))""")
+        id INTEGER PRIMARY KEY, catégorie TEXT, marque TEXT, UNIQUE(catégorie, marque))""")
     
-    c.execute("""CREATE TABLE IF NOT EXISTS catalog_modeles (
-        id INTEGER PRIMARY KEY, categorie TEXT, marque TEXT, modele TEXT, 
-        UNIQUE(categorie, marque, modele))""")
+    c.execute("""CREATE TABLE IF NOT EXISTS catalog_modèles (
+        id INTEGER PRIMARY KEY, catégorie TEXT, marque TEXT, modèle TEXT, 
+        UNIQUE(catégorie, marque, modèle))""")
     
     # Migration: ajouter commentaire_client si n'existe pas
     try:
@@ -599,9 +599,9 @@ def init_db():
     params = {
         "PIN_ACCUEIL": "2626", "PIN_TECH": "2626",
         "TEL_BOUTIQUE": "04 79 60 89 22",
-        "ADRESSE_BOUTIQUE": "79 Place Saint Leger, 73000 Chambery",
+        "ADRESSE_BOUTIQUE": "79 Place Saint Léger, 73000 Chambéry",
         "NOM_BOUTIQUE": "Klikphone",
-        "URL_SUIVI": "https://ticket.klikphone.com",
+        "URL_SUIVI": "https://klikphone-sav.streamlit.app",
         "SMTP_HOST": "",
         "SMTP_PORT": "587",
         "SMTP_USER": "",
@@ -617,10 +617,10 @@ def init_db():
     if c.fetchone()[0] == 0:
         for cat, marques in MARQUES.items():
             for m in marques:
-                c.execute("INSERT OR IGNORE INTO catalog_marques (categorie, marque) VALUES (?, ?)", (cat, m))
-        for (cat, marque), modeles in MODELES.items():
-            for m in modeles:
-                c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, m))
+                c.execute("INSERT OR IGNORE INTO catalog_marques (catégorie, marque) VALUES (?, ?)", (cat, m))
+        for (cat, marque), modèles in MODELES.items():
+            for m in modèles:
+                c.execute("INSERT OR IGNORE INTO catalog_modèles (catégorie, marque, modèle) VALUES (?, ?, ?)", (cat, marque, m))
     
     conn.commit()
     conn.close()
@@ -640,14 +640,14 @@ def set_param(k, v):
 def get_marques(cat):
     conn = get_db()
     r = [row["marque"] for row in conn.cursor().execute(
-        "SELECT marque FROM catalog_marques WHERE categorie=? ORDER BY marque", (cat,)).fetchall()]
+        "SELECT marque FROM catalog_marques WHERE catégorie=? ORDER BY marque", (cat,)).fetchall()]
     conn.close()
     return r if r else ["Autre"]
 
-def get_modeles(cat, marque):
+def get_modèles(cat, marque):
     conn = get_db()
-    r = [row["modele"] for row in conn.cursor().execute(
-        "SELECT modele FROM catalog_modeles WHERE categorie=? AND marque=? ORDER BY modele", 
+    r = [row["modèle"] for row in conn.cursor().execute(
+        "SELECT modèle FROM catalog_modèles WHERE catégorie=? AND marque=? ORDER BY modèle", 
         (cat, marque)).fetchall()]
     conn.close()
     return r if r else ["Autre"]
@@ -655,16 +655,16 @@ def get_modeles(cat, marque):
 def ajouter_marque(cat, marque):
     try:
         conn = get_db()
-        conn.cursor().execute("INSERT INTO catalog_marques (categorie, marque) VALUES (?, ?)", (cat, marque))
+        conn.cursor().execute("INSERT INTO catalog_marques (catégorie, marque) VALUES (?, ?)", (cat, marque))
         conn.commit()
         conn.close()
         return True
     except: return False
 
-def ajouter_modele(cat, marque, modele):
+def ajouter_modèle(cat, marque, modèle):
     try:
         conn = get_db()
-        conn.cursor().execute("INSERT INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, modele))
+        conn.cursor().execute("INSERT INTO catalog_modèles (catégorie, marque, modèle) VALUES (?, ?, ?)", (cat, marque, modèle))
         conn.commit()
         conn.close()
         return True
@@ -673,28 +673,28 @@ def ajouter_modele(cat, marque, modele):
 # =============================================================================
 # MÉTIER
 # =============================================================================
-def get_or_create_client(nom, tel, prenom="", email=""):
+def get_or_create_client(nom, tel, prénom="", email=""):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
+    c.execute("SELECT id FROM clients WHERE téléphone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=? WHERE id=?", (nom, prenom, email, cid))
+        c.execute("UPDATE clients SET nom=?, prénom=?, email=? WHERE id=?", (nom, prénom, email, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email) VALUES (?,?,?,?)", (nom, prenom, tel, email))
+        c.execute("INSERT INTO clients (nom, prénom, téléphone, email) VALUES (?,?,?,?)", (nom, prénom, tel, email))
         cid = c.lastrowid
     conn.commit()
     conn.close()
     return cid
 
-def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei=""):
+def creer_ticket(client_id, cat, marque, modèle, modèle_autre, panne, panne_detail, pin, pattern, notes, imei=""):
     conn = get_db()
     c = conn.cursor()
     c.execute("""INSERT INTO tickets 
-        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
+        (client_id, catégorie, marque, modèle, modèle_autre, imei, panne, panne_detail, pin, pattern, notes_client, statut) 
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
-        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes))
+        (client_id, cat, marque, modèle, modèle_autre, imei, panne, panne_detail, pin, pattern, notes))
     tid = c.lastrowid
     code = f"KP-{tid:06d}"
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
@@ -715,8 +715,8 @@ def get_ticket(tid=None, code=None):
 def get_ticket_full(tid=None, code=None):
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, 
-           c.telephone as client_tel, c.email as client_email 
+    q = """SELECT t.*, c.nom as client_nom, c.prénom as client_prénom, 
+           c.téléphone as client_tel, c.email as client_email 
            FROM tickets t JOIN clients c ON t.client_id=c.id"""
     if tid: c.execute(q + " WHERE t.id=?", (tid,))
     elif code: c.execute(q + " WHERE t.ticket_code=?", (code,))
@@ -739,8 +739,8 @@ def changer_statut(tid, statut):
     conn = get_db()
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if statut == "Cloture":
-        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=? WHERE id=?", (statut, now, now, tid))
+    if statut == "Clôturé":
+        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_clôturé=? WHERE id=?", (statut, now, now, tid))
     else:
         c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
     conn.commit()
@@ -749,13 +749,13 @@ def changer_statut(tid, statut):
 def chercher_tickets(statut=None, tel=None, code=None, nom=None):
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel 
+    q = """SELECT t.*, c.nom as client_nom, c.prénom as client_prénom, c.téléphone as client_tel 
            FROM tickets t JOIN clients c ON t.client_id=c.id WHERE 1=1"""
     p = []
     if statut: q += " AND t.statut=?"; p.append(statut)
-    if tel: q += " AND c.telephone LIKE ?"; p.append(f"%{tel}%")
+    if tel: q += " AND c.téléphone LIKE ?"; p.append(f"%{tel}%")
     if code: q += " AND t.ticket_code LIKE ?"; p.append(f"%{code}%")
-    if nom: q += " AND (c.nom LIKE ? OR c.prenom LIKE ?)"; p.extend([f"%{nom}%", f"%{nom}%"])
+    if nom: q += " AND (c.nom LIKE ? OR c.prénom LIKE ?)"; p.extend([f"%{nom}%", f"%{nom}%"])
     q += " ORDER BY t.date_depot DESC"
     c.execute(q, p)
     r = [dict(row) for row in c.fetchall()]
@@ -793,9 +793,9 @@ def wa_link(tel, msg):
 def get_status_class(statut):
     if "diagnostic" in statut.lower(): return "status-diagnostic"
     elif "cours" in statut.lower(): return "status-encours"
-    elif "terminee" in statut.lower(): return "status-termine"
+    elif "terminée" in statut.lower(): return "status-termine"
     elif "rendu" in statut.lower(): return "status-rendu"
-    else: return "status-cloture"
+    else: return "status-clôturé"
 
 def sms_link(tel, msg):
     """Genere un lien SMS"""
@@ -813,7 +813,7 @@ def envoyer_email(destinataire, sujet, message):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    # Recuperer les parametres SMTP
+    # Récupérer les parametres SMTP
     smtp_host = get_param("SMTP_HOST")
     smtp_port = get_param("SMTP_PORT")
     smtp_user = get_param("SMTP_USER")
@@ -825,7 +825,7 @@ def envoyer_email(destinataire, sujet, message):
         return False, "Configuration SMTP incomplete. Allez dans Config > Email."
     
     try:
-        # Creer le message
+        # Créér le message
         msg = MIMEMultipart()
         msg['From'] = f"{smtp_from_name} <{smtp_from or smtp_user}>"
         msg['To'] = destinataire
@@ -852,141 +852,141 @@ def envoyer_sms_api(tel, message):
     return False, "API SMS non configuree. Utilisez le lien SMS."
 
 def get_messages_predefs(t):
-    """Retourne les messages predefinis pour un ticket"""
-    prenom = t.get('client_prenom', '') or 'Client'
+    """Retourne les messages prédéfinis pour un ticket"""
+    prénom = t.get('client_prénom', '') or 'Client'
     nom = t.get('client_nom', '')
     marque = t.get('marque', '') or 'votre appareil'
-    modele = t.get('modele', '')
+    modèle = t.get('modèle', '')
     code = t.get('ticket_code', '')
     devis = t.get('devis_estime')
     tarif = t.get('tarif_final')
     
     # Formater le montant
     if tarif and tarif > 0:
-        montant = f"{tarif} EUR"
+        montant = f"{tarif} €"
     elif devis and devis > 0:
-        montant = f"{devis} EUR"
+        montant = f"{devis} €"
     else:
         montant = "Nous consulter"
     
     # Formater le devis
-    devis_txt = f"{devis} EUR" if devis and devis > 0 else "Nous consulter"
+    devis_txt = f"{devis} €" if devis and devis > 0 else "Nous consulter"
     
     messages = {
         "-- Choisir un message --": "",
         
-        "Appareil recu": f"""Bonjour {prenom},
+        "Appareil reçu": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modele} a bien ete receptionne a la boutique Klikphone.
+Nous vous informons que votre appareil {marque} {modèle} a bien été réceptionné à la boutique Klikphone.
 
-Numero de suivi: {code}
+Numéro de suivi : {code}
 
-Nous allons proceder au diagnostic et reviendrons vers vous dans les plus brefs delais.
-
-Cordialement,
-L'equipe Klikphone
-04 79 60 89 22""",
-
-        "Diagnostic en cours": f"""Bonjour {prenom},
-
-Nous vous informons que le diagnostic de votre appareil {marque} {modele} est actuellement en cours a la boutique Klikphone.
-
-Numero de suivi: {code}
-
-Nous reviendrons vers vous rapidement avec le resultat du diagnostic.
+Nous allons procéder au diagnostic et reviendrons vers vous dans les plus brefs délais.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Devis a valider": f"""Bonjour {prenom},
+        "Diagnostic en cours": f"""Bonjour {prénom},
 
-Le diagnostic de votre appareil {marque} {modele} est termine.
+Nous vous informons que le diagnostic de votre appareil {marque} {modèle} est actuellement en cours à la boutique Klikphone.
 
-Devis de reparation: {devis_txt}
+Numéro de suivi : {code}
 
-Merci de nous confirmer votre accord pour proceder a la reparation en repondant a ce message ou en nous appelant.
+Nous reviendrons vers vous rapidement avec le résultat du diagnostic.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "En cours de reparation": f"""Bonjour {prenom},
+        "Devis à valider": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modele} est actuellement en cours de reparation a la boutique Klikphone.
+Le diagnostic de votre appareil {marque} {modèle} est terminé.
 
-Numero de suivi: {code}
+Devis de réparation : {devis_txt}
 
-Nous vous prevenons des que la reparation sera terminee.
+Merci de nous confirmer votre accord pour procéder à la réparation en répondant à ce message ou en nous appelant.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Attente de piece": f"""Bonjour {prenom},
+        "En cours de réparation": f"""Bonjour {prénom},
 
-Nous vous informons que nous sommes en attente d'une piece pour la reparation de votre appareil {marque} {modele}.
+Nous vous informons que votre appareil {marque} {modèle} est actuellement en cours de réparation à la boutique Klikphone.
 
-Delai estime: 2 a 5 jours ouvrables.
+Numéro de suivi : {code}
 
-Nous vous prevenons des reception de la piece.
+Nous vous prévenons dès que la réparation sera terminée.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Appareil pret": f"""Bonjour {prenom},
+        "Attente de pièce": f"""Bonjour {prénom},
 
-Nous vous informons que votre appareil {marque} {modele} est pret a etre recupere a la boutique Klikphone.
+Nous vous informons que nous sommes en attente d'une pièce pour la réparation de votre appareil {marque} {modèle}.
 
-Montant a regler: {montant}
+Délai estimé : 2 à 5 jours ouvrables.
 
-Adresse: 79 Place Saint Leger, 73000 Chambery
-Horaires: Lundi-Samedi 10h-19h
-
-N'oubliez pas votre piece d'identite.
+Nous vous prévenons dès réception de la pièce.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Relance recuperation": f"""Bonjour {prenom},
+        "Appareil prêt": f"""Bonjour {prénom},
 
-Nous vous rappelons que votre appareil {marque} {modele} est pret et vous attend a la boutique Klikphone depuis plusieurs jours.
+Nous vous informons que votre appareil {marque} {modèle} est prêt à être récupéré à la boutique Klikphone.
 
-Merci de venir le recuperer dans les meilleurs delais.
+Montant à régler : {montant}
 
-Adresse: 79 Place Saint Leger, 73000 Chambery
-Horaires: Lundi-Samedi 10h-19h
+Adresse : 79 Place Saint Léger, 73000 Chambéry
+Horaires : Lundi-Samedi 10h-19h
+
+N'oubliez pas votre pièce d'identité.
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Non reparable": f"""Bonjour {prenom},
+        "Relance récupération": f"""Bonjour {prénom},
 
-Apres diagnostic approfondi, nous avons le regret de vous informer que votre appareil {marque} {modele} n'est malheureusement pas reparable.
+Nous vous rappelons que votre appareil {marque} {modèle} est prêt et vous attend à la boutique Klikphone depuis plusieurs jours.
 
-Vous pouvez venir le recuperer a la boutique. Aucun frais ne vous sera facture pour le diagnostic.
+Merci de venir le récupérer dans les meilleurs délais.
 
-Nous restons a votre disposition pour toute question.
+Adresse : 79 Place Saint Léger, 73000 Chambéry
+Horaires : Lundi-Samedi 10h-19h
 
 Cordialement,
-L'equipe Klikphone
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Rappel RDV": f"""Bonjour {prenom},
+        "Non réparable": f"""Bonjour {prénom},
 
-Nous vous rappelons votre rendez-vous a la boutique Klikphone pour votre appareil {marque} {modele}.
+Après diagnostic approfondi, nous avons le regret de vous informer que votre appareil {marque} {modèle} n'est malheureusement pas réparable.
 
-Adresse: 79 Place Saint Leger, 73000 Chambery
+Vous pouvez venir le récupérer à la boutique. Aucun frais ne vous sera facturé pour le diagnostic.
 
-A bientot !
+Nous restons à votre disposition pour toute question.
 
-L'equipe Klikphone
+Cordialement,
+L'équipe Klikphone
 04 79 60 89 22""",
 
-        "Personnalise": ""
+        "Rappel RDV": f"""Bonjour {prénom},
+
+Nous vous rappelons votre rendez-vous à la boutique Klikphone pour votre appareil {marque} {modèle}.
+
+Adresse : 79 Place Saint Léger, 73000 Chambéry
+
+À bientôt !
+
+L'équipe Klikphone
+04 79 60 89 22""",
+
+        "Personnalisé": ""
     }
     return messages
 
@@ -997,8 +997,8 @@ def ticket_client_html(t):
     """Ticket client style Klikphone - format impression 58mm"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele = t.get("modele", "")
-    if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
+    modèle = t.get("modèle", "")
+    if t.get("modèle_autre"): modèle += f" ({t['modèle_autre']})"
     
     # Tarifs
     devis = t.get('devis_estime')
@@ -1046,8 +1046,8 @@ def ticket_client_html(t):
     <div class="ticket">
         <div class="header">KLIKPHONE</div>
         <div class="contact">
-            79 Place Saint Leger<br>
-            73000 Chambery<br>
+            79 Place Saint Léger<br>
+            73000 Chambéry<br>
             Tel: 04 79 60 89 22
         </div>
         
@@ -1056,13 +1056,13 @@ def ticket_client_html(t):
         
         <div class="section">
             <div class="section-title">CLIENT</div>
-            <div>Nom: {t.get('client_nom','')} {t.get('client_prenom','')}</div>
+            <div>Nom: {t.get('client_nom','')} {t.get('client_prénom','')}</div>
             <div>Tel: {t.get('client_tel','')}</div>
         </div>
         
         <div class="section">
             <div class="section-title">APPAREIL</div>
-            <div>{t.get('marque','')} {modele}</div>
+            <div>{t.get('marque','')} {modèle}</div>
         </div>
         
         <div class="section">
@@ -1076,7 +1076,7 @@ def ticket_client_html(t):
             <div class="section-title">CONDITIONS GENERALES</div>
             <p style="margin: 3px 0;">- Klikphone ne consulte pas et n'accede pas aux donnees presentes dans votre appareil.</p>
             <p style="margin: 3px 0;">- Une perte de donnees reste possible - pensez a sauvegarder.</p>
-            <p style="margin: 3px 0;">- Klikphone decline toute responsabilite en cas de perte de donnees ou de panne apparaissant apres reparation (oxydation, choc, FaceID, etc.).</p>
+            <p style="margin: 3px 0;">- Klikphone decline toute responsabilite en cas de perte de donnees ou de panne apparaissant apres réparation (oxydation, choc, FaceID, etc.).</p>
         </div>
         
         <div class="footer">Merci de votre confiance !</div>
@@ -1091,8 +1091,8 @@ def ticket_staff_html(t):
     """Ticket staff format impression"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele = t.get("modele", "")
-    if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
+    modèle = t.get("modèle", "")
+    if t.get("modèle_autre"): modèle += f" ({t['modèle_autre']})"
     
     return f"""
 <!DOCTYPE html>
@@ -1130,21 +1130,21 @@ def ticket_staff_html(t):
         
         <div class="section">
             <div class="section-title">CLIENT</div>
-            <div>{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+            <div>{t.get('client_nom','')} {t.get('client_prénom','')}</div>
             <div>Tel: {t.get('client_tel','')}</div>
             <div>Email: {t.get('client_email') or '-'}</div>
         </div>
         
         <div class="section">
             <div class="section-title">APPAREIL</div>
-            <div>{t.get('categorie','')}</div>
-            <div>{t.get('marque','')} {modele}</div>
+            <div>{t.get('catégorie','')}</div>
+            <div>{t.get('marque','')} {modèle}</div>
         </div>
         
         <div class="section security">
             <div class="section-title">SECURITE</div>
             <div>PIN: {t.get('pin') or 'Aucun'}</div>
-            <div>Schema: {t.get('pattern') or 'Aucun'}</div>
+            <div>Schéma: {t.get('pattern') or 'Aucun'}</div>
         </div>
         
         <div class="section">
@@ -1212,9 +1212,9 @@ def ui_client():
         st.markdown(f"""
         <div class="success-overlay">
             <h1>Demande enregistree !</h1>
-            <p>Votre numero de ticket</p>
+            <p>Votre numéro de ticket</p>
             <div class="ticket-code">{code}</div>
-            <p>Conservez ce numero pour suivre votre reparation</p>
+            <p>Conservez ce numéro pour suivre votre réparation</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1261,8 +1261,8 @@ def ui_client():
     # Progress
     step = st.session_state.step
     st.progress(step / 6)
-    etapes = ["", "Type d'appareil", "Marque", "Modèle", "Probleme", "Securite", "Coordonnees"]
-    st.markdown(f"<p style='text-align:center; color:#6b7280; margin-bottom:1.5rem;'>Etape {step}/6 : {etapes[step]}</p>", unsafe_allow_html=True)
+    étapes = ["", "Type d'appareil", "Marque", "Modèle", "Problème", "Sécurité", "Coordonnees"]
+    st.markdown(f"<p style='text-align:center; color:#6b7280; margin-bottom:1.5rem;'>Étape {step}/6 : {étapes[step]}</p>", unsafe_allow_html=True)
     
     if step == 1: client_step1()
     elif step == 2: client_step2()
@@ -1300,51 +1300,51 @@ def client_step2():
 def client_step3():
     cat = st.session_state.data.get("cat", "")
     marque = st.session_state.data.get("marque", "")
-    st.markdown(f"<p class='section-title'>Quel est le modele ?</p>", unsafe_allow_html=True)
+    st.markdown(f"<p class='section-title'>Quel est le modèle ?</p>", unsafe_allow_html=True)
     
     if st.button("Retour", key="back3"): st.session_state.step = 2; st.rerun()
     
-    # Si "Autre" marque, demander directement le modele
+    # Si "Autre" marque, demander directement le modèle
     if marque == "Autre":
-        st.markdown("**Precisez la marque et le modele :**")
-        modele_autre = st.text_input("Ex: Huawei P30 Pro", key="input_modele_autre", label_visibility="collapsed")
+        st.markdown("**Precisez la marque et le modèle :**")
+        modèle_autre = st.text_input("Ex: Huawei P30 Pro", key="input_modèle_autre", label_visibility="collapsed")
         if st.button("Continuer", type="primary", use_container_width=True):
-            if modele_autre:
-                st.session_state.data["modele"] = "Autre"
-                st.session_state.data["modele_autre"] = modele_autre
+            if modèle_autre:
+                st.session_state.data["modèle"] = "Autre"
+                st.session_state.data["modèle_autre"] = modèle_autre
                 st.session_state.step = 4
                 st.rerun()
             else:
-                st.warning("Veuillez preciser le modele")
+                st.warning("Veuillez preciser le modèle")
     else:
-        # Recuperer les modeles et mettre "Autre" en dernier
-        modeles_db = get_modeles(cat, marque)
-        modeles = [m for m in modeles_db if m != "Autre"]
-        modeles.append("Autre")
+        # Récupérer les modèles et mettre "Autre" en dernier
+        modèles_db = get_modèles(cat, marque)
+        modèles = [m for m in modèles_db if m != "Autre"]
+        modèles.append("Autre")
         # Ajouter placeholder en premier
-        modeles_final = ["-- Choisir le modele --"] + modeles
+        modèles_final = ["-- Choisir le modèle --"] + modèles
         
-        mod = st.selectbox("Modele", modeles_final, key="select_modele", label_visibility="collapsed")
+        mod = st.selectbox("Modèle", modèles_final, key="select_modèle", label_visibility="collapsed")
         
-        # Si "Autre" est selectionne, afficher champ texte
-        modele_autre = ""
+        # Si "Autre" est sélectionné, afficher champ texte
+        modèle_autre = ""
         if mod == "Autre":
-            st.markdown("**Precisez le modele :**")
-            modele_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
+            st.markdown("**Precisez le modèle :**")
+            modèle_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
         
         if st.button("Continuer", type="primary", use_container_width=True):
-            if mod == "-- Choisir le modele --":
-                st.warning("Veuillez selectionner un modele")
-            elif mod == "Autre" and not modele_autre:
-                st.warning("Veuillez preciser le modele")
+            if mod == "-- Choisir le modèle --":
+                st.warning("Veuillez sélectionnér un modèle")
+            elif mod == "Autre" and not modèle_autre:
+                st.warning("Veuillez preciser le modèle")
             else:
-                st.session_state.data["modele"] = mod
-                st.session_state.data["modele_autre"] = modele_autre
+                st.session_state.data["modèle"] = mod
+                st.session_state.data["modèle_autre"] = modèle_autre
                 st.session_state.step = 4
                 st.rerun()
 
 def client_step4():
-    st.markdown("<p class='section-title'>Quel est le probleme rencontre ?</p>", unsafe_allow_html=True)
+    st.markdown("<p class='section-title'>Quel est le problème rencontre ?</p>", unsafe_allow_html=True)
     
     if st.button("Retour", key="back4"): st.session_state.step = 3; st.rerun()
     
@@ -1361,7 +1361,7 @@ def client_step4():
                     st.rerun()
     
     if st.session_state.data.get("show_detail"):
-        detail = st.text_area("Decrivez le probleme rencontre")
+        detail = st.text_area("Decrivez le problème rencontre")
         if st.button("Continuer", type="primary"):
             st.session_state.data["panne_detail"] = detail
             st.session_state.step = 5
@@ -1426,20 +1426,20 @@ def client_step6():
     
     col1, col2 = st.columns(2)
     with col1:
-        prenom = st.text_input("Prenom *")
-        telephone = st.text_input("Telephone *", placeholder="06 12 34 56 78")
+        prénom = st.text_input("Prénom *")
+        téléphone = st.text_input("Téléphone *", placeholder="06 12 34 56 78")
     with col2:
         nom = st.text_input("Nom *")
         email = st.text_input("Email")
     
-    notes = st.text_area("Remarques", placeholder="Accessoires laisses, precisions sur le probleme...")
+    notes = st.text_area("Remarques", placeholder="Accessoires laisses, precisions sur le problème...")
     
     st.markdown("---")
     
     # CGV avec lien pour lire
     col_check, col_link = st.columns([4, 1])
     with col_check:
-        consent = st.checkbox("J'accepte les conditions generales de depot et de reparation")
+        consent = st.checkbox("J'accepte les conditions générales de depot et de réparation")
     with col_link:
         if st.button("Lire les CGV", key="read_cgv"):
             st.session_state.show_cgv = True
@@ -1448,14 +1448,14 @@ def client_step6():
     if st.session_state.get("show_cgv"):
         cgv_html = """<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin: 1rem 0; max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
 <h4 style="margin-top:0;">CONDITIONS GENERALES DE DEPOT ET DE REPARATION - KLIKPHONE</h4>
-<p><b>1. OBJET</b><br>Les presentes conditions generales regissent les relations entre la societe Klikphone et ses clients pour tout depot d'appareil en vue d'une reparation.</p>
-<p><b>2. DEPOT DE L'APPAREIL</b><br>- Le client s'engage a fournir des informations exactes concernant son appareil et le probleme rencontre.<br>- Le client doit imperativement sauvegarder ses donnees avant le depot. Klikphone ne saurait etre tenu responsable de toute perte de donnees.<br>- Le client doit fournir les codes d'acces (PIN, schema) necessaires au diagnostic et a la reparation.</p>
-<p><b>3. DIAGNOSTIC ET DEVIS</b><br>- Un diagnostic est effectue avant toute reparation.<br>- Un devis est communique au client pour validation avant intervention.<br>- Le diagnostic est gratuit si la reparation est effectuee. En cas de refus du devis, des frais de diagnostic peuvent s'appliquer.</p>
-<p><b>4. REPARATION</b><br>- Les delais de reparation sont donnes a titre indicatif et dependent de la disponibilite des pieces.<br>- Klikphone utilise des pieces de qualite pour ses reparations.<br>- Une garantie de 3 mois est appliquee sur les reparations effectuees (hors casse, oxydation, mauvaise utilisation).</p>
-<p><b>5. RESPONSABILITE</b><br>- Klikphone ne consulte pas et n'accede pas aux donnees presentes dans l'appareil du client.<br>- Klikphone decline toute responsabilite en cas de perte de donnees.<br>- Klikphone decline toute responsabilite en cas de panne apparaissant apres reparation liee a une cause exterieure (oxydation, choc, dysfonctionnement FaceID/TouchID lie au changement d'ecran, etc.).</p>
-<p><b>6. RETRAIT DE L'APPAREIL</b><br>- L'appareil doit etre retire dans un delai de 30 jours apres notification de fin de reparation.<br>- Passe ce delai, des frais de garde peuvent s'appliquer.<br>- Tout appareil non recupere dans un delai de 6 mois sera considere comme abandonne.</p>
-<p><b>7. PAIEMENT</b><br>- Le paiement s'effectue au retrait de l'appareil.<br>- Un acompte peut etre demande pour certaines reparations.</p>
-<p style="margin-bottom:0;"><b>KLIKPHONE - 79 Place Saint Leger, 73000 Chambery - 04 79 60 89 22</b></p>
+<p><b>1. OBJET</b><br>Les presentes conditions générales regissent les relations entre la societe Klikphone et ses clients pour tout depot d'appareil en vue d'une réparation.</p>
+<p><b>2. DEPOT DE L'APPAREIL</b><br>- Le client s'engage a fournir des informations exactes concernant son appareil et le problème rencontre.<br>- Le client doit imperativement sauvegarder ses donnees avant le depot. Klikphone ne saurait etre tenu responsable de toute perte de donnees.<br>- Le client doit fournir les codes d'acces (PIN, schéma) necessaires au diagnostic et a la réparation.</p>
+<p><b>3. DIAGNOSTIC ET DEVIS</b><br>- Un diagnostic est effectue avant toute réparation.<br>- Un devis est communique au client pour validation avant intervention.<br>- Le diagnostic est gratuit si la réparation est effectuee. En cas de refus du devis, des frais de diagnostic peuvent s'appliquer.</p>
+<p><b>4. REPARATION</b><br>- Les délais de réparation sont donnes a titre indicatif et dependent de la disponibilité des pièces.<br>- Klikphone utilise des pièces de qualite pour ses réparations.<br>- Une garantie de 3 mois est appliquee sur les réparations effectuees (hors casse, oxydation, mauvaise utilisation).</p>
+<p><b>5. RESPONSABILITE</b><br>- Klikphone ne consulte pas et n'accede pas aux donnees presentes dans l'appareil du client.<br>- Klikphone decline toute responsabilite en cas de perte de donnees.<br>- Klikphone decline toute responsabilite en cas de panne apparaissant apres réparation liee a une cause exterieure (oxydation, choc, dysfonctionnement FaceID/TouchID lie au changement d'écran, etc.).</p>
+<p><b>6. RETRAIT DE L'APPAREIL</b><br>- L'appareil doit etre retire dans un délai de 30 jours apres notification de fin de réparation.<br>- Passe ce délai, des frais de garde peuvent s'appliquer.<br>- Tout appareil non récupére dans un délai de 6 mois sera considere comme abandonne.</p>
+<p><b>7. PAIEMENT</b><br>- Le paiement s'effectue au retrait de l'appareil.<br>- Un acompte peut etre demande pour certaines réparations.</p>
+<p style="margin-bottom:0;"><b>KLIKPHONE - 79 Place Saint Léger, 73000 Chambéry - 04 79 60 89 22</b></p>
 </div>"""
         st.markdown(cgv_html, unsafe_allow_html=True)
         if st.button("Fermer les CGV", key="close_cgv"):
@@ -1463,15 +1463,15 @@ def client_step6():
             st.rerun()
     
     if st.button("ENVOYER LA DEMANDE", type="primary", use_container_width=True):
-        if not nom or not prenom or not telephone:
-            st.error("Le nom, prenom et telephone sont obligatoires")
+        if not nom or not prénom or not téléphone:
+            st.error("Le nom, prénom et téléphone sont obligatoires")
         elif not consent:
-            st.error("Veuillez accepter les conditions generales")
+            st.error("Veuillez accepter les conditions générales")
         else:
             d = st.session_state.data
-            cid = get_or_create_client(nom, telephone, prenom, email)
-            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modele",""),
-                               d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
+            cid = get_or_create_client(nom, téléphone, prénom, email)
+            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
+                               d.get("modèle_autre",""), d.get("panne",""), d.get("panne_detail",""),
                                d.get("pin",""), d.get("pattern",""), notes)
             st.session_state.done = code
             st.rerun()
@@ -1482,7 +1482,7 @@ def client_step6():
 def ui_accueil():
     col1, col2 = st.columns([5, 1])
     with col1:
-        st.markdown("<h1 class='page-title'>Liste des Demandes de Reparation</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 class='page-title'>Liste des Demandes de Réparation</h1>", unsafe_allow_html=True)
     with col2:
         if st.button("Deconnexion", key="logout_acc"):
             st.session_state.mode = None
@@ -1490,7 +1490,7 @@ def ui_accueil():
             st.rerun()
     
     # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["Demandes", "Nouvelle", "Attestation", "Config"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Demandes", "Nouvelle", "Attestation non-reparabilite", "Config"])
     
     with tab1:
         staff_liste_demandes()
@@ -1502,6 +1502,11 @@ def ui_accueil():
         staff_config()
 
 def staff_liste_demandes():
+    # Si un ticket est sélectionné, afficher directement le traitement
+    if st.session_state.get("edit_id"):
+        staff_traiter_demande(st.session_state.edit_id)
+        return
+    
     # Filtres et tri
     col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
     with col1:
@@ -1509,7 +1514,7 @@ def staff_liste_demandes():
     with col2:
         f_code = st.text_input("N Ticket", key="f_code")
     with col3:
-        f_tel = st.text_input("Telephone", key="f_tel")
+        f_tel = st.text_input("Téléphone", key="f_tel")
     with col4:
         f_nom = st.text_input("Nom", key="f_nom")
     with col5:
@@ -1528,36 +1533,81 @@ def staff_liste_demandes():
         ordre_statut = {s: i for i, s in enumerate(STATUTS)}
         tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
     
-    st.markdown(f"**{len(tickets)} demande(s)**")
+    # Pagination
+    ITEMS_PER_PAGE = 5
+    total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    
+    if "accueil_page" not in st.session_state:
+        st.session_state.accueil_page = 1
+    
+    current_page = st.session_state.accueil_page
+    start_idx = (current_page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    tickets_page = tickets[start_idx:end_idx]
+    
+    st.markdown(f"**{len(tickets)} demande(s)** - Page {current_page}/{total_pages}")
     st.markdown("---")
     
-    # Liste des tickets
-    if tickets:
-        for t in tickets:
-            status_class = get_status_class(t.get('statut', ''))
-            modele = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
-            
-            col1, col2, col3, col4, col5, col6 = st.columns([1.5, 2, 2, 1.5, 2, 1])
-            with col1:
-                st.markdown(f"**{t['ticket_code']}**")
-            with col2:
-                st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')}")
-            with col3:
-                st.write(modele[:25])
-            with col4:
-                st.write(fmt_date(t.get('date_depot',''))[:10])
-            with col5:
-                st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:20]}</span>", unsafe_allow_html=True)
-            with col6:
-                if st.button("Traiter", key=f"process_{t['id']}"):
-                    st.session_state.edit_id = t['id']
-                    st.rerun()
-            st.markdown("<hr style='margin:5px 0;border-color:#eee;'>", unsafe_allow_html=True)
+    # En-tete du tableau
+    st.markdown("""
+    <div style="display:flex; background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; font-size:0.9rem;">
+        <div style="flex:1.2;">Ticket</div>
+        <div style="flex:1.5;">Client</div>
+        <div style="flex:1.5;">Appareil</div>
+        <div style="flex:1;">Date</div>
+        <div style="flex:1.5;">Statut</div>
+        <div style="flex:1;">Message</div>
+        <div style="flex:0.8;">Action</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Écran de traitement
-    if st.session_state.get("edit_id"):
-        staff_traiter_demande(st.session_state.edit_id)
+    # Liste des tickets
+    for t in tickets_page:
+        status_class = get_status_class(t.get('statut', ''))
+        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
+        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
+        
+        # Message technicien a transmettre ?
+        has_message = t.get('commentaire_client')
+        
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.5, 1.5, 1, 1.5, 1, 0.8])
+        with col1:
+            st.markdown(f"**{t['ticket_code']}**")
+        with col2:
+            st.write(f"{t.get('client_nom','')} {t.get('client_prénom','')[:10]}")
+        with col3:
+            st.write(modèle[:20])
+        with col4:
+            st.write(fmt_date(t.get('date_depot',''))[:10])
+        with col5:
+            st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:15]}</span>", unsafe_allow_html=True)
+        with col6:
+            if has_message:
+                st.markdown("<span style='color:red; font-weight:bold;'>A TRANSMETTRE</span>", unsafe_allow_html=True)
+            else:
+                st.write("-")
+        with col7:
+            if st.button("Ouvrir", key=f"process_{t['id']}"):
+                st.session_state.edit_id = t['id']
+                st.rerun()
+        st.markdown("<hr style='margin:5px 0;border-color:#eee;'>", unsafe_allow_html=True)
+    
+    # Navigation pagination
+    if total_pages > 1:
+        st.markdown("---")
+        col_prev, col_pages, col_next = st.columns([1, 3, 1])
+        with col_prev:
+            if current_page > 1:
+                if st.button("< Précédent", key="accueil_prev"):
+                    st.session_state.accueil_page = current_page - 1
+                    st.rerun()
+        with col_pages:
+            st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
+        with col_next:
+            if current_page < total_pages:
+                if st.button("Suivant >", key="accueil_next"):
+                    st.session_state.accueil_page = current_page + 1
+                    st.rerun()
 
 def staff_traiter_demande(tid):
     t = get_ticket_full(tid=tid)
@@ -1565,30 +1615,35 @@ def staff_traiter_demande(tid):
         st.error("Demande non trouvée")
         return
     
-    st.markdown("---")
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.markdown(f"<h2 class='section-title'>Traitement de la Demande {t['ticket_code']}</h2>", unsafe_allow_html=True)
-    with col2:
-        if st.button("Fermer", key="close_process"):
+    # Bouton retour en haut
+    col_back, col_title = st.columns([1, 5])
+    with col_back:
+        if st.button("← Retour", key="close_process", type="secondary"):
             st.session_state.edit_id = None
             st.rerun()
+    with col_title:
+        st.markdown(f"### Ticket {t['ticket_code']}")
+    
+    status_class = get_status_class(t.get('statut', ''))
+    st.markdown(f"<span class='status-badge {status_class}' style='font-size:1.1rem;'>{t.get('statut','')}</span>", unsafe_allow_html=True)
+    
+    st.markdown("---")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("<p class='section-title'>Resume Client</p>", unsafe_allow_html=True)
         
-        modele = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
+        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
-        <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span></div>
-        <div class="summary-item"><span class="summary-label">Telephone:</span><span class="summary-value">{t.get('client_tel','')}</span></div>
+        <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prénom','')}</span></div>
+        <div class="summary-item"><span class="summary-label">Téléphone:</span><span class="summary-value">{t.get('client_tel','')}</span></div>
         <div class="summary-item"><span class="summary-label">Email:</span><span class="summary-value">{t.get('client_email') or 'N/A'}</span></div>
-        <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modele}</span></div>
+        <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modèle}</span></div>
         <div class="summary-item"><span class="summary-label">Motif:</span><span class="summary-value">{panne}</span></div>
         """, unsafe_allow_html=True)
         
@@ -1597,7 +1652,7 @@ def staff_traiter_demande(tid):
             <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 1rem; margin: 1rem 0;">
                 <strong>SECURITE</strong><br>
                 <div style="margin-top: 0.5rem;">Code PIN: {t.get('pin') or 'Aucun'}</div>
-                <div>Schema: {t.get('pattern') or 'Aucun'}</div>
+                <div>Schéma: {t.get('pattern') or 'Aucun'}</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -1615,7 +1670,7 @@ def staff_traiter_demande(tid):
         # Commentaire pour le client (du technicien)
         st.markdown("<p class='section-title' style='margin-top:1.5rem;'>Message du technicien (a transmettre au client)</p>", unsafe_allow_html=True)
         comment_client = st.text_area("", value=t.get('commentaire_client') or "", height=80, 
-                                      placeholder="Ex: Ecran change, test OK. Batterie a surveiller...",
+                                      placeholder="Ex: Écran change, test OK. Batterie a surveiller...",
                                       key=f"comment_client_{tid}", label_visibility="collapsed")
         if st.button("Enregistrer message", key=f"save_comment_client_{tid}"):
             update_ticket(tid, commentaire_client=comment_client)
@@ -1623,12 +1678,12 @@ def staff_traiter_demande(tid):
             st.rerun()
     
     with col2:
-        st.markdown("<p class='section-title'>Informations de Reparation</p>", unsafe_allow_html=True)
+        st.markdown("<p class='section-title'>Informations de Réparation</p>", unsafe_allow_html=True)
         
-        # Type de reparation (panne)
+        # Type de réparation (panne)
         panne_actuelle = t.get('panne', PANNES[0])
         idx_panne = PANNES.index(panne_actuelle) if panne_actuelle in PANNES else 0
-        new_panne = st.selectbox("Type de Reparation", PANNES, index=idx_panne, key=f"rep_type_{tid}")
+        new_panne = st.selectbox("Type de Réparation", PANNES, index=idx_panne, key=f"rep_type_{tid}")
         
         # Personne en charge
         personne = st.text_input("Personne en charge", value=t.get('personne_charge') or "", key=f"personne_{tid}")
@@ -1648,7 +1703,7 @@ def staff_traiter_demande(tid):
         # Statut
         statut_actuel = t.get('statut', STATUTS[0])
         idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
-        new_statut = st.selectbox("Statut de la reparation", STATUTS, index=idx_statut, key=f"statut_{tid}")
+        new_statut = st.selectbox("Statut de la réparation", STATUTS, index=idx_statut, key=f"statut_{tid}")
         
         # Boutons
         col_btn1, col_btn2 = st.columns(2)
@@ -1678,7 +1733,7 @@ def staff_traiter_demande(tid):
         tel = t.get('client_tel', '')
         email = t.get('client_email', '')
         
-        # Messages predefinis
+        # Messages prédéfinis
         messages = get_messages_predefs(t)
         
         # Afficher le commentaire du technicien s'il existe
@@ -1690,7 +1745,7 @@ def staff_traiter_demande(tid):
             </div>
             """.format(t.get('commentaire_client')), unsafe_allow_html=True)
         
-        type_msg = st.selectbox("Message predefini", list(messages.keys()), key=f"msg_type_{tid}")
+        type_msg = st.selectbox("Message prédéfini", list(messages.keys()), key=f"msg_type_{tid}")
         
         # Mettre a jour le message quand le type change
         msg_key = f"msg_text_{tid}"
@@ -1741,7 +1796,7 @@ def staff_traiter_demande(tid):
             
             with col_email:
                 if email:
-                    sujet = f"Reparation {t.get('ticket_code','')} - Klikphone"
+                    sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
                     st.markdown(f"""
                     <a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="
                         display: block; text-align: center; padding: 10px; 
@@ -1756,7 +1811,7 @@ def staff_traiter_demande(tid):
             with col_email_direct:
                 if email and get_param("SMTP_HOST"):
                     if st.button("Envoyer Email", key=f"send_email_{tid}", type="primary", use_container_width=True):
-                        sujet = f"Reparation {t.get('ticket_code','')} - Klikphone"
+                        sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
                         success, result = envoyer_email(email, sujet, msg_custom)
                         if success:
                             st.success("Email envoye!")
@@ -1797,25 +1852,26 @@ def staff_traiter_demande(tid):
             st.rerun()
 
 def staff_attestation():
-    """Generer une attestation de non-reparabilite"""
+    """Générer une attestation de non-reparabilite"""
     st.markdown("<p class='section-title'>Attestation de Non-Reparabilite</p>", unsafe_allow_html=True)
-    st.markdown("Generez une attestation pour les appareils economiquement irreparables (utile pour les assurances).")
+    st.markdown("Generez une attestation pour les appareils économiquement irréparables (utile pour les assurances).")
     
     st.markdown("---")
     
     col1, col2 = st.columns(2)
     with col1:
         att_nom = st.text_input("Nom du client *", key="att_nom")
-        att_prenom = st.text_input("Prenom du client *", key="att_prenom")
-        att_adresse = st.text_input("Adresse du client", key="att_adresse", placeholder="73000 Chambery")
+        att_prénom = st.text_input("Prénom du client *", key="att_prénom")
+        att_adresse = st.text_input("Adresse du client", key="att_adresse", placeholder="73000 Chambéry")
+        att_email = st.text_input("Email du client", key="att_email", placeholder="client@email.com")
     with col2:
         att_marque = st.selectbox("Marque *", ["Apple", "Samsung", "Xiaomi", "Huawei", "Autre"], key="att_marque")
-        att_modele = st.text_input("Modele *", key="att_modele", placeholder="iPhone 11 Pro")
-        att_imei = st.text_input("Numero IMEI / Serie *", key="att_imei", placeholder="353833102642466")
+        att_modèle = st.text_input("Modèle *", key="att_modèle", placeholder="iPhone 11 Pro")
+        att_imei = st.text_input("Numéro IMEI / Serie *", key="att_imei", placeholder="353833102642466")
     
     st.markdown("---")
-    att_etat = st.text_area("Etat de l'appareil au moment du depot", key="att_etat", 
-                           placeholder="Ex: Chassis arriere endommage et ecran fissure")
+    att_état = st.text_area("État de l'appareil au moment du depot", key="att_état", 
+                           placeholder="Ex: Chassis arriere endommage et écran fissure")
     att_motif = st.text_area("Motif du depot", key="att_motif",
                             placeholder="Ex: iPhone ayant subi un choc violent")
     att_compte_rendu = st.text_area("Compte rendu du technicien *", key="att_cr",
@@ -1824,10 +1880,10 @@ def staff_attestation():
     st.markdown("---")
     
     if st.button("GENERER L'ATTESTATION", type="primary", use_container_width=True):
-        if not att_nom or not att_prenom or not att_modele or not att_imei or not att_compte_rendu:
+        if not att_nom or not att_prénom or not att_modèle or not att_imei or not att_compte_rendu:
             st.error("Veuillez remplir tous les champs obligatoires (*)")
         else:
-            # Generer l'attestation HTML
+            # Générer l'attestation HTML
             from datetime import datetime
             date_jour = datetime.now().strftime("%d/%m/%Y")
             
@@ -1849,14 +1905,15 @@ def staff_attestation():
         .footer {{ margin-top: 40px; font-style: italic; }}
         .signature {{ margin-top: 30px; text-align: right; }}
         .print-btn {{ display: block; width: 200px; margin: 30px auto; padding: 12px; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }}
-        @media print {{ .print-btn {{ display: none; }} }}
+        .email-btn {{ display: block; width: 200px; margin: 10px auto; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; }}
+        @media print {{ .print-btn, .email-btn {{ display: none; }} }}
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">KLIKPHONE</div>
         <div class="contact">
-            79 Place Saint Leger, 73000 Chambery<br>
+            79 Place Saint Léger, 73000 Chambéry<br>
             Tel: 04 79 60 89 22 - contact@klikphone.com<br>
             SIREN: 795334523
         </div>
@@ -1864,21 +1921,21 @@ def staff_attestation():
     
     <div class="destinataire">
         <u>Attestation delivree a :</u><br>
-        <strong>M. {att_nom.upper()} {att_prenom.upper()}</strong><br>
-        {att_adresse or "73000 Chambery"}
+        <strong>M. {att_nom.upper()} {att_prénom.upper()}</strong><br>
+        {att_adresse or "73000 Chambéry"}
     </div>
     
     <div class="titre">COMPTE RENDU TECHNICIEN</div>
     
     <div class="section">
-        <p>La societe <strong>Klikphone</strong>, specialiste en reparation de smartphones et tablettes, basee au 79 Place Saint Leger a Chambery;</p>
+        <p>La societe <strong>Klikphone</strong>, specialiste en réparation de smartphones et tablettes, basee au 79 Place Saint Léger a Chambéry;</p>
         
-        <p>Atteste que l'appareil <strong>{att_marque} {att_modele}</strong> comportant le numero IMEI/Serie suivant: <strong>{att_imei}</strong> a bien ete depose a notre atelier pour reparation.</p>
+        <p>Atteste que l'appareil <strong>{att_marque} {att_modèle}</strong> comportant le numéro IMEI/Serie suivant: <strong>{att_imei}</strong> a bien ete depose a notre atelier pour réparation.</p>
     </div>
     
     <div class="section">
-        <div class="section-title">Etat de l'appareil au moment du depot :</div>
-        <p>{att_etat or "Non precise"}</p>
+        <div class="section-title">État de l'appareil au moment du depot :</div>
+        <p>{att_état or "Non precise"}</p>
     </div>
     
     <div class="section">
@@ -1894,8 +1951,8 @@ def staff_attestation():
     </div>
     
     <div class="section">
-        <div class="section-title">Estimation des reparations :</div>
-        <p><strong>Apres expertise, nous attestons que cet appareil est economiquement irreparable.</strong></p>
+        <div class="section-title">Estimation des réparations :</div>
+        <p><strong>Apres expertise, nous attestons que cet appareil est économiquement irréparable.</strong></p>
     </div>
     
     <div class="section">
@@ -1905,11 +1962,11 @@ def staff_attestation():
     
     <div class="footer">
         <p>Cette attestation fait office de justificatif pour votre assurance.</p>
-        <p>Tous nos diagnostics et nos reparations sont garantis et realises par un technicien certifie.</p>
+        <p>Tous nos diagnostics et nos réparations sont garantis et realises par un technicien certifie.</p>
     </div>
     
     <div class="signature">
-        Fait a Chambery, le {date_jour}
+        Fait a Chambéry, le {date_jour}
     </div>
     
     <button class="print-btn" onclick="window.print()">IMPRIMER L'ATTESTATION</button>
@@ -1917,26 +1974,44 @@ def staff_attestation():
 </html>
 """
             st.session_state.attestation_html = attestation_html
-            st.success("Attestation generee!")
+            st.session_state.attestation_email = att_email
+            st.success("Attestation générée!")
             st.rerun()
     
-    # Afficher l'attestation si generee
+    # Afficher l'attestation si générée
     if st.session_state.get("attestation_html"):
         st.markdown("---")
         st.markdown("### Apercu de l'attestation")
         st.components.v1.html(st.session_state.attestation_html, height=800, scrolling=True)
         
-        if st.button("Nouvelle attestation", key="new_attestation"):
-            del st.session_state.attestation_html
-            st.rerun()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Nouvelle attestation", key="new_attestation"):
+                del st.session_state.attestation_html
+                if "attestation_email" in st.session_state:
+                    del st.session_state.attestation_email
+                st.rerun()
+        with col2:
+            att_email_saved = st.session_state.get("attestation_email", "")
+            if att_email_saved and get_param("SMTP_HOST"):
+                if st.button("Envoyer par email", key="send_attestation_email", type="primary"):
+                    sujet = "Attestation de non-reparabilite - Klikphone"
+                    message = "Bonjour,\n\nVeuillez trouver ci-joint votre attestation de non-reparabilite.\n\nCordialement,\nL'équipe Klikphone"
+                    success, result = envoyer_email(att_email_saved, sujet, message)
+                    if success:
+                        st.success(f"Email envoye a {att_email_saved}!")
+                    else:
+                        st.error(result)
+            elif att_email_saved:
+                st.info("Configurez SMTP dans Config > Email pour envoyer par email")
 
 def staff_nouvelle_demande():
     st.markdown("<p class='section-title'>Nouvelle demande manuelle</p>", unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        prenom = st.text_input("Prenom *", key="n_prenom")
-        tel = st.text_input("Telephone *", key="n_tel")
+        prénom = st.text_input("Prénom *", key="n_prénom")
+        tel = st.text_input("Téléphone *", key="n_tel")
     with col2:
         nom = st.text_input("Nom *", key="n_nom")
         email = st.text_input("Email", key="n_email")
@@ -1944,19 +2019,19 @@ def staff_nouvelle_demande():
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        cat = st.selectbox("Categorie", CATEGORIES, key="n_cat")
+        cat = st.selectbox("Catégorie", CATEGORIES, key="n_cat")
     with col2:
         marque = st.selectbox("Marque", get_marques(cat), key="n_marque")
     with col3:
-        modele = st.selectbox("Modele", get_modeles(cat, marque), key="n_modele")
+        modèle = st.selectbox("Modèle", get_modèles(cat, marque), key="n_modèle")
     
-    modele_autre = ""
-    if modele == "Autre" or marque == "Autre":
-        modele_autre = st.text_input("Precisez le modele", key="n_modele_autre")
+    modèle_autre = ""
+    if modèle == "Autre" or marque == "Autre":
+        modèle_autre = st.text_input("Precisez le modèle", key="n_modèle_autre")
     
-    imei = st.text_input("IMEI / Numero de serie (optionnel)", key="n_imei", placeholder="Ex: 353833102642466")
+    imei = st.text_input("IMEI / Numéro de serie (optionnel)", key="n_imei", placeholder="Ex: 353833102642466")
     
-    panne = st.selectbox("Probleme", PANNES, key="n_panne")
+    panne = st.selectbox("Problème", PANNES, key="n_panne")
     panne_detail = ""
     if panne in ["Autre", "Diagnostic"]:
         panne_detail = st.text_area("Details", key="n_panne_detail")
@@ -1965,34 +2040,34 @@ def staff_nouvelle_demande():
     with col1:
         pin = st.text_input("Code PIN", type="password", key="n_pin")
     with col2:
-        pattern = st.text_input("Schema (ex: 1-2-3)", key="n_pattern")
+        pattern = st.text_input("Schéma (ex: 1-2-3)", key="n_pattern")
     
     col1, col2 = st.columns(2)
     with col1:
-        devis = st.number_input("Devis estime (EUR)", min_value=0.0, step=5.0, key="n_devis")
+        devis = st.number_input("Devis estimé (EUR)", min_value=0.0, step=5.0, key="n_devis")
     with col2:
         acompte = st.number_input("Acompte (EUR)", min_value=0.0, step=5.0, key="n_acompte")
     
     notes = st.text_area("Notes", key="n_notes")
     
     if st.button("CREER LA DEMANDE", type="primary", use_container_width=True):
-        if not nom or not prenom or not tel:
-            st.error("Nom, prenom et telephone obligatoires")
+        if not nom or not prénom or not tel:
+            st.error("Nom, prénom et téléphone obligatoires")
         else:
-            cid = get_or_create_client(nom, tel, prenom, email)
-            code = creer_ticket(cid, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei)
+            cid = get_or_create_client(nom, tel, prénom, email)
+            code = creer_ticket(cid, cat, marque, modèle, modèle_autre, panne, panne_detail, pin, pattern, notes, imei)
             t = get_ticket(code=code)
             if t and (devis or acompte):
                 update_ticket(t['id'], devis_estime=devis, acompte=acompte)
-            st.success(f"Demande creee : {code}")
+            st.success(f"Demande créée : {code}")
 
 def staff_config():
-    tab1, tab2, tab3, tab4 = st.tabs(["Boutique", "Email", "Catalogue", "Securite"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Boutique", "Email", "Catalogue", "Sécurité"])
     
     with tab1:
         nom = st.text_input("Nom boutique", value=get_param("NOM_BOUTIQUE"))
         adresse = st.text_input("Adresse", value=get_param("ADRESSE_BOUTIQUE"))
-        tel = st.text_input("Telephone", value=get_param("TEL_BOUTIQUE"))
+        tel = st.text_input("Téléphone", value=get_param("TEL_BOUTIQUE"))
         url = st.text_input("URL suivi", value=get_param("URL_SUIVI"))
         if st.button("Enregistrer", key="save_config"):
             set_param("NOM_BOUTIQUE", nom)
@@ -2046,7 +2121,7 @@ def staff_config():
         st.markdown("**Ajouter une marque**")
         col1, col2 = st.columns(2)
         with col1:
-            cat_m = st.selectbox("Categorie", CATEGORIES, key="cat_marque")
+            cat_m = st.selectbox("Catégorie", CATEGORIES, key="cat_marque")
             new_m = st.text_input("Nouvelle marque", key="new_marque")
         with col2:
             if st.button("Ajouter marque", key="add_marque"):
@@ -2055,16 +2130,16 @@ def staff_config():
                     st.rerun()
         
         st.markdown("---")
-        st.markdown("**Ajouter un modele**")
+        st.markdown("**Ajouter un modèle**")
         col1, col2 = st.columns(2)
         with col1:
-            cat_mo = st.selectbox("Categorie", CATEGORIES, key="cat_modele")
-            marque_mo = st.selectbox("Marque", get_marques(cat_mo), key="marque_modele")
-            new_mo = st.text_input("Nouveau modele", key="new_modele")
+            cat_mo = st.selectbox("Catégorie", CATEGORIES, key="cat_modèle")
+            marque_mo = st.selectbox("Marque", get_marques(cat_mo), key="marque_modèle")
+            new_mo = st.text_input("Nouveau modèle", key="new_modèle")
         with col2:
-            if st.button("Ajouter modele", key="add_modele"):
-                if new_mo and ajouter_modele(cat_mo, marque_mo, new_mo):
-                    st.success("Modele ajoute")
+            if st.button("Ajouter modèle", key="add_modèle"):
+                if new_mo and ajouter_modèle(cat_mo, marque_mo, new_mo):
+                    st.success("Modèle ajoute")
                     st.rerun()
     
     with tab4:
@@ -2089,6 +2164,11 @@ def ui_tech():
             st.session_state.auth = False
             st.rerun()
     
+    # Si un ticket est sélectionné, afficher directement le detail
+    if st.session_state.get("tech_selected"):
+        tech_detail_ticket(st.session_state.tech_selected)
+        return
+    
     # Filtres et tri
     col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
     with col_f1:
@@ -2100,7 +2180,7 @@ def ui_tech():
     
     st.markdown("---")
     
-    # Recuperer les tickets
+    # Récupérer les tickets
     if filtre_statut == "Tous":
         tickets = chercher_tickets()
     else:
@@ -2112,7 +2192,7 @@ def ui_tech():
         tickets = [t for t in tickets if 
                    recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
-                   recherche_lower in t.get('client_prenom', '').lower() or
+                   recherche_lower in t.get('client_prénom', '').lower() or
                    recherche_lower in t.get('client_tel', '').lower()]
     
     # Trier
@@ -2123,35 +2203,74 @@ def ui_tech():
         tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
     elif tri == "Client":
         tickets = sorted(tickets, key=lambda x: x.get('client_nom', '').lower())
-    # Par defaut: plus recent (deja trie par la requete SQL)
     
-    st.markdown(f"**{len(tickets)} demande(s)**")
+    # Pagination
+    ITEMS_PER_PAGE = 5
+    total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    
+    if "tech_page" not in st.session_state:
+        st.session_state.tech_page = 1
+    
+    current_page = st.session_state.tech_page
+    start_idx = (current_page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    tickets_page = tickets[start_idx:end_idx]
+    
+    st.markdown(f"**{len(tickets)} réparation(s)** - Page {current_page}/{total_pages}")
+    
+    # En-tete du tableau
+    st.markdown("""
+    <div style="display:flex; background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold;">
+        <div style="flex:1.5;">Ticket</div>
+        <div style="flex:2;">Client</div>
+        <div style="flex:2;">Appareil</div>
+        <div style="flex:1.5;">Statut</div>
+        <div style="flex:1;">Action</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Affichage en liste avec boutons
-    for t in tickets:
+    for t in tickets_page:
         tid = t['id']
         status_class = get_status_class(t.get('statut', ''))
-        modele = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
+        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
         
-        # Ligne de ticket
-        col1, col2, col3, col4 = st.columns([2, 3, 2, 1])
+        # Message technicien en attente?
+        has_message = t.get('commentaire_client')
+        
+        col1, col2, col3, col4, col5 = st.columns([1.5, 2, 2, 1.5, 1])
         with col1:
             st.markdown(f"**{t['ticket_code']}**")
         with col2:
-            st.write(f"{t.get('client_nom','')} - {modele[:30]}")
+            st.write(f"{t.get('client_nom','')} {t.get('client_prénom','')}")
         with col3:
-            st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:20]}</span>", unsafe_allow_html=True)
+            st.write(modèle[:25])
         with col4:
+            st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:15]}</span>", unsafe_allow_html=True)
+        with col5:
             if st.button("Ouvrir", key=f"tech_open_{tid}", use_container_width=True):
                 st.session_state.tech_selected = tid
                 st.rerun()
         
         st.markdown("<hr style='margin:5px 0; border-color:#eee;'>", unsafe_allow_html=True)
     
-    # Detail d'un ticket selectionne
-    if st.session_state.get("tech_selected"):
-        tech_detail_ticket(st.session_state.tech_selected)
+    # Navigation pagination
+    if total_pages > 1:
+        st.markdown("---")
+        col_prev, col_pages, col_next = st.columns([1, 3, 1])
+        with col_prev:
+            if current_page > 1:
+                if st.button("< Précédent", key="tech_prev"):
+                    st.session_state.tech_page = current_page - 1
+                    st.rerun()
+        with col_pages:
+            st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
+        with col_next:
+            if current_page < total_pages:
+                if st.button("Suivant >", key="tech_next"):
+                    st.session_state.tech_page = current_page + 1
+                    st.rerun()
 
 def tech_detail_ticket(tid):
     t = get_ticket_full(tid=tid)
@@ -2159,35 +2278,41 @@ def tech_detail_ticket(tid):
         st.error("Ticket non trouve")
         return
     
-    st.markdown("---")
-    st.markdown(f"### Ticket {t['ticket_code']}")
+    # Bouton retour en haut
+    col_back, col_title = st.columns([1, 5])
+    with col_back:
+        if st.button("← Retour", key="tech_close_detail", type="secondary"):
+            del st.session_state.tech_selected
+            st.rerun()
+    with col_title:
+        st.markdown(f"### Ticket {t['ticket_code']}")
     
-    # Bouton fermer
-    if st.button("X Fermer", key="tech_close_detail"):
-        del st.session_state.tech_selected
-        st.rerun()
+    status_class = get_status_class(t.get('statut', ''))
+    st.markdown(f"<span class='status-badge {status_class}' style='font-size:1.1rem;'>{t.get('statut','')}</span>", unsafe_allow_html=True)
+    
+    st.markdown("---")
     
     col1, col2 = st.columns(2)
     
     with col1:
         # Infos client
-        modele = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
+        modèle = f"{t.get('marque','')} {t.get('modèle','')}"
+        if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
-        **Client:** {t.get('client_nom','')} {t.get('client_prenom','')}<br>
+        **Client:** {t.get('client_nom','')} {t.get('client_prénom','')}<br>
         **Tel:** {t.get('client_tel','')}<br>
-        **Appareil:** {modele}<br>
-        **Probleme:** {panne}
+        **Appareil:** {modèle}<br>
+        **Problème:** {panne}
         """, unsafe_allow_html=True)
         
-        # Securite
+        # Sécurité
         st.markdown(f"""
         <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0;">
             <strong>Code PIN:</strong> {t.get('pin') or 'Aucun'}<br>
-            <strong>Schema:</strong> {t.get('pattern') or 'Aucun'}
+            <strong>Schéma:</strong> {t.get('pattern') or 'Aucun'}
         </div>
         """, unsafe_allow_html=True)
         
@@ -2214,7 +2339,7 @@ def tech_detail_ticket(tid):
     st.markdown("**Ajouter une note interne:**")
     col_note, col_btn = st.columns([4, 1])
     with col_note:
-        note_tech = st.text_input("Note technique", placeholder="Ex: Piece a commander, probleme identifie...", key=f"tech_comment_{tid}", label_visibility="collapsed")
+        note_tech = st.text_input("Note technique", placeholder="Ex: Pièce a commander, problème identifie...", key=f"tech_comment_{tid}", label_visibility="collapsed")
     with col_btn:
         if st.button("Ajouter", key=f"tech_add_comment_{tid}", type="primary"):
             if note_tech:
@@ -2226,7 +2351,7 @@ def tech_detail_ticket(tid):
     st.markdown("---")
     st.markdown("**Message a transmettre au client (via accueil):**")
     comment_client = st.text_area("", value=t.get('commentaire_client') or "", height=80, 
-                                  placeholder="Ex: Ecran remplace, test OK. Attention batterie faible...",
+                                  placeholder="Ex: Écran remplace, test OK. Attention batterie faible...",
                                   key=f"tech_client_comment_{tid}", label_visibility="collapsed")
     if st.button("Enregistrer le message", key=f"tech_save_client_comment_{tid}"):
         update_ticket(tid, commentaire_client=comment_client)
@@ -2241,7 +2366,7 @@ def tech_detail_ticket(tid):
     email = t.get('client_email', '')
     
     messages = get_messages_predefs(t)
-    type_msg = st.selectbox("Message predefini", list(messages.keys()), key=f"tech_msg_type_{tid}")
+    type_msg = st.selectbox("Message prédéfini", list(messages.keys()), key=f"tech_msg_type_{tid}")
     
     # Mettre a jour le message quand le type change
     tech_msg_key = f"tech_msg_text_{tid}"
@@ -2267,7 +2392,7 @@ def tech_detail_ticket(tid):
                 st.markdown(f'<a href="{sms_link(tel, msg_custom)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#3b82f6;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">SMS</a>', unsafe_allow_html=True)
         with col_email:
             if email:
-                sujet = f"Reparation {t.get('ticket_code','')} - Klikphone"
+                sujet = f"Réparation {t.get('ticket_code','')} - Klikphone"
                 st.markdown(f'<a href="{email_link(email, sujet, msg_custom)}" target="_blank" style="display:block;text-align:center;padding:10px;background:#6b7280;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">Email</a>', unsafe_allow_html=True)
 
 # =============================================================================
@@ -2278,7 +2403,7 @@ def ui_suivi():
     <div class="klik-header">
         <span class="klik-title">Klikphone</span>
     </div>
-    <p class="klik-subtitle">Suivi de votre reparation</p>
+    <p class="klik-subtitle">Suivi de votre réparation</p>
     """, unsafe_allow_html=True)
     
     params = st.query_params
@@ -2288,7 +2413,7 @@ def ui_suivi():
     with col1:
         code = st.text_input("N° de ticket", value=code_url, placeholder="KP-000001")
     with col2:
-        tel = st.text_input("Votre telephone", placeholder="06 12 34 56 78")
+        tel = st.text_input("Votre téléphone", placeholder="06 12 34 56 78")
     
     if st.button("RECHERCHER", type="primary", use_container_width=True):
         if code and tel:
@@ -2298,8 +2423,8 @@ def ui_suivi():
             
             if t and tel_clean == client_tel_clean:
                 status_class = get_status_class(t.get('statut', ''))
-                modele = f"{t.get('marque','')} {t.get('modele','')}"
-                if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
+                modèle = f"{t.get('marque','')} {t.get('modèle','')}"
+                if t.get('modèle_autre'): modèle += f" ({t['modèle_autre']})"
                 
                 st.markdown(f"""
                 <div style="background:white; padding:1.5rem; border-radius:12px; margin-top:1.5rem; border:1px solid #e5e7eb;">
@@ -2307,18 +2432,18 @@ def ui_suivi():
                         <h3 style="margin:0;">{t['ticket_code']}</h3>
                         <span class="status-badge {status_class}">{t.get('statut','')}</span>
                     </div>
-                    <p><strong>Appareil:</strong> {modele}</p>
+                    <p><strong>Appareil:</strong> {modèle}</p>
                     <p><strong>Depose le:</strong> {fmt_date(t.get('date_depot',''))}</p>
                     <p><strong>Derniere mise à jour:</strong> {fmt_date(t.get('date_maj',''))}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Barre de progression
-                progress = {"En attente de diagnostic": 25, "En cours de reparation": 50, 
-                           "Reparation terminee": 100, "Cloture": 100}.get(t.get('statut',''), 0)
+                progress = {"En attente de diagnostic": 25, "En cours de réparation": 50, 
+                           "Réparation terminée": 100, "Clôturé": 100}.get(t.get('statut',''), 0)
                 st.progress(progress / 100)
             else:
-                st.error("Ticket non trouvé ou numéro de telephone incorrect")
+                st.error("Ticket non trouvé ou numéro de téléphone incorrect")
         else:
             st.warning("Veuillez remplir les deux champs")
     
@@ -2335,14 +2460,14 @@ def ui_home():
     st.markdown("""
     <div style="text-align:center; padding:2rem 0;">
         <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3.5rem; font-weight: 800; letter-spacing: -2px;">KLIKPHONE</div>
-        <p style="color:#6b7280; font-size:1rem; margin-top:0.5rem;">79 Place Saint Leger, Chambery - 04 79 60 89 22</p>
+        <p style="color:#6b7280; font-size:1rem; margin-top:0.5rem;">79 Place Saint Léger, Chambéry - 04 79 60 89 22</p>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("CLIENT\n\nDeposer un appareil", key="go_client", use_container_width=True, type="primary"):
+        if st.button("CLIENT\n\nDéposer un appareil", key="go_client", use_container_width=True, type="primary"):
             st.session_state.mode = "client"
             st.rerun()
     
@@ -2352,7 +2477,7 @@ def ui_home():
             st.rerun()
     
     with col3:
-        if st.button("TECHNICIEN\n\nSuivi reparations", key="go_tech", use_container_width=True):
+        if st.button("TECHNICIEN\n\nSuivi réparations", key="go_tech", use_container_width=True):
             st.session_state.mode = "auth_tech"
             st.rerun()
     
@@ -2387,7 +2512,7 @@ def ui_home():
     
     col_left, col_center, col_right = st.columns([1, 2, 1])
     with col_center:
-        if st.button("Suivre ma reparation", use_container_width=True, key="go_suivi"):
+        if st.button("Suivre ma réparation", use_container_width=True, key="go_suivi"):
             st.session_state.mode = "suivi"
             st.rerun()
 
@@ -2447,3 +2572,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+   
