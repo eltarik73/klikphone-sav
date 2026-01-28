@@ -110,440 +110,694 @@ MODELES = {
 }
 
 # =============================================================================
-# CSS STYLE KLIKPHONE - DESIGN MODERNE ÉPURÉ
+# CSS DESIGN SYSTEM - SAAS PREMIUM (Notion/Stripe/Linear inspired)
 # =============================================================================
 def load_css():
     st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ============================================
+   KLIKPHONE SAV - DESIGN SYSTEM v2.0
+   Inspiration: Notion + Stripe + Linear
+   Minimal • Clean • Professional
+   ============================================ */
 
+/* === TYPOGRAPHY === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* === DESIGN TOKENS === */
 :root {
-    --klik-orange: #fb923c;
-    --klik-orange-dark: #ea580c;
-    --klik-orange-light: #ffedd5;
-    --klik-bg: #f8fafc;
-    --klik-white: #ffffff;
-    --klik-gray-50: #f9fafb;
-    --klik-gray-100: #f3f4f6;
-    --klik-gray-200: #e5e7eb;
-    --klik-gray-300: #d1d5db;
-    --klik-gray-500: #6b7280;
-    --klik-gray-700: #374151;
-    --klik-gray-900: #111827;
-    --klik-red: #ef4444;
-    --klik-green: #10b981;
-    --klik-blue: #3b82f6;
-    --klik-yellow: #fbbf24;
+    /* Brand */
+    --brand-50: #fff7ed;
+    --brand-100: #ffedd5;
+    --brand-200: #fed7aa;
+    --brand-300: #fdba74;
+    --brand-400: #fb923c;
+    --brand-500: #f97316;
+    --brand-600: #ea580c;
+    
+    /* Neutrals */
+    --neutral-0: #ffffff;
+    --neutral-50: #fafafa;
+    --neutral-100: #f5f5f5;
+    --neutral-200: #e5e5e5;
+    --neutral-300: #d4d4d4;
+    --neutral-400: #a3a3a3;
+    --neutral-500: #737373;
+    --neutral-600: #525252;
+    --neutral-700: #404040;
+    --neutral-800: #262626;
+    --neutral-900: #171717;
+    
+    /* Semantic */
+    --success-light: #ecfdf5;
+    --success: #10b981;
+    --success-dark: #059669;
+    --warning-light: #fffbeb;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --error-light: #fef2f2;
+    --error: #ef4444;
+    --error-dark: #dc2626;
+    --info-light: #eff6ff;
+    --info: #3b82f6;
+    --info-dark: #2563eb;
+    
+    /* Spacing (4px base) */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --sp-10: 40px;
+    --sp-12: 48px;
+    
+    /* Radius */
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-full: 9999px;
+    
+    /* Shadows */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    /* Typography */
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
 }
 
-* { font-family: 'Inter', sans-serif !important; }
-
-.stApp { 
-    background-color: var(--klik-bg) !important;
+/* === RESET === */
+*, *::before, *::after {
+    font-family: var(--font) !important;
+    box-sizing: border-box;
 }
 
-#MainMenu, footer, header, .stDeployButton { display: none !important; }
-
-/* Container style moderne */
-.staff-container {
-    background: var(--klik-white);
-    padding: 2rem;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    max-width: 1200px;
-    margin: 1.5rem auto;
-    border: 1px solid var(--klik-gray-200);
+/* === STREAMLIT OVERRIDES === */
+.stApp {
+    background: var(--neutral-50) !important;
 }
 
-/* Titre page style */
-.page-title {
-    text-align: center;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--klik-orange-dark);
-    margin-bottom: 2rem;
+#MainMenu, footer, header, .stDeployButton,
+[data-testid="stToolbar"], [data-testid="stDecoration"],
+.viewerBadge_container__r5tak { 
+    display: none !important; 
 }
 
-/* Section title */
-.section-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--klik-gray-900);
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid var(--klik-orange);
+.main .block-container {
+    padding: var(--sp-6) var(--sp-6) !important;
+    max-width: 1400px !important;
 }
 
-/* Boutons orange Klikphone */
-.stButton > button {
-    font-family: 'Inter', sans-serif !important;
+/* === TYPOGRAPHY === */
+h1, h2, h3 {
+    color: var(--neutral-900) !important;
     font-weight: 600 !important;
-    padding: 0.75rem 1.5rem !important;
-    border-radius: 10px !important;
-    transition: all 0.2s ease !important;
+    letter-spacing: -0.02em !important;
+}
+
+.page-header {
+    margin-bottom: var(--sp-6);
+}
+
+.page-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--neutral-900);
+    margin: 0;
+    letter-spacing: -0.025em;
+}
+
+.page-subtitle {
+    font-size: var(--text-sm);
+    color: var(--neutral-500);
+    margin-top: var(--sp-1);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--neutral-800);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+/* === CARDS === */
+.card {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5);
+    transition: all 0.15s ease;
+}
+
+.card:hover {
+    border-color: var(--neutral-300);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-elevated {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-xl);
+    padding: var(--sp-6);
+    box-shadow: var(--shadow-sm);
+}
+
+/* KPI Cards */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+}
+
+.kpi-card {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5);
+    transition: all 0.15s ease;
+}
+
+.kpi-card:hover {
+    border-color: var(--brand-300);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.kpi-label {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--sp-2);
+}
+
+.kpi-value {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--neutral-900);
+    line-height: 1;
+}
+
+.kpi-value.brand { color: var(--brand-500); }
+.kpi-value.success { color: var(--success); }
+.kpi-value.warning { color: var(--warning); }
+.kpi-value.info { color: var(--info); }
+
+/* === STATUS BADGES === */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-full);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-diagnostic {
+    background: var(--warning-light);
+    color: var(--warning-dark);
+}
+.status-diagnostic::before { background: var(--warning); }
+
+.status-encours {
+    background: var(--info-light);
+    color: var(--info-dark);
+}
+.status-encours::before { background: var(--info); }
+
+.status-termine {
+    background: var(--success-light);
+    color: var(--success-dark);
+}
+.status-termine::before { background: var(--success); }
+
+.status-rendu {
+    background: var(--success);
+    color: white;
+}
+.status-rendu::before { background: rgba(255,255,255,0.6); }
+
+.status-cloture {
+    background: var(--neutral-100);
+    color: var(--neutral-600);
+}
+.status-cloture::before { background: var(--neutral-400); }
+
+/* === TICKET LIST === */
+.ticket-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.ticket-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-md);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.ticket-row:hover {
+    border-color: var(--brand-300);
+    background: var(--brand-50);
+    transform: translateX(4px);
+}
+
+.ticket-code {
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace !important;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--brand-600);
+    min-width: 100px;
+}
+
+.ticket-client {
+    font-weight: 500;
+    color: var(--neutral-900);
+    flex: 1;
+}
+
+.ticket-device {
+    font-size: var(--text-sm);
+    color: var(--neutral-500);
+    flex: 1;
+}
+
+.ticket-date {
+    font-size: var(--text-xs);
+    color: var(--neutral-400);
+    min-width: 80px;
+}
+
+.ticket-alert {
+    background: var(--error-light);
+    color: var(--error-dark);
+    padding: 2px 8px;
+    border-radius: var(--r-sm);
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+/* === TABLE HEADER === */
+.table-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--neutral-100);
+    border-radius: var(--r-md);
+    margin-bottom: var(--sp-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* === BUTTONS === */
+.stButton > button {
+    font-family: var(--font) !important;
+    font-weight: 500 !important;
+    font-size: var(--text-sm) !important;
+    padding: 8px 16px !important;
+    border-radius: var(--r-md) !important;
+    transition: all 0.15s ease !important;
     border: none !important;
 }
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
+    background: var(--brand-500) !important;
     color: white !important;
-    box-shadow: 0 2px 8px rgba(249,115,22,0.3) !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 .stButton > button[data-testid="baseButton-primary"]:hover {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    background: var(--brand-600) !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(249,115,22,0.4) !important;
+    box-shadow: var(--shadow-md) !important;
 }
 
 .stButton > button[kind="secondary"],
 .stButton > button[data-testid="baseButton-secondary"] {
-    background: var(--klik-gray-100) !important;
-    color: var(--klik-gray-700) !important;
-    border: 1px solid var(--klik-gray-300) !important;
+    background: var(--neutral-0) !important;
+    color: var(--neutral-700) !important;
+    border: 1px solid var(--neutral-300) !important;
 }
 
 .stButton > button[kind="secondary"]:hover,
 .stButton > button[data-testid="baseButton-secondary"]:hover {
-    background: var(--klik-gray-200) !important;
+    background: var(--neutral-50) !important;
+    border-color: var(--neutral-400) !important;
 }
 
-/* Inputs style */
+/* === FORM INPUTS === */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
-    border: 1px solid var(--klik-gray-300) !important;
-    padding: 0.75rem 1rem !important;
-    border-radius: 10px !important;
-    background-color: white !important;
-    transition: all 0.2s ease !important;
-    font-size: 15px !important;
-    color: var(--klik-gray-900) !important;
-}
-
-/* Selectbox */
-.stSelectbox > div > div {
-    border: 1px solid var(--klik-gray-300) !important;
-    border-radius: 10px !important;
-    background-color: white !important;
-}
-
-.stSelectbox > div > div > div {
-    padding: 0.75rem 1rem !important;
-    font-size: 15px !important;
-    color: var(--klik-gray-900) !important;
-    min-height: 48px !important;
+    border: 1px solid var(--neutral-300) !important;
+    border-radius: var(--r-md) !important;
+    padding: 10px 12px !important;
+    font-size: var(--text-sm) !important;
+    background: var(--neutral-0) !important;
+    transition: all 0.15s ease !important;
 }
 
 .stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--brand-400) !important;
+    box-shadow: 0 0 0 3px var(--brand-100) !important;
+    outline: none !important;
+}
+
+.stTextInput > div > div > input::placeholder {
+    color: var(--neutral-400) !important;
+}
+
+.stSelectbox > div > div {
+    border: 1px solid var(--neutral-300) !important;
+    border-radius: var(--r-md) !important;
+    background: var(--neutral-0) !important;
+}
+
+.stSelectbox > div > div > div {
+    padding: 8px 12px !important;
+    font-size: var(--text-sm) !important;
+    min-height: 40px !important;
+}
+
 .stSelectbox > div > div:focus-within {
-    border-color: var(--klik-orange) !important;
-    box-shadow: 0 0 0 3px rgba(251,146,60,0.15) !important;
+    border-color: var(--brand-400) !important;
+    box-shadow: 0 0 0 3px var(--brand-100) !important;
 }
 
-/* Status badges */
-.status-badge {
-    padding: 0.35rem 0.85rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    white-space: nowrap;
-    letter-spacing: 0.3px;
-    display: inline-block;
+/* Labels */
+.stTextInput > label, .stTextArea > label,
+.stSelectbox > label, .stNumberInput > label {
+    font-size: var(--text-sm) !important;
+    font-weight: 500 !important;
+    color: var(--neutral-700) !important;
 }
 
-.status-diagnostic { background-color: #fef3c7; color: #d97706; }
-.status-encours { background-color: #dbeafe; color: #2563eb; }
-.status-termine { background-color: #d1fae5; color: #065f46; }
-.status-rendu { background-color: #10b981; color: #ffffff; }
-.status-clôturé { background-color: #f3f4f6; color: #6b7280; }
-
-/* Table style portail */
-.repair-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
-
-.repair-table th, .repair-table td {
-    border: 1px solid var(--klik-gray-200);
-    padding: 0.75rem;
-    text-align: left;
-    vertical-align: middle;
-    font-size: 0.9rem;
-}
-
-.repair-table th {
-    background-color: var(--klik-gray-100);
-    font-weight: 600;
-    color: var(--klik-gray-700);
-}
-
-.repair-table tr:hover {
-    background-color: var(--klik-gray-100);
-}
-
-/* Summary items */
-.summary-item {
-    margin-bottom: 0.75rem;
-    display: flex;
-}
-
-.summary-label {
-    font-weight: 600;
-    color: var(--klik-gray-700);
-    min-width: 140px;
-}
-
-.summary-value {
-    color: var(--klik-gray-500);
-}
-
-/* Welcome screen fullscreen */
-.fullscreen-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--klik-white);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 2rem;
-    text-align: center;
-}
-
-.fullscreen-title {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: var(--klik-gray-900);
-    margin-bottom: 1rem;
-}
-
-.fullscreen-message {
-    font-size: 1.15rem;
-    color: var(--klik-gray-500);
-    margin-bottom: 2.5rem;
-    max-width: 550px;
-    line-height: 1.7;
-}
-
-/* Form container style */
-.form-container {
-    background-color: var(--klik-white);
-    padding: 2.5rem;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-    max-width: 800px;
-    margin: 2rem auto;
-    border-top: 6px solid var(--klik-orange);
-}
-
-/* Klikphone header */
-.klik-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.klik-title {
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: var(--klik-orange-dark);
-}
-
-.klik-subtitle {
-    text-align: center;
-    color: var(--klik-gray-500);
-    font-size: 1.1rem;
-    margin-bottom: 2rem;
-}
-
-/* Pattern grid */
-.pattern-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    width: 140px;
-    margin: 0.5rem auto;
-    padding: 10px;
-    border: 1px solid var(--klik-gray-200);
-    border-radius: 8px;
-    background-color: var(--klik-gray-100);
-}
-
-.pattern-dot {
-    width: 28px;
-    height: 28px;
-    background-color: var(--klik-gray-200);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    color: white;
-    font-weight: bold;
-}
-
-.pattern-dot.active {
-    background-color: var(--klik-orange);
-}
-
-/* Success screen */
-.success-overlay {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    padding: 3rem;
-    border-radius: 16px;
-    text-align: center;
-    margin: 2rem 0;
-}
-
-.success-overlay h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.success-overlay .ticket-code {
-    font-size: 2rem;
-    font-weight: 700;
-    background: rgba(255,255,255,0.2);
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    display: inline-block;
-    margin: 1rem 0;
-}
-
-/* Ticket impression */
-.ticket-container {
-    background-color: var(--klik-white);
-    padding: 1rem;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    max-width: 400px;
-    margin: 1rem auto;
-    border: 1px solid var(--klik-gray-200);
-    font-size: 0.85rem;
-}
-
-.ticket-container h1 {
-    color: var(--klik-gray-900);
-    font-size: 1.4rem;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 0.4rem;
-}
-
-.ticket-container h2 {
-    color: var(--klik-gray-900);
-    font-size: 1rem;
-    font-weight: 700;
-    border-bottom: 1px solid #000;
-    padding-bottom: 0.5rem;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-    text-align: center;
-}
-
-.info-item {
-    font-size: 0.85rem;
-    color: var(--klik-gray-500);
-    margin-bottom: 0.3rem;
-}
-
-.info-item strong {
-    color: var(--klik-gray-900);
-    font-weight: 500;
-}
-
-.disclaimer {
-    font-size: 0.65rem;
-    font-style: italic;
-    color: var(--klik-gray-500);
-    margin-top: 1rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--klik-gray-300);
-    line-height: 1.3;
-}
-
-.closing-message {
-    text-align: center;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--klik-gray-900);
-    margin-top: 1rem;
-}
-
-/* Staff section jaune */
-.staff-section {
-    background-color: #fffbeb;
-    border: 1px solid var(--klik-yellow);
-    border-radius: 6px;
-    padding: 1rem;
-    margin: 0.5rem 0;
-}
-
-/* Progress bar orange */
-.stProgress > div > div > div {
-    background: linear-gradient(90deg, var(--klik-orange), var(--klik-orange-dark)) !important;
-}
-
-/* Tabs orange */
+/* === TABS === */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 0.5rem;
-    background: transparent;
-    border-bottom: 2px solid var(--klik-gray-200);
+    background: var(--neutral-100) !important;
+    padding: 4px !important;
+    border-radius: var(--r-lg) !important;
+    gap: 4px !important;
 }
 
 .stTabs [data-baseweb="tab"] {
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
-    color: var(--klik-gray-500);
-    border: none;
-    background: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
+    padding: 8px 16px !important;
+    font-size: var(--text-sm) !important;
+    font-weight: 500 !important;
+    color: var(--neutral-600) !important;
+    background: transparent !important;
+    border-radius: var(--r-md) !important;
+    border: none !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    color: var(--neutral-900) !important;
+    background: var(--neutral-50) !important;
 }
 
 .stTabs [aria-selected="true"] {
-    color: var(--klik-orange-dark) !important;
-    border-bottom-color: var(--klik-orange) !important;
-    background: none !important;
+    background: var(--neutral-0) !important;
+    color: var(--neutral-900) !important;
+    box-shadow: var(--shadow-sm) !important;
 }
 
-/* Expander */
+.stTabs [data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-border"] {
+    display: none !important;
+}
+
+/* === EXPANDER === */
 .streamlit-expanderHeader {
-    background: var(--klik-gray-100) !important;
-    border-radius: 8px !important;
+    font-size: var(--text-sm) !important;
+    font-weight: 600 !important;
+    color: var(--neutral-700) !important;
+    background: var(--neutral-50) !important;
+    border-radius: var(--r-md) !important;
+    padding: var(--sp-3) var(--sp-4) !important;
+    border: 1px solid var(--neutral-200) !important;
 }
 
-/* Mobile */
+.streamlit-expanderContent {
+    border: 1px solid var(--neutral-200) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--r-md) var(--r-md) !important;
+    padding: var(--sp-4) !important;
+    background: var(--neutral-0) !important;
+}
+
+/* === PROGRESS === */
+.stProgress > div > div {
+    background: var(--neutral-200) !important;
+    border-radius: var(--r-full) !important;
+    height: 8px !important;
+}
+
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, var(--brand-400), var(--brand-500)) !important;
+    border-radius: var(--r-full) !important;
+}
+
+/* === METRICS === */
+[data-testid="stMetricValue"] {
+    font-size: var(--text-2xl) !important;
+    font-weight: 700 !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: var(--text-sm) !important;
+    font-weight: 500 !important;
+    color: var(--neutral-500) !important;
+}
+
+/* === ALERTS === */
+.stAlert {
+    border-radius: var(--r-md) !important;
+    border: none !important;
+    padding: var(--sp-4) !important;
+}
+
+.stSuccess { background: var(--success-light) !important; }
+.stWarning { background: var(--warning-light) !important; }
+.stError { background: var(--error-light) !important; }
+.stInfo { background: var(--info-light) !important; }
+
+/* === DIVIDERS === */
+hr {
+    border: none !important;
+    height: 1px !important;
+    background: var(--neutral-200) !important;
+    margin: var(--sp-5) 0 !important;
+}
+
+/* === FILTER BAR === */
+.filter-bar {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-lg);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+}
+
+/* === NAV HEADER === */
+.nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--neutral-0);
+    border-bottom: 1px solid var(--neutral-200);
+    margin: calc(-1 * var(--sp-6)) calc(-1 * var(--sp-6)) var(--sp-5);
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.nav-logo-text {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--brand-600);
+    letter-spacing: -0.02em;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+/* === DETAIL SECTIONS === */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-4);
+}
+
+.detail-card {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5);
+}
+
+.detail-card-header {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--neutral-800);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--neutral-100);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--neutral-100);
+}
+
+.detail-row:last-child { border-bottom: none; }
+
+.detail-label {
+    font-size: var(--text-sm);
+    color: var(--neutral-500);
+}
+
+.detail-value {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--neutral-900);
+}
+
+/* === PRICE BOX === */
+.price-box {
+    background: linear-gradient(135deg, var(--brand-50), var(--neutral-0));
+    border: 2px solid var(--brand-200);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5);
+}
+
+.price-total {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--brand-600);
+}
+
+.price-label {
+    font-size: var(--text-sm);
+    color: var(--neutral-500);
+}
+
+/* === EMPTY STATE === */
+.empty-state {
+    text-align: center;
+    padding: var(--sp-12) var(--sp-6);
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: var(--sp-4);
+    opacity: 0.4;
+}
+
+.empty-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--neutral-700);
+    margin-bottom: var(--sp-2);
+}
+
+.empty-text {
+    font-size: var(--text-sm);
+    color: var(--neutral-500);
+}
+
+/* === RESPONSIVE === */
 @media (max-width: 768px) {
-    .stButton > button {
-        min-height: 50px !important;
-        font-size: 14px !important;
+    .main .block-container {
+        padding: var(--sp-4) !important;
     }
-    input, textarea, select {
-        font-size: 16px !important;
+    
+    .detail-grid {
+        grid-template-columns: 1fr;
     }
-    .klik-title {
-        font-size: 2rem;
+    
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
-    .form-container, .staff-container {
-        margin: 1rem;
-        padding: 1.5rem;
+    
+    .ticket-row {
+        flex-wrap: wrap;
+    }
+    
+    .nav-header {
+        flex-direction: column;
+        gap: var(--sp-3);
+    }
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* === PRINT === */
+@media print {
+    .stButton, .nav-header, .stTabs [data-baseweb="tab-list"] {
+        display: none !important;
     }
 }
 </style>
 """, unsafe_allow_html=True)
-
 # =============================================================================
 # DATABASE
 # =============================================================================
@@ -1781,20 +2035,59 @@ def client_step6():
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
 # =============================================================================
 def ui_accueil():
-    col1, col2, col3 = st.columns([5, 1, 1])
-    with col1:
-        st.markdown("<h1 class='page-title'>Liste des Demandes de Réparation</h1>", unsafe_allow_html=True)
-    with col2:
-        if st.button("🔧 Technicien", key="goto_tech", type="secondary"):
+    # === HEADER NAV ===
+    st.markdown(f"""
+    <div class="nav-header">
+        <div class="nav-logo">
+            <img src="data:image/png;base64,{LOGO_B64}" style="width:36px;height:36px;">
+            <span class="nav-logo-text">KLIKPHONE</span>
+            <span style="color:var(--neutral-400);font-size:var(--text-sm);margin-left:8px;">SAV Manager</span>
+        </div>
+        <div class="nav-actions" id="nav-btns"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Boutons navigation
+    col_spacer, col_tech, col_logout = st.columns([8, 1, 1])
+    with col_tech:
+        if st.button("🔧 Tech", key="goto_tech", type="secondary", use_container_width=True):
             st.session_state.mode = "tech"
             st.rerun()
-    with col3:
-        if st.button("🚪 Déconnexion", key="logout_acc"):
+    with col_logout:
+        if st.button("Sortir", key="logout_acc", type="secondary", use_container_width=True):
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
     
-    # Tabs
+    # === KPI CARDS ===
+    all_tickets = chercher_tickets()
+    nb_total = len(all_tickets)
+    nb_attente = len([t for t in all_tickets if t.get('statut') == "En attente de diagnostic"])
+    nb_encours = len([t for t in all_tickets if t.get('statut') == "En cours de réparation"])
+    nb_termine = len([t for t in all_tickets if t.get('statut') == "Réparation terminée"])
+    
+    st.markdown(f"""
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Total tickets</div>
+            <div class="kpi-value">{nb_total}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">En attente</div>
+            <div class="kpi-value warning">{nb_attente}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">En réparation</div>
+            <div class="kpi-value info">{nb_encours}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Terminés</div>
+            <div class="kpi-value success">{nb_termine}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # === TABS ===
     tab1, tab2, tab3, tab4 = st.tabs(["📋 Demandes", "➕ Nouvelle", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
@@ -1812,21 +2105,20 @@ def staff_liste_demandes():
         staff_traiter_demande(st.session_state.edit_id)
         return
     
-    # Filtres et tri
-    col1, col2, col3, col4, col5, col6 = st.columns([2, 1.5, 1.5, 1.5, 1.5, 1])
+    # === FILTER BAR ===
+    st.markdown('<div class="filter-bar">', unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
     with col1:
-        f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="f_statut")
+        f_statut = st.selectbox("Filtrer par statut", ["Tous"] + STATUTS, key="f_statut", label_visibility="collapsed")
     with col2:
-        f_code = st.text_input("N° Ticket", key="f_code", placeholder="KP-...")
+        f_code = st.text_input("N° Ticket", key="f_code", placeholder="🔍 KP-...", label_visibility="collapsed")
     with col3:
-        f_tel = st.text_input("Téléphone", key="f_tel", placeholder="06...")
+        f_tel = st.text_input("Téléphone", key="f_tel", placeholder="📞 06...", label_visibility="collapsed")
     with col4:
-        f_nom = st.text_input("Nom", key="f_nom", placeholder="Nom client")
+        f_nom = st.text_input("Nom", key="f_nom", placeholder="👤 Nom client", label_visibility="collapsed")
     with col5:
-        tri = st.selectbox("Trier", ["Récent", "Ancien", "Statut"], key="f_tri")
-    with col6:
-        st.markdown("<br>", unsafe_allow_html=True)
-        rechercher = st.button("🔍", key="btn_rechercher", type="primary", use_container_width=True)
+        tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="f_tri", label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Recherche avec les filtres
     tickets = chercher_tickets(
@@ -1837,14 +2129,14 @@ def staff_liste_demandes():
     )
     
     # Appliquer le tri
-    if tri == "Ancien":
+    if "Ancien" in tri:
         tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
-    elif tri == "Statut":
+    elif "Statut" in tri:
         ordre_statut = {s: i for i, s in enumerate(STATUTS)}
         tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
     
     # Pagination
-    ITEMS_PER_PAGE = 5
+    ITEMS_PER_PAGE = 8
     total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
     
     if "accueil_page" not in st.session_state:
@@ -1855,67 +2147,91 @@ def staff_liste_demandes():
     end_idx = start_idx + ITEMS_PER_PAGE
     tickets_page = tickets[start_idx:end_idx]
     
-    st.markdown(f"**{len(tickets)} demande(s)** - Page {current_page}/{total_pages}")
-    st.markdown("---")
+    # Header avec compteur
+    st.markdown(f"""
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:var(--text-sm);color:var(--neutral-500);">{len(tickets)} ticket(s) trouvé(s)</span>
+        <span style="font-size:var(--text-sm);color:var(--neutral-400);">Page {current_page}/{total_pages}</span>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # En-tete du tableau
+    # Table header
     st.markdown("""
-    <div style="display:flex; background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; font-size:0.9rem;">
-        <div style="flex:1.2;">Ticket</div>
-        <div style="flex:1.5;">Client</div>
-        <div style="flex:1.5;">Appareil</div>
-        <div style="flex:1;">Date</div>
-        <div style="flex:1.5;">Statut</div>
-        <div style="flex:1;">Message</div>
-        <div style="flex:0.8;">Action</div>
+    <div class="table-header">
+        <div style="min-width:90px;">Ticket</div>
+        <div style="flex:1;">Client</div>
+        <div style="flex:1;">Appareil</div>
+        <div style="min-width:80px;">Date</div>
+        <div style="min-width:140px;">Statut</div>
+        <div style="min-width:100px;">Note</div>
+        <div style="min-width:70px;">Action</div>
     </div>
     """, unsafe_allow_html=True)
     
     # Liste des tickets
-    for t in tickets_page:
-        status_class = get_status_class(t.get('statut', ''))
-        modèle = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
-        
-        # Message technicien a transmettre ?
-        has_message = t.get('commentaire_client')
-        
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.5, 1.5, 1, 1.5, 1, 0.8])
-        with col1:
-            st.markdown(f"**{t['ticket_code']}**")
-        with col2:
-            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')[:10]}")
-        with col3:
-            st.write(modèle[:20])
-        with col4:
-            st.write(fmt_date(t.get('date_depot',''))[:10])
-        with col5:
-            st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:15]}</span>", unsafe_allow_html=True)
-        with col6:
-            if has_message:
-                st.markdown("<span style='color:red; font-weight:bold;'>A TRANSMETTRE</span>", unsafe_allow_html=True)
-            else:
-                st.write("-")
-        with col7:
-            if st.button("Ouvrir", key=f"process_{t['id']}"):
-                st.session_state.edit_id = t['id']
-                st.rerun()
-        st.markdown("<hr style='margin:5px 0;border-color:#eee;'>", unsafe_allow_html=True)
+    if not tickets_page:
+        st.markdown("""
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Aucun ticket trouvé</div>
+            <div class="empty-text">Modifiez vos filtres ou créez un nouveau ticket</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        for t in tickets_page:
+            status_class = get_status_class(t.get('statut', ''))
+            modele = f"{t.get('marque','')} {t.get('modele','')}"
+            if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
+            modele = modele[:25] + "..." if len(modele) > 25 else modele
+            
+            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}"
+            client_nom = client_nom[:20] + "..." if len(client_nom) > 20 else client_nom
+            
+            has_message = t.get('commentaire_client')
+            date_short = fmt_date(t.get('date_depot',''))[:10]
+            
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.5, 1.5, 1, 1.8, 1.2, 0.8])
+            with col1:
+                st.markdown(f"<span class='ticket-code'>{t['ticket_code']}</span>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"<span class='ticket-client'>{client_nom}</span>", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"<span class='ticket-device'>{modele}</span>", unsafe_allow_html=True)
+            with col4:
+                st.markdown(f"<span class='ticket-date'>{date_short}</span>", unsafe_allow_html=True)
+            with col5:
+                st.markdown(f"<span class='badge {status_class}'>{t.get('statut','')}</span>", unsafe_allow_html=True)
+            with col6:
+                if has_message:
+                    st.markdown("<span class='ticket-alert'>📢 Message</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<span style='color:var(--neutral-300);'>—</span>", unsafe_allow_html=True)
+            with col7:
+                if st.button("Ouvrir", key=f"process_{t['id']}", type="primary", use_container_width=True):
+                    st.session_state.edit_id = t['id']
+                    st.rerun()
+            
+            st.markdown("<div style='height:1px;background:var(--neutral-100);margin:8px 0;'></div>", unsafe_allow_html=True)
     
     # Navigation pagination
     if total_pages > 1:
-        st.markdown("---")
+        st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
         col_prev, col_pages, col_next = st.columns([1, 3, 1])
         with col_prev:
             if current_page > 1:
-                if st.button("< Précédent", key="accueil_prev"):
+                if st.button("← Précédent", key="accueil_prev", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page - 1
                     st.rerun()
         with col_pages:
-            st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
+            # Indicateurs de pages
+            pages_html = " ".join([
+                f"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:{'var(--brand-500)' if i+1 == current_page else 'var(--neutral-300)'};margin:0 3px;'></span>"
+                for i in range(min(total_pages, 10))
+            ])
+            st.markdown(f"<div style='text-align:center;padding:8px 0;'>{pages_html}</div>", unsafe_allow_html=True)
         with col_next:
             if current_page < total_pages:
-                if st.button("Suivant >", key="accueil_next"):
+                if st.button("Suivant →", key="accueil_next", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page + 1
                     st.rerun()
 
@@ -1925,105 +2241,140 @@ def staff_traiter_demande(tid):
         st.error("Demande non trouvée")
         return
     
-    # Bouton retour en haut
-    col_back, col_title = st.columns([1, 5])
+    # === HEADER ===
+    status_class = get_status_class(t.get('statut', ''))
+    modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+    if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
+    
+    col_back, col_info = st.columns([1, 6])
     with col_back:
-        if st.button("← Retour", key="close_process", type="secondary"):
+        if st.button("← Retour", key="close_process", type="secondary", use_container_width=True):
             st.session_state.edit_id = None
             st.rerun()
-    with col_title:
-        st.markdown(f"### Ticket {t['ticket_code']}")
     
-    status_class = get_status_class(t.get('statut', ''))
-    st.markdown(f"<span class='status-badge {status_class}' style='font-size:1.1rem;'>{t.get('statut','')}</span>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+        <div>
+            <span style="font-size:var(--text-2xl);font-weight:700;color:var(--neutral-900);">{t['ticket_code']}</span>
+            <span style="margin-left:16px;font-size:var(--text-base);color:var(--neutral-500);">{t.get('client_nom','')} {t.get('client_prenom','')}</span>
+        </div>
+        <span class="badge {status_class}" style="font-size:var(--text-sm);padding:8px 16px;">{t.get('statut','')}</span>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    # === GRID LAYOUT ===
+    col1, col2 = st.columns([1, 1], gap="large")
     
-    col1, col2 = st.columns(2)
-    
+    # === COLONNE GAUCHE: Infos ===
     with col1:
-        st.markdown("<p class='section-title'>Résumé Client</p>", unsafe_allow_html=True)
-        
-        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
+        # Card Client
+        st.markdown("""<div class="detail-card-header">👤 Informations Client</div>""", unsafe_allow_html=True)
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         st.markdown(f"""
-        <div class="summary-item"><span class="summary-label">Nom:</span><span class="summary-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span></div>
-        <div class="summary-item"><span class="summary-label">Téléphone:</span><span class="summary-value">{t.get('client_tel','')}</span></div>
-        <div class="summary-item"><span class="summary-label">Email:</span><span class="summary-value">{t.get('client_email') or 'N/A'}</span></div>
-        <div class="summary-item"><span class="summary-label">Appareil:</span><span class="summary-value">{modele_txt}</span></div>
-        <div class="summary-item"><span class="summary-label">Motif:</span><span class="summary-value">{panne}</span></div>
+        <div class="detail-card">
+            <div class="detail-row">
+                <span class="detail-label">Nom complet</span>
+                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Téléphone</span>
+                <span class="detail-value" style="font-family:monospace;">{t.get('client_tel','')}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Email</span>
+                <span class="detail-value">{t.get('client_email') or '—'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Appareil</span>
+                <span class="detail-value">{modele_txt}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Motif</span>
+                <span class="detail-value">{panne}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Déposé le</span>
+                <span class="detail-value">{fmt_date(t.get('date_depot',''))}</span>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
         
+        # Sécurité (si présent)
         if t.get('pin') or t.get('pattern'):
             st.markdown(f"""
-            <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 1rem; margin: 1rem 0;">
-                <strong>SÉCURITÉ</strong><br>
-                <div style="margin-top: 0.5rem;">Code PIN: {t.get('pin') or 'Aucun'}</div>
-                <div>Schéma: {t.get('pattern') or 'Aucun'}</div>
+            <div style="background:var(--warning-light);border:1px solid var(--warning);border-radius:var(--r-md);padding:16px;margin:16px 0;">
+                <div style="font-weight:600;color:var(--warning-dark);margin-bottom:8px;">🔐 Codes de sécurité</div>
+                <div style="font-size:var(--text-sm);">Code PIN: <strong>{t.get('pin') or 'Aucun'}</strong></div>
+                <div style="font-size:var(--text-sm);">Schéma: <strong>{t.get('pattern') or 'Aucun'}</strong></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Message technicien
+        if t.get('commentaire_client'):
+            st.markdown(f"""
+            <div style="background:var(--error-light);border:2px solid var(--error);border-radius:var(--r-md);padding:16px;margin:16px 0;">
+                <div style="font-weight:600;color:var(--error-dark);margin-bottom:8px;">⚠️ Message du technicien à transmettre</div>
+                <div style="font-style:italic;color:var(--neutral-700);">{t.get('commentaire_client')}</div>
             </div>
             """, unsafe_allow_html=True)
         
         # Notes internes
-        st.markdown("<p class='section-title' style='margin-top:1.5rem;'>Notes internes</p>", unsafe_allow_html=True)
-        st.text_area("", value=t.get('notes_internes') or "", disabled=True, height=100, key=f"notes_view_{tid}", label_visibility="collapsed")
+        st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="detail-card-header">📝 Notes internes</div>""", unsafe_allow_html=True)
+        st.text_area("", value=t.get('notes_internes') or "Aucune note", disabled=True, height=80, key=f"notes_view_{tid}", label_visibility="collapsed")
         
-        note = st.text_input("Ajouter une note", key=f"new_note_{tid}")
-        if st.button("Ajouter", key=f"add_note_{tid}"):
-            if note:
-                ajouter_note(tid, note)
-                st.success("Note ajoutée!")
-                st.rerun()
-        
-        # Commentaire pour le client (du technicien)
-        if t.get('commentaire_client'):
-            st.markdown(f"""
-            <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
-                <strong style="color:#dc2626;">⚠️ MESSAGE DU TECHNICIEN À TRANSMETTRE:</strong><br>
-                <span style="font-style:italic; margin-top:0.5rem; display:block;">{t.get('commentaire_client')}</span>
-            </div>
-            """, unsafe_allow_html=True)
+        col_note, col_add = st.columns([4, 1])
+        with col_note:
+            note = st.text_input("", placeholder="Ajouter une note...", key=f"new_note_{tid}", label_visibility="collapsed")
+        with col_add:
+            if st.button("Ajouter", key=f"add_note_{tid}", type="secondary", use_container_width=True):
+                if note:
+                    ajouter_note(tid, note)
+                    st.success("Note ajoutée!")
+                    st.rerun()
     
+    # === COLONNE DROITE: Actions ===
     with col2:
-        st.markdown("<p class='section-title'>Informations de Réparation</p>", unsafe_allow_html=True)
+        st.markdown("""<div class="detail-card-header">⚙️ Gestion de la réparation</div>""", unsafe_allow_html=True)
         
-        # Type de réparation (panne)
+        # Type de réparation
         panne_actuelle = t.get('panne', PANNES[0])
         idx_panne = PANNES.index(panne_actuelle) if panne_actuelle in PANNES else 0
-        new_panne = st.selectbox("Type de Réparation", PANNES, index=idx_panne, key=f"rep_type_{tid}")
+        new_panne = st.selectbox("Type de réparation", PANNES, index=idx_panne, key=f"rep_type_{tid}")
         
-        # Si "Autre" ou "Diagnostic" est sélectionné, afficher un champ pour préciser
         panne_detail = ""
         if new_panne in ["Autre", "Diagnostic"]:
-            panne_detail = st.text_input("Précisez la réparation à effectuer", 
+            panne_detail = st.text_input("Précisez la réparation", 
                                          value=t.get('panne_detail') or "",
-                                         placeholder="Ex: Remplacement connecteur Lightning, Soudure carte mère...",
+                                         placeholder="Ex: Remplacement connecteur...",
                                          key=f"panne_detail_{tid}")
         
-        # Personne en charge
         personne = st.text_input("Personne en charge", value=t.get('personne_charge') or "", key=f"personne_{tid}")
+        comment = st.text_area("Commentaire interne", placeholder="Ajouter un commentaire...", height=60, key=f"comment_{tid}")
         
-        # Commentaire interne (notes)
-        comment = st.text_area("Commentaire interne", value="", height=80, key=f"comment_{tid}")
+        # Tarifs avec design amélioré
+        st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="detail-card-header">💰 Tarification</div>""", unsafe_allow_html=True)
         
-        # Tarifs
         col_a, col_b = st.columns(2)
         with col_a:
-            devis = st.number_input("Devis Estimé TTC (€)", value=float(t.get('devis_estime') or 0), min_value=0.0, step=5.0, key=f"devis_{tid}")
+            devis = st.number_input("Devis TTC (€)", value=float(t.get('devis_estime') or 0), min_value=0.0, step=5.0, key=f"devis_{tid}")
         with col_b:
             acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
         
         # Statut
+        st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
         statut_actuel = t.get('statut', STATUTS[0])
         idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
-        new_statut = st.selectbox("Statut de la réparation", STATUTS, index=idx_statut, key=f"statut_{tid}")
+        new_statut = st.selectbox("Statut", STATUTS, index=idx_statut, key=f"statut_{tid}")
         
-        # Boutons
+        # Bouton principal
+        st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
-            if st.button("ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
+            if st.button("💾 ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
                 update_ticket(tid, panne=new_panne, panne_detail=panne_detail, personne_charge=personne, 
                              devis_estime=devis, acompte=acompte)
                 if comment:
