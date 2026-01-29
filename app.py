@@ -6722,126 +6722,109 @@ def staff_config():
             set_param("PIN_TECH", pin_tech)
             st.success("PIN mis à jour!")
 
+        st.markdown("---")
+        st.markdown("### 💾 Sauvegardes")
+        st.caption(
+            "Conseil : fais une sauvegarde avant chaque mise à jour, et régulièrement en exploitation. "
+            "Avec une base externe (ex: Supabase), la sauvegarde locale SQLite n'est plus pertinente."
+        )
 
-st.markdown("---")
-st.markdown("### 💾 Sauvegardes (base + config)")
-st.caption(
-    "Sur un hébergement **OVH mutualisé**, une application Streamlit \"vivante\" n'est pas le bon modèle : "
-    "privilégie un **VPS / Public Cloud** (SQLite persistante) ou une **base externe** si tu es sur Streamlit Cloud."
-)
-
-with st.expander("📦 Base de données (clients, tickets, commandes)", expanded=True):
-    st.caption(
-        f"Fichier SQLite actuel : `{DB_PATH}`. "
-        "Conseil : télécharge une sauvegarde régulièrement (et avant toute mise à jour)."
-    )
-
-    if _db_file_exists():
-        try:
-            with open(DB_PATH, "rb") as f:
-                db_bytes = f.read()
-            st.download_button(
-                "⬇️ Télécharger la sauvegarde (SQLite .db)",
-                data=db_bytes,
-                file_name="klikphone_sav_backup.db",
-                mime="application/octet-stream",
-                use_container_width=True,
-                key="dl_db_backup",
+        with st.expander("📦 Base de données (clients, tickets, commandes)", expanded=True):
+            st.caption(
+                f"Fichier SQLite actuel : `{DB_PATH}`. "
+                "Télécharge une sauvegarde régulièrement (et avant toute mise à jour)."
             )
-        except Exception as e:
-            st.error(f"Impossible de lire la base : {e}")
-    else:
-        st.warning("Aucune base SQLite trouvée (ou fichier vide).")
 
-    st.markdown("#### Restaurer une sauvegarde (.db)")
-    uploaded_db = st.file_uploader("Choisir un fichier .db", type=["db", "sqlite", "sqlite3"], key="u_db_restore")
-    confirm_restore = st.checkbox(
-        "Je confirme : remplacer la base actuelle par ce fichier",
-        value=False,
-        key="chk_restore_db",
-    )
+            if _db_file_exists():
+                try:
+                    with open(DB_PATH, "rb") as f:
+                        db_bytes = f.read()
+                    st.download_button(
+                        "⬇️ Télécharger la sauvegarde (SQLite .db)",
+                        data=db_bytes,
+                        file_name="klikphone_sav_backup.db",
+                        mime="application/octet-stream",
+                        use_container_width=True,
+                        key="dl_db_backup_cfgtab",
+                    )
+                except Exception as e:
+                    st.error(f"Impossible de lire la base : {e}")
+            else:
+                st.warning("Aucune base SQLite trouvée (ou fichier vide).")
 
-    if uploaded_db is not None and confirm_restore:
-        if st.button("♻️ Restaurer maintenant", type="primary", use_container_width=True, key="btn_restore_db"):
+            st.markdown("#### Restaurer une sauvegarde (.db)")
+            uploaded_db = st.file_uploader(
+                "Choisir un fichier .db",
+                type=["db", "sqlite", "sqlite3"],
+                key="u_db_restore_cfgtab"
+            )
+            confirm_restore = st.checkbox(
+                "Je confirme : remplacer la base actuelle par ce fichier",
+                value=False,
+                key="chk_restore_db_cfgtab",
+            )
+
+            if uploaded_db is not None and confirm_restore:
+                if st.button(
+                    "♻️ Restaurer maintenant",
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_restore_db_cfgtab"
+                ):
+                    try:
+                        _restore_db_from_upload(uploaded_db.getvalue())
+                        st.success("Base restaurée. L'application va se recharger.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Restauration impossible : {e}")
+
+        with st.expander("⚙️ Config (boutique, email, messages, catalogue, équipe, PIN)", expanded=False):
+            st.caption("Sauvegarde/restaure uniquement l'onglet **Config** (pas les clients/tickets).")
+
             try:
-                _restore_db_from_upload(uploaded_db.getvalue())
-                st.success("Base restaurée. L'application va se recharger.")
-                st.rerun()
+                cfg_bytes = _export_config_bundle()
+                st.download_button(
+                    "⬇️ Télécharger la config (JSON)",
+                    data=cfg_bytes,
+                    file_name="klikphone_config_backup.json",
+                    mime="application/json",
+                    use_container_width=True,
+                    key="dl_cfg_json_cfgtab",
+                )
             except Exception as e:
-                st.error(f"Restauration impossible : {e}")
+                st.error(f"Export config impossible : {e}")
 
-with st.expander("⚙️ Config (boutique, email, messages, catalogue, équipe, PIN)", expanded=False):
-    st.caption("Sauvegarde uniquement l'onglet **Config** (pas les clients/tickets).")
+            st.markdown("#### Restaurer une config (JSON)")
+            uploaded_cfg = st.file_uploader(
+                "Choisir un fichier .json",
+                type=["json"],
+                key="u_cfg_restore_cfgtab"
+            )
+            replace_all = st.checkbox(
+                "Remplacer entièrement la config (sinon : fusion/ajout)",
+                value=False,
+                key="chk_cfg_replace_cfgtab",
+            )
+            confirm_cfg = st.checkbox(
+                "Je confirme : appliquer cette config",
+                value=False,
+                key="chk_cfg_confirm_cfgtab",
+            )
+            if uploaded_cfg is not None and confirm_cfg:
+                if st.button(
+                    "♻️ Appliquer la config",
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_restore_cfg_cfgtab"
+                ):
+                    try:
+                        _import_config_bundle(uploaded_cfg.getvalue(), replace=replace_all)
+                        st.success("Config appliquée. L'application va se recharger.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Import config impossible : {e}")
 
-    try:
-        cfg_bytes = _export_config_bundle()
-        st.download_button(
-            "⬇️ Télécharger la config (JSON)",
-            data=cfg_bytes,
-            file_name="klikphone_config_backup.json",
-            mime="application/json",
-            use_container_width=True,
-            key="dl_cfg_json",
-        )
-    except Exception as e:
-        st.error(f"Export config impossible : {e}")
 
-    st.markdown("#### Restaurer une config (JSON)")
-    uploaded_cfg = st.file_uploader("Choisir un fichier .json", type=["json"], key="u_cfg_restore")
-    replace_all = st.checkbox(
-        "Remplacer entièrement la config (sinon : fusion/ajout)",
-        value=False,
-        key="chk_cfg_replace",
-    )
-    confirm_cfg = st.checkbox(
-        "Je confirme : appliquer cette config",
-        value=False,
-        key="chk_cfg_confirm",
-    )
-    if uploaded_cfg is not None and confirm_cfg:
-        if st.button("♻️ Appliquer la config", type="primary", use_container_width=True, key="btn_restore_cfg"):
-            try:
-                _import_config_bundle(uploaded_cfg.getvalue(), replace=replace_all)
-                st.success("Config appliquée. L'application va se recharger.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Import config impossible : {e}")
-st.markdown("---")
-st.markdown("### 💾 Sauvegarde / restauration des données")
-st.caption(
-    f"Base actuelle : `{DB_PATH}`. "
-    "Si tu héberges sur **Streamlit Community Cloud**, le stockage local est **éphémère** : "
-    "un reboot peut repartir d'un clone GitHub sans ton fichier SQLite."
-)
-
-if _db_file_exists():
-    try:
-        with open(DB_PATH, "rb") as f:
-            db_bytes = f.read()
-        st.download_button(
-            "⬇️ Télécharger la sauvegarde (SQLite .db)",
-            data=db_bytes,
-            file_name="klikphone_sav_backup.db",
-            mime="application/octet-stream",
-            use_container_width=True,
-        )
-    except Exception as e:
-        st.error(f"Impossible de lire la base : {e}")
-else:
-    st.warning("Aucun fichier de base SQLite trouvé à sauvegarder (fichier absent ou vide).")
-
-st.markdown("#### Restaurer une sauvegarde (.db)")
-uploaded = st.file_uploader("Choisir un fichier .db", type=["db", "sqlite", "sqlite3"])
-confirm_restore = st.checkbox("Je confirme : remplacer la base actuelle par ce fichier", value=False)
-
-if uploaded is not None and confirm_restore:
-    if st.button("♻️ Restaurer maintenant", type="primary", use_container_width=True):
-        try:
-            _restore_db_from_upload(uploaded.getvalue())
-            st.success("Base restaurée. L'application va se recharger.")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Restauration impossible : {e}")
 
 
 # =============================================================================
