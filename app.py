@@ -2919,6 +2919,112 @@ def ticket_devis_facture_html(t, doc_type="devis"):
 </html>
 """
 
+def ticket_combined_html(t):
+    """Génère les deux tickets (client + staff) avec saut de page pour impression thermique"""
+    ticket_client = ticket_client_html(t)
+    ticket_staff = ticket_staff_html(t)
+    
+    # Extraire le contenu du body de chaque ticket
+    import re
+    
+    # Pour le ticket client, extraire le contenu entre <body> et </body>
+    client_body = re.search(r'<body[^>]*>(.*?)</body>', ticket_client, re.DOTALL)
+    client_content = client_body.group(1) if client_body else ticket_client
+    
+    # Pour le ticket staff
+    staff_body = re.search(r'<body[^>]*>(.*?)</body>', ticket_staff, re.DOTALL)
+    staff_content = staff_body.group(1) if staff_body else ticket_staff
+    
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @media print {{
+            .page-break {{
+                page-break-after: always;
+                break-after: page;
+            }}
+            @page {{
+                margin: 0;
+                size: 58mm auto;
+            }}
+        }}
+        body {{
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 0;
+            padding: 0;
+        }}
+        .ticket-page {{
+            padding: 15px;
+            max-width: 300px;
+            margin: 0 auto;
+        }}
+        .print-btn {{
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 20px auto;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }}
+        .print-btn:hover {{
+            background: linear-gradient(135deg, #ea580c, #c2410c);
+        }}
+        @media print {{
+            .print-btn {{ display: none; }}
+            .no-print {{ display: none; }}
+        }}
+        .ticket {{ max-width: 300px; margin: 0 auto; background: #fff; border: 2px dashed #ccc; border-radius: 8px; padding: 15px; }}
+        .logo {{ text-align: center; margin-bottom: 5px; }}
+        .header {{ text-align: center; font-weight: bold; font-size: 18px; color: #f97316; margin-bottom: 5px; }}
+        .contact {{ text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #000; }}
+        .ticket-num {{ text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; padding: 5px; background: #fff3e0; border: 1px solid #f97316; }}
+        .date {{ text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; }}
+        .section {{ border-top: 1px solid #000; padding-top: 8px; margin-top: 8px; }}
+        .section-title {{ font-weight: bold; margin-bottom: 5px; }}
+        .qr-section {{ text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #000; }}
+        .footer {{ text-align: center; font-weight: bold; margin-top: 15px; padding-top: 10px; border-top: 1px solid #000; }}
+        .staff-tag {{ background: #4b5563; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; display: inline-block; }}
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center;padding:10px;background:#f8fafc;margin-bottom:10px;">
+        <strong>📄 TICKETS CLIENT + STAFF</strong>
+        <p style="color:#64748b;font-size:12px;">Les deux tickets seront imprimés sur des pages séparées</p>
+    </div>
+    
+    <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LES 2 TICKETS</button>
+    
+    <!-- TICKET CLIENT -->
+    <div class="ticket-page">
+        <div style="text-align:center;margin-bottom:10px;padding:5px;background:#fff7ed;border-radius:6px;">
+            <strong style="color:#ea580c;">🎫 TICKET CLIENT</strong>
+        </div>
+        {client_content}
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <!-- TICKET STAFF -->
+    <div class="ticket-page">
+        <div style="text-align:center;margin-bottom:10px;padding:5px;background:#f1f5f9;border-radius:6px;">
+            <strong style="color:#475569;">📋 TICKET STAFF</strong>
+        </div>
+        {staff_content}
+    </div>
+    
+</body>
+</html>
+"""
+
 # =============================================================================
 # INTERFACE CLIENT - STYLE PORTAIL KLIKPHONE
 # =============================================================================
@@ -3489,29 +3595,63 @@ def client_step5():
 
 def client_step6():
     """Étape 6: Coordonnées du client"""
+    import time
     
-    # Vérifier si un client existe déjà (popup)
+    # Vérifier si un client existe déjà (popup avec retour automatique)
     if st.session_state.get("client_exists_popup"):
         client_info = st.session_state.client_exists_popup
+        
+        # Timer pour retour automatique
+        if "client_exists_timestamp" not in st.session_state:
+            st.session_state.client_exists_timestamp = time.time()
+        
+        elapsed = time.time() - st.session_state.client_exists_timestamp
+        remaining = max(0, 10 - int(elapsed))
+        
+        # Si 10 secondes écoulées, reset automatique
+        if remaining <= 0:
+            st.session_state.client_exists_popup = None
+            st.session_state.client_exists_timestamp = None
+            reset_client()
+            st.rerun()
+        
+        # Affichage du popup
         st.markdown(f"""
-        <div style="background:#fef3c7;border:2px solid #f59e0b;border-radius:16px;padding:2rem;text-align:center;margin:2rem auto;max-width:450px;">
-            <div style="font-size:3rem;margin-bottom:1rem;">👋</div>
-            <h2 style="color:#92400e;margin-bottom:1rem;">Vous êtes déjà enregistré !</h2>
-            <p style="color:#78350f;font-size:1rem;margin-bottom:1.5rem;">
-                Bonjour <strong>{client_info.get('prenom', '')} {client_info.get('nom', '')}</strong>,<br>
-                votre numéro de téléphone est déjà dans notre système.
-            </p>
-            <p style="color:#92400e;font-size:0.95rem;">
-                📍 Merci de vous diriger vers l'accueil,<br>
-                un conseiller va s'occuper de vous.
-            </p>
+        <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+            <div style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:3px solid #f59e0b;border-radius:24px;padding:3rem 2rem;max-width:500px;box-shadow:0 20px 60px rgba(245,158,11,0.2);">
+                <div style="font-size:5rem;margin-bottom:1rem;">👋</div>
+                <h1 style="color:#92400e;margin-bottom:1rem;font-size:2rem;font-weight:700;">
+                    Vous êtes déjà client !
+                </h1>
+                <p style="color:#78350f;font-size:1.2rem;margin-bottom:2rem;line-height:1.6;">
+                    Bonjour <strong>{client_info.get('prenom', '')} {client_info.get('nom', '')}</strong>,<br>
+                    votre numéro est déjà enregistré.
+                </p>
+                <div style="background:white;border-radius:16px;padding:1.5rem;margin-bottom:2rem;">
+                    <p style="color:#1e293b;font-size:1.1rem;margin:0;">
+                        📍 <strong>Merci de vous diriger vers l'accueil</strong><br>
+                        <span style="color:#64748b;">Un conseiller va s'occuper de vous</span>
+                    </p>
+                </div>
+                <p style="color:#92400e;font-size:0.9rem;">
+                    Retour automatique dans <strong style="font-size:1.2rem;">{remaining}</strong> secondes
+                </p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button("🏠 Nouveau client", type="primary", use_container_width=True):
-            st.session_state.client_exists_popup = None
-            reset_client()
-            st.rerun()
+        # Bouton pour nouveau client
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🏠 NOUVEAU CLIENT", type="primary", use_container_width=True):
+                st.session_state.client_exists_popup = None
+                st.session_state.client_exists_timestamp = None
+                reset_client()
+                st.rerun()
+        
+        # Forcer rerun pour le compteur
+        time.sleep(1)
+        st.rerun()
         return
     
     st.markdown("""
@@ -4035,17 +4175,33 @@ def staff_traiter_demande(tid):
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
         # Badge carte Camby
-        camby_badge = ""
+        camby_html = ''
         if t.get('client_carte_camby'):
-            camby_badge = '<span style="background:#22c55e;color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;">🎫 CAMBY</span>'
+            camby_html = ' <span style="background:#22c55e;color:white;padding:2px 8px;border-radius:10px;font-size:11px;">🎫 CAMBY</span>'
         
-        societe_info = f'<div class="detail-row"><span class="detail-label">Société</span><span class="detail-value">{t.get("client_societe")}</span></div>' if t.get('client_societe') else ''
+        # Société si définie
+        societe_html = ''
+        if t.get('client_societe'):
+            societe_html = f'''
+            <div class="detail-row">
+                <span class="detail-label">Société</span>
+                <span class="detail-value">{t.get('client_societe')}</span>
+            </div>'''
         
-        st.markdown(f"""
+        # Date de récupération si définie
+        recup_html = ''
+        if t.get('date_recuperation'):
+            recup_html = f'''
+            <div class="detail-row" style="background:#dcfce7;border-radius:6px;padding:4px 8px;">
+                <span class="detail-label" style="color:#166534;">📅 Récupération</span>
+                <span class="detail-value" style="color:#166534;font-weight:600;">{t.get('date_recuperation')}</span>
+            </div>'''
+        
+        st.markdown(f'''
         <div class="detail-card">
             <div class="detail-row">
                 <span class="detail-label">Nom complet</span>
-                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_badge}</span>
+                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_html}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Téléphone</span>
@@ -4054,8 +4210,7 @@ def staff_traiter_demande(tid):
             <div class="detail-row">
                 <span class="detail-label">Email</span>
                 <span class="detail-value">{t.get('client_email') or '—'}</span>
-            </div>
-            {societe_info}
+            </div>{societe_html}
             <div class="detail-row">
                 <span class="detail-label">Appareil</span>
                 <span class="detail-value">{modele_txt}</span>
@@ -4067,9 +4222,9 @@ def staff_traiter_demande(tid):
             <div class="detail-row">
                 <span class="detail-label">Déposé le</span>
                 <span class="detail-value">{fmt_date(t.get('date_depot',''))}</span>
-            </div>
+            </div>{recup_html}
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         
         # Bouton modifier client
         if st.button("✏️ Modifier les infos client", key=f"edit_client_btn_{tid}", type="secondary", use_container_width=True):
@@ -4296,20 +4451,24 @@ def staff_traiter_demande(tid):
         
         # Ligne boutons tickets avec envoi par email
         st.markdown("##### 📄 Documents")
-        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+        col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns(5)
         with col_t1:
-            if st.button("📋 Ticket Staff", use_container_width=True, key=f"print_staff_{tid}"):
+            if st.button("📋 Staff", use_container_width=True, key=f"print_staff_{tid}"):
                 st.session_state[f"show_ticket_{tid}"] = "staff"
                 st.rerun()
         with col_t2:
-            if st.button("📝 DEVIS", use_container_width=True, key=f"print_devis_{tid}", type="secondary"):
-                st.session_state[f"show_ticket_{tid}"] = "devis"
+            if st.button("🖨️ Les 2", use_container_width=True, key=f"print_both_{tid}", type="primary"):
+                st.session_state[f"show_ticket_{tid}"] = "both"
                 st.rerun()
         with col_t3:
-            if st.button("🧾 REÇU", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
-                st.session_state[f"show_ticket_{tid}"] = "facture"
+            if st.button("📝 Devis", use_container_width=True, key=f"print_devis_{tid}", type="secondary"):
+                st.session_state[f"show_ticket_{tid}"] = "devis"
                 st.rerun()
         with col_t4:
+            if st.button("🧾 Reçu", use_container_width=True, key=f"print_facture_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "facture"
+                st.rerun()
+        with col_t5:
             pass  # Espace réservé
         
         # === SECTION CONTACT CLIENT ===
@@ -4649,55 +4808,61 @@ Cordialement,
     if not tel and not email:
         st.warning("Aucun moyen de contact disponible")
     
-    # Affichage ticket dans popup/dialogue
-    if st.session_state.get(f"show_ticket_{tid}") == "client":
+    # Affichage ticket dans dialogue à gauche
+    ticket_type = st.session_state.get(f"show_ticket_{tid}")
+    if ticket_type:
         st.markdown("---")
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #fb923c;">
-            <strong>🎫 TICKET CLIENT</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
-        </div>
-        """, unsafe_allow_html=True)
-        st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
-        if st.button("Fermer", key=f"close_ticket_client_{tid}", type="primary", use_container_width=True):
-            del st.session_state[f"show_ticket_{tid}"]
-            st.rerun()
-    
-    if st.session_state.get(f"show_ticket_{tid}") == "staff":
-        st.markdown("---")
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #6b7280;">
-            <strong>📋 TICKET STAFF</strong> - Cliquez sur "IMPRIMER" dans le ticket ci-dessous
-        </div>
-        """, unsafe_allow_html=True)
-        st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
-        if st.button("Fermer", key=f"close_ticket_staff_{tid}", type="primary", use_container_width=True):
-            del st.session_state[f"show_ticket_{tid}"]
-            st.rerun()
-    
-    if st.session_state.get(f"show_ticket_{tid}") == "devis":
-        st.markdown("---")
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #3b82f6;">
-            <strong>📝 DEVIS</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
-        </div>
-        """, unsafe_allow_html=True)
-        st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=800, scrolling=True)
-        if st.button("Fermer", key=f"close_ticket_devis_{tid}", type="primary", use_container_width=True):
-            del st.session_state[f"show_ticket_{tid}"]
-            st.rerun()
-    
-    if st.session_state.get(f"show_ticket_{tid}") == "facture":
-        st.markdown("---")
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid #16a34a;">
-            <strong>🧾 RÉCAPITULATIF DE PAIEMENT</strong> - Cliquez sur "IMPRIMER" dans le document ci-dessous
-        </div>
-        """, unsafe_allow_html=True)
-        st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
-        st.warning("⚠️ Ce ticket ne fait pas office de facture.")
-        if st.button("Fermer", key=f"close_ticket_facture_{tid}", type="primary", use_container_width=True):
-            del st.session_state[f"show_ticket_{tid}"]
-            st.rerun()
+        
+        # En-tête avec bouton fermer
+        col_header, col_close = st.columns([4, 1])
+        with col_header:
+            if ticket_type == "client":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #fb923c;">
+                    <strong>🎫 TICKET CLIENT</strong> - Cliquez sur "IMPRIMER" dans le ticket
+                </div>
+                """, unsafe_allow_html=True)
+            elif ticket_type == "staff":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #6b7280;">
+                    <strong>📋 TICKET STAFF</strong> - Cliquez sur "IMPRIMER" dans le ticket
+                </div>
+                """, unsafe_allow_html=True)
+            elif ticket_type == "both":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
+                    <strong>🖨️ TICKETS CLIENT + STAFF</strong> - Imprime les 2 tickets avec saut de page automatique
+                </div>
+                """, unsafe_allow_html=True)
+            elif ticket_type == "devis":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                    <strong>📝 DEVIS</strong> - Cliquez sur "IMPRIMER" dans le document
+                </div>
+                """, unsafe_allow_html=True)
+            elif ticket_type == "facture":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
+                    <strong>🧾 RÉCAPITULATIF</strong> - Ce ticket ne fait pas office de facture
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col_close:
+            if st.button("✕ Fermer", key=f"close_ticket_{tid}", type="secondary", use_container_width=True):
+                del st.session_state[f"show_ticket_{tid}"]
+                st.rerun()
+        
+        # Affichage du ticket selon le type
+        if ticket_type == "client":
+            st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
+        elif ticket_type == "staff":
+            st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
+        elif ticket_type == "both":
+            st.components.v1.html(ticket_combined_html(t), height=900, scrolling=True)
+        elif ticket_type == "devis":
+            st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=800, scrolling=True)
+        elif ticket_type == "facture":
+            st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
 
 def staff_gestion_clients():
     """Gestion des clients - Liste, modification, export"""
@@ -5990,111 +6155,169 @@ def ui_suivi():
     params = st.query_params
     code_url = params.get("ticket", "")
     
-    # Formulaire de recherche
+    # Si ticket dans URL, accéder directement au suivi
+    if code_url:
+        t = get_ticket_full(code=code_url)
+        if t:
+            # Afficher directement le suivi
+            afficher_suivi_ticket(t)
+            
+            st.markdown("---")
+            if st.button("← Retour à l'accueil", use_container_width=True):
+                st.query_params.clear()
+                st.session_state.mode = None
+                st.rerun()
+            return
+    
+    # Formulaire de recherche manuel
+    st.markdown("""
+    <div style="background:#f8fafc;border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+        <h3 style="color:#1e293b;margin-bottom:0.5rem;">🔍 Rechercher votre réparation</h3>
+        <p style="color:#64748b;font-size:0.9rem;">Entrez votre numéro de ticket ou votre téléphone</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
     with col1:
-        code = st.text_input("N° de ticket", value=code_url, placeholder="KP-000001")
+        code = st.text_input("N° de ticket", placeholder="KP-000001")
     with col2:
-        tel = st.text_input("Votre téléphone", placeholder="06 12 34 56 78")
+        tel = st.text_input("OU votre téléphone", placeholder="06 12 34 56 78")
     
-    rechercher = st.button("🔍 RECHERCHER MA RÉPARATION", type="primary", use_container_width=True)
+    rechercher = st.button("🔍 RECHERCHER", type="primary", use_container_width=True)
     
-    # Recherche
-    if rechercher or (code_url and tel):
-        if code and tel:
+    if rechercher:
+        t = None
+        
+        # Recherche par code
+        if code:
             t = get_ticket_full(code=code)
+        # Recherche par téléphone
+        elif tel:
             tel_clean = "".join(filter(str.isdigit, tel))
-            client_tel_clean = "".join(filter(str.isdigit, t.get('client_tel', ''))) if t else ""
-            
-            if t and tel_clean == client_tel_clean:
-                # Données
-                status_class = get_status_class(t.get('statut', ''))
-                modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
-                if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
-                
-                panne = t.get('panne', '')
-                if t.get('panne_detail'): panne = t.get('panne_detail')
-                
-                devis = t.get('devis_estime') or 0
-                prix_supp = t.get('prix_supp') or 0
-                acompte = t.get('acompte') or 0
-                total_ttc = devis + prix_supp
-                reste = max(0, total_ttc - acompte)
-                
-                statut = t.get('statut', '')
-                progress_map = {
-                    "En attente de diagnostic": 20, 
-                    "En cours de réparation": 50,
-                    "Réparation terminée": 80,
-                    "Rendu au client": 100, 
-                    "Clôturé": 100
-                }
-                progress = progress_map.get(statut, 10)
-                
-                # Affichage avec Streamlit natif
-                st.markdown("---")
-                
-                # En-tête ticket
-                col_code, col_statut = st.columns([2, 1])
-                with col_code:
-                    st.markdown(f"### 🎫 {t['ticket_code']}")
-                with col_statut:
-                    st.markdown(f"<span class='status-badge {status_class}'>{statut}</span>", unsafe_allow_html=True)
-                
-                # Infos client et appareil
-                st.markdown(f"""
-                **👤 Client:** {t.get('client_nom','')} {t.get('client_prenom','')}  
-                **📱 Appareil:** {modele_txt}  
-                **🔧 Réparation:** {panne}
-                """)
-                
-                # Dates
-                col_dates, col_prix = st.columns(2)
-                with col_dates:
-                    st.markdown(f"""
-                    **Déposé le:** {fmt_date(t.get('date_depot',''))}  
-                    **Mise à jour:** {fmt_date(t.get('date_maj',''))}
-                    """)
-                with col_prix:
-                    if total_ttc > 0:
-                        st.metric("Total TTC", f"{total_ttc:.2f} €")
-                        if acompte > 0:
-                            st.caption(f"Acompte: -{acompte:.2f} €")
-                        st.markdown(f"**Reste à payer: {reste:.2f} €**")
-                
-                # Progression
-                st.markdown("---")
-                st.markdown(f"**Progression: {progress}%**")
-                st.progress(progress / 100)
-                
-                # Étapes visuelles
-                cols = st.columns(5)
-                etapes = ["📥 Déposé", "🔍 Diagnostic", "🔧 Réparation", "✅ Terminé", "🤝 Récupéré"]
-                etapes_done = {
-                    "En attente de diagnostic": 1,
-                    "En cours de réparation": 2,
-                    "Réparation terminée": 3,
-                    "Rendu au client": 5,
-                    "Clôturé": 5
-                }
-                done_count = etapes_done.get(statut, 0)
-                
-                for i, (col, etape) in enumerate(zip(cols, etapes)):
-                    with col:
-                        if i < done_count:
-                            st.markdown(f"<div style='text-align:center;color:#16a34a;font-size:0.8rem;'>{etape}</div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"<div style='text-align:center;color:#9ca3af;font-size:0.8rem;'>{etape}</div>", unsafe_allow_html=True)
-                
-            else:
-                st.error("❌ Ticket non trouvé ou numéro de téléphone incorrect")
+            tickets = chercher_tickets(tel=tel_clean)
+            if tickets:
+                # Prendre le ticket le plus récent
+                t = get_ticket_full(tid=tickets[0]['id'])
+        
+        if t:
+            afficher_suivi_ticket(t)
         else:
-            st.warning("⚠️ Veuillez remplir les deux champs")
+            st.error("❌ Aucun ticket trouvé. Vérifiez votre numéro de ticket ou téléphone.")
     
     st.markdown("---")
     if st.button("← Retour à l'accueil"):
         st.session_state.mode = None
         st.rerun()
+
+def afficher_suivi_ticket(t):
+    """Affiche le suivi d'un ticket"""
+    status_class = get_status_class(t.get('statut', ''))
+    modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+    if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
+    
+    panne = t.get('panne', '')
+    if t.get('panne_detail'): panne = t.get('panne_detail')
+    
+    devis = t.get('devis_estime') or 0
+    prix_supp = t.get('prix_supp') or 0
+    acompte = t.get('acompte') or 0
+    total_ttc = devis + prix_supp
+    reste = max(0, total_ttc - acompte)
+    
+    statut = t.get('statut', '')
+    progress_map = {
+        "En attente de diagnostic": 20,
+        "En attente de pièce": 30,
+        "En attente d'accord client": 35,
+        "En cours de réparation": 50,
+        "Réparation terminée": 80,
+        "Rendu au client": 100, 
+        "Clôturé": 100
+    }
+    progress = progress_map.get(statut, 10)
+    
+    # Carte principale
+    st.markdown(f"""
+    <div style="background:white;border-radius:16px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div>
+                <span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {t['ticket_code']}</span>
+            </div>
+            <span class="status-badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div>
+                <p style="color:#64748b;font-size:0.8rem;margin:0;">Client</p>
+                <p style="color:#1e293b;font-weight:500;margin:0;">{t.get('client_nom','')} {t.get('client_prenom','')}</p>
+            </div>
+            <div>
+                <p style="color:#64748b;font-size:0.8rem;margin:0;">Appareil</p>
+                <p style="color:#1e293b;font-weight:500;margin:0;">{modele_txt}</p>
+            </div>
+            <div>
+                <p style="color:#64748b;font-size:0.8rem;margin:0;">Réparation</p>
+                <p style="color:#1e293b;font-weight:500;margin:0;">{panne}</p>
+            </div>
+            <div>
+                <p style="color:#64748b;font-size:0.8rem;margin:0;">Déposé le</p>
+                <p style="color:#1e293b;font-weight:500;margin:0;">{fmt_date(t.get('date_depot',''))}</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Date de récupération si définie
+    if t.get('date_recuperation'):
+        st.markdown(f"""
+        <div style="background:#dcfce7;border:2px solid #22c55e;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center;">
+            <p style="color:#166534;font-size:1.1rem;margin:0;">
+                📅 <strong>Récupération prévue :</strong> {t.get('date_recuperation')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Tarification si définie
+    if total_ttc > 0:
+        st.markdown(f"""
+        <div style="background:#fff7ed;border:1px solid #f97316;border-radius:12px;padding:1rem;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#9a3412;">💰 Total TTC</span>
+                <span style="color:#1e293b;font-size:1.2rem;font-weight:700;">{total_ttc:.2f} €</span>
+            </div>
+            {'<div style="display:flex;justify-content:space-between;margin-top:0.5rem;"><span style="color:#64748b;">Acompte versé</span><span style="color:#22c55e;">-' + f'{acompte:.2f}' + ' €</span></div>' if acompte > 0 else ''}
+            <hr style="margin:0.5rem 0;border:none;border-top:1px solid #fed7aa;">
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#9a3412;font-weight:600;">Reste à payer</span>
+                <span style="color:#dc2626;font-size:1.1rem;font-weight:700;">{reste:.2f} €</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Barre de progression
+    st.markdown(f"**Progression : {progress}%**")
+    st.progress(progress / 100)
+    
+    # Étapes visuelles
+    cols = st.columns(5)
+    etapes = ["📥 Déposé", "🔍 Diagnostic", "🔧 Réparation", "✅ Terminé", "🤝 Récupéré"]
+    etapes_done = {
+        "En attente de diagnostic": 1,
+        "En attente de pièce": 2,
+        "En attente d'accord client": 2,
+        "En cours de réparation": 3,
+        "Réparation terminée": 4,
+        "Rendu au client": 5,
+        "Clôturé": 5
+    }
+    done_count = etapes_done.get(statut, 0)
+    
+    for i, (col, etape) in enumerate(zip(cols, etapes)):
+        with col:
+            if i < done_count:
+                st.markdown(f"<div style='text-align:center;color:#16a34a;font-size:0.75rem;font-weight:600;'>{etape}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='text-align:center;color:#d1d5db;font-size:0.75rem;'>{etape}</div>", unsafe_allow_html=True)
 
 # =============================================================================
 # ÉCRAN D'ACCUEIL
