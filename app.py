@@ -213,7 +213,7 @@ def load_css():
 
 /* === STREAMLIT OVERRIDES === */
 .stApp {
-    background: var(--neutral-50) !important;
+    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 50%, #e8eaed 100%) !important;
 }
 
 #MainMenu, footer, header, .stDeployButton,
@@ -264,29 +264,34 @@ h1, h2, h3 {
     border-bottom: 1px solid var(--neutral-200);
 }
 
-/* === CARDS === */
+/* === CARDS - PREMIUM GLASSMORPHISM === */
 .card {
-    background: var(--neutral-0);
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--r-lg);
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 16px;
     padding: var(--sp-5);
-    transition: all 0.15s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 
 .card:hover {
-    border-color: var(--neutral-300);
-    box-shadow: var(--shadow-sm);
+    border-color: rgba(249,115,22,0.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
 }
 
 .card-elevated {
-    background: var(--neutral-0);
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--r-xl);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.9);
+    border-radius: 20px;
     padding: var(--sp-6);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
 }
 
-/* KPI Cards */
+/* KPI Cards - Premium */
 .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -295,33 +300,54 @@ h1, h2, h3 {
 }
 
 .kpi-card {
-    background: var(--neutral-0);
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--r-lg);
+    background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 16px;
     padding: var(--sp-5);
-    transition: all 0.15s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #f97316, #ea580c);
+    opacity: 0;
+    transition: opacity 0.25s ease;
 }
 
 .kpi-card:hover {
-    border-color: var(--brand-300);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    border-color: rgba(249,115,22,0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(249,115,22,0.12);
+}
+
+.kpi-card:hover::before {
+    opacity: 1;
 }
 
 .kpi-label {
     font-size: var(--text-xs);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--neutral-500);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     margin-bottom: var(--sp-2);
 }
 
 .kpi-value {
     font-size: var(--text-3xl);
-    font-weight: 700;
+    font-weight: 800;
     color: var(--neutral-900);
     line-height: 1;
+    letter-spacing: -0.02em;
 }
 
 .kpi-value.brand { color: var(--brand-500); }
@@ -329,78 +355,110 @@ h1, h2, h3 {
 .kpi-value.warning { color: var(--warning); }
 .kpi-value.info { color: var(--info); }
 
-/* === STATUS BADGES === */
+/* === STATUS BADGES - PREMIUM === */
 .badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--r-full);
-    font-size: var(--text-xs);
-    font-weight: 500;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
     white-space: nowrap;
+    letter-spacing: 0.02em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.2s ease;
 }
 
 .badge::before {
     content: '';
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
 }
 
 .status-diagnostic {
-    background: var(--warning-light);
-    color: var(--warning-dark);
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid rgba(245,158,11,0.3);
 }
-.status-diagnostic::before { background: var(--warning); }
+.status-diagnostic::before { background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
 
 .status-encours {
-    background: var(--info-light);
-    color: var(--info-dark);
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 1px solid rgba(59,130,246,0.3);
 }
-.status-encours::before { background: var(--info); }
+.status-encours::before { background: #3b82f6; box-shadow: 0 0 8px rgba(59,130,246,0.5); }
 
 .status-termine {
-    background: var(--success-light);
-    color: var(--success-dark);
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    border: 1px solid rgba(16,185,129,0.3);
 }
-.status-termine::before { background: var(--success); }
+.status-termine::before { background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
 
 .status-rendu {
-    background: var(--success);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
+    border: 1px solid rgba(16,185,129,0.5);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
-.status-rendu::before { background: rgba(255,255,255,0.6); }
+.status-rendu::before { background: rgba(255,255,255,0.8); animation: none; }
 
 .status-cloture {
-    background: var(--neutral-100);
-    color: var(--neutral-600);
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: #475569;
+    border: 1px solid rgba(100,116,139,0.2);
 }
-.status-cloture::before { background: var(--neutral-400); }
+.status-cloture::before { background: #94a3b8; animation: none; }
 
-/* === TICKET LIST === */
+.status-attente-piece {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid rgba(245,158,11,0.3);
+}
+.status-attente-piece::before { background: #f59e0b; }
+
+.status-attente-accord {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid rgba(239,68,68,0.3);
+}
+.status-attente-accord::before { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+
+/* === TICKET LIST - PREMIUM === */
 .ticket-list {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-2);
+    gap: var(--sp-3);
 }
 
 .ticket-row {
     display: flex;
     align-items: center;
     gap: var(--sp-4);
-    padding: var(--sp-4);
-    background: var(--neutral-0);
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--r-md);
-    transition: all 0.15s ease;
+    padding: var(--sp-4) var(--sp-5);
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 14px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .ticket-row:hover {
-    border-color: var(--brand-300);
-    background: var(--brand-50);
-    transform: translateX(4px);
+    border-color: rgba(249,115,22,0.4);
+    background: linear-gradient(135deg, rgba(255,247,237,0.9) 0%, rgba(255,255,255,0.95) 100%);
+    transform: translateX(6px);
+    box-shadow: 0 4px 20px rgba(249,115,22,0.12);
 }
 
 .ticket-code {
@@ -444,82 +502,100 @@ h1, h2, h3 {
     border: 1px solid var(--neutral-200);
     border-radius: var(--r-xl);
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 
 .ticket-table-header {
     display: grid;
     grid-template-columns: 100px 1.4fr 1.2fr 120px 160px 90px 60px;
     gap: 12px;
-    padding: 14px 20px;
-    background: linear-gradient(180deg, var(--neutral-100) 0%, var(--neutral-50) 100%);
-    border-bottom: 1px solid var(--neutral-200);
+    padding: 16px 24px;
+    background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+    border-bottom: none;
     align-items: center;
 }
 
 .ticket-table-header-cell {
     font-size: 11px;
-    font-weight: 600;
-    color: var(--neutral-500);
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
 }
 
 .ticket-table-row {
     display: grid;
     grid-template-columns: 100px 1.4fr 1.2fr 120px 160px 90px 60px;
     gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--neutral-100);
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
     align-items: center;
-    transition: all 0.15s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    background: rgba(255,255,255,0.5);
 }
 
 .ticket-table-row:hover {
-    background: linear-gradient(90deg, var(--brand-50) 0%, transparent 100%);
+    background: linear-gradient(90deg, rgba(255,247,237,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    transform: scale(1.005);
+    box-shadow: 0 4px 20px rgba(249,115,22,0.1);
+    border-radius: 0;
+}
+
+.ticket-table-row:nth-child(even) {
+    background: rgba(248,250,252,0.6);
+}
+
+.ticket-table-row:nth-child(even):hover {
+    background: linear-gradient(90deg, rgba(255,247,237,0.95) 0%, rgba(255,255,255,0.9) 100%);
 }
 
 .ticket-table-row:last-child {
     border-bottom: none;
 }
 
-/* Cellules du tableau */
+/* Cellules du tableau - Premium */
 .tt-ticket {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 
 .tt-ticket-code {
     font-family: 'SF Mono', Monaco, 'Courier New', monospace !important;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--neutral-900);
+    font-weight: 700;
+    color: #0f172a;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
 }
 
 .tt-ticket-date {
     font-size: 11px;
-    color: var(--neutral-400);
+    color: #64748b;
+    font-weight: 500;
 }
 
 .tt-client {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .tt-client-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--brand-100) 0%, var(--brand-200) 100%);
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    border: 2px solid rgba(249,115,22,0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--brand-600);
+    font-size: 13px;
+    font-weight: 700;
+    color: #ea580c;
     flex-shrink: 0;
 }
 
@@ -744,101 +820,159 @@ h1, h2, h3 {
     letter-spacing: 0.05em;
 }
 
-/* === BUTTONS === */
+/* === BUTTONS - PREMIUM DESIGN === */
 .stButton > button {
     font-family: var(--font) !important;
-    font-weight: 500 !important;
-    font-size: var(--text-sm) !important;
-    padding: 8px 16px !important;
-    border-radius: var(--r-md) !important;
-    transition: all 0.15s ease !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    padding: 12px 20px !important;
+    border-radius: 12px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border: none !important;
+    letter-spacing: 0.01em !important;
+    white-space: pre-wrap !important;
+    line-height: 1.4 !important;
 }
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%) !important;
     color: white !important;
-    font-weight: 600 !important;
-    box-shadow: 0 4px 14px rgba(249,115,22,0.25) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(249,115,22,0.3), 0 2px 4px rgba(0,0,0,0.1) !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 .stButton > button[data-testid="baseButton-primary"]:hover {
-    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(249,115,22,0.35) !important;
+    background: linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #b91c1c 100%) !important;
+    transform: translateY(-3px) scale(1.02) !important;
+    box-shadow: 0 8px 25px rgba(249,115,22,0.4), 0 4px 8px rgba(0,0,0,0.15) !important;
 }
 
 .stButton > button[kind="secondary"],
 .stButton > button[data-testid="baseButton-secondary"] {
-    background: white !important;
-    color: var(--neutral-700) !important;
-    border: 2px solid #e2e8f0 !important;
-    font-weight: 500 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
 }
 
 .stButton > button[kind="secondary"]:hover,
 .stButton > button[data-testid="baseButton-secondary"]:hover {
-    background: #f8fafc !important;
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%) !important;
     border-color: #f97316 !important;
-    color: #f97316 !important;
-    transform: translateY(-1px) !important;
+    color: #ea580c !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(249,115,22,0.15) !important;
+}
+
+/* Boutons désactivés */
+.stButton > button:disabled {
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
 }
 
 /* Client Interface - Larger Buttons */
 .main .block-container .stButton > button {
     padding: 14px 24px !important;
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
     border-radius: 14px !important;
-    min-height: 52px !important;
+    min-height: 56px !important;
 }
 
-/* === FORM INPUTS === */
+/* === FORM INPUTS - PREMIUM === */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
-    border: 1px solid var(--neutral-300) !important;
-    border-radius: var(--r-md) !important;
-    padding: 10px 12px !important;
-    font-size: var(--text-sm) !important;
-    background: var(--neutral-0) !important;
-    transition: all 0.15s ease !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    font-size: 0.9rem !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
 }
 
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus {
-    border-color: var(--brand-400) !important;
-    box-shadow: 0 0 0 3px var(--brand-100) !important;
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 4px rgba(249,115,22,0.1), 0 4px 12px rgba(249,115,22,0.08) !important;
     outline: none !important;
+    background: #ffffff !important;
+}
+
+.stTextInput > div > div > input:hover,
+.stTextArea > div > div > textarea:hover {
+    border-color: #cbd5e1 !important;
 }
 
 .stTextInput > div > div > input::placeholder {
-    color: var(--neutral-400) !important;
+    color: #94a3b8 !important;
+    font-style: italic !important;
 }
 
 .stSelectbox > div > div {
-    border: 1px solid var(--neutral-300) !important;
-    border-radius: var(--r-md) !important;
-    background: var(--neutral-0) !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
+    transition: all 0.25s ease !important;
 }
 
 .stSelectbox > div > div > div {
-    padding: 8px 12px !important;
-    font-size: var(--text-sm) !important;
-    min-height: 40px !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    min-height: 44px !important;
+}
+
+.stSelectbox > div > div:hover {
+    border-color: #cbd5e1 !important;
 }
 
 .stSelectbox > div > div:focus-within {
-    border-color: var(--brand-400) !important;
-    box-shadow: 0 0 0 3px var(--brand-100) !important;
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 4px rgba(249,115,22,0.1) !important;
 }
 
-/* Labels */
+/* Number Input Premium */
+.stNumberInput > div > div > input {
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
+}
+
+.stNumberInput > div > div > input:focus {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 4px rgba(249,115,22,0.1) !important;
+}
+
+/* Labels Premium */
 .stTextInput > label, .stTextArea > label,
 .stSelectbox > label, .stNumberInput > label {
-    font-size: var(--text-sm) !important;
-    font-weight: 500 !important;
-    color: var(--neutral-700) !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    letter-spacing: 0.01em !important;
+    margin-bottom: 6px !important;
+}
+
+/* Date Input Premium */
+.stDateInput > div > div > input {
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
+}
+
+.stDateInput > div > div > input:focus {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 4px rgba(249,115,22,0.1) !important;
 }
 
 /* === TABS === */
@@ -865,9 +999,10 @@ h1, h2, h3 {
 }
 
 .stTabs [aria-selected="true"] {
-    background: var(--neutral-0) !important;
-    color: var(--neutral-900) !important;
-    box-shadow: var(--shadow-sm) !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    font-weight: 600 !important;
 }
 
 .stTabs [data-baseweb="tab-highlight"],
@@ -875,61 +1010,85 @@ h1, h2, h3 {
     display: none !important;
 }
 
-/* === EXPANDER === */
+/* === EXPANDER - PREMIUM === */
 .streamlit-expanderHeader {
-    font-size: var(--text-sm) !important;
+    font-size: 0.9rem !important;
     font-weight: 600 !important;
-    color: var(--neutral-700) !important;
-    background: var(--neutral-50) !important;
-    border-radius: var(--r-md) !important;
-    padding: var(--sp-3) var(--sp-4) !important;
-    border: 1px solid var(--neutral-200) !important;
+    color: #374151 !important;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    border: 1px solid #e2e8f0 !important;
+    transition: all 0.2s ease !important;
+}
+
+.streamlit-expanderHeader:hover {
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%) !important;
+    border-color: rgba(249,115,22,0.3) !important;
 }
 
 .streamlit-expanderContent {
-    border: 1px solid var(--neutral-200) !important;
+    border: 1px solid #e2e8f0 !important;
     border-top: none !important;
-    border-radius: 0 0 var(--r-md) var(--r-md) !important;
-    padding: var(--sp-4) !important;
-    background: var(--neutral-0) !important;
+    border-radius: 0 0 12px 12px !important;
+    padding: 18px !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
 }
 
-/* === PROGRESS === */
+/* === PROGRESS - PREMIUM === */
 .stProgress > div > div {
-    background: var(--neutral-200) !important;
-    border-radius: var(--r-full) !important;
-    height: 8px !important;
+    background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 100%) !important;
+    border-radius: 10px !important;
+    height: 10px !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06) !important;
 }
 
 .stProgress > div > div > div {
-    background: linear-gradient(90deg, var(--brand-400), var(--brand-500)) !important;
-    border-radius: var(--r-full) !important;
+    background: linear-gradient(90deg, #fb923c 0%, #f97316 50%, #ea580c 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.3) !important;
 }
 
-/* === METRICS === */
+/* === METRICS - PREMIUM === */
 [data-testid="stMetricValue"] {
-    font-size: var(--text-2xl) !important;
-    font-weight: 700 !important;
-    color: var(--neutral-900) !important;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.02em !important;
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: var(--text-sm) !important;
-    font-weight: 500 !important;
-    color: var(--neutral-500) !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
 }
 
-/* === ALERTS === */
+/* === ALERTS - PREMIUM === */
 .stAlert {
-    border-radius: var(--r-md) !important;
+    border-radius: 14px !important;
     border: none !important;
-    padding: var(--sp-4) !important;
+    padding: 16px 20px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
 }
 
-.stSuccess { background: var(--success-light) !important; }
-.stWarning { background: var(--warning-light) !important; }
-.stError { background: var(--error-light) !important; }
-.stInfo { background: var(--info-light) !important; }
+.stSuccess { 
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; 
+    border-left: 4px solid #10b981 !important;
+}
+.stWarning { 
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important; 
+    border-left: 4px solid #f59e0b !important;
+}
+.stError { 
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important; 
+    border-left: 4px solid #ef4444 !important;
+}
+.stInfo { 
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important; 
+    border-left: 4px solid #3b82f6 !important;
+}
 
 /* === DIVIDERS === */
 hr {
@@ -993,49 +1152,68 @@ hr {
 }
 
 .detail-card-header {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--neutral-800);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
     margin-bottom: var(--sp-4);
-    padding-bottom: var(--sp-3);
-    border-bottom: 1px solid var(--neutral-100);
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(234,88,12,0.04) 100%);
+    border-radius: 12px;
+    border-left: 4px solid #f97316;
     display: flex;
     align-items: center;
-    gap: var(--sp-2);
+    gap: 10px;
+    letter-spacing: -0.01em;
 }
 
 .detail-row {
     display: flex;
     justify-content: space-between;
-    padding: var(--sp-2) 0;
-    border-bottom: 1px solid var(--neutral-100);
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .detail-row:last-child { border-bottom: none; }
 
 .detail-label {
     font-size: var(--text-sm);
-    color: var(--neutral-500);
+    color: #64748b;
+    font-weight: 500;
 }
 
 .detail-value {
     font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--neutral-900);
+    font-weight: 600;
+    color: #0f172a;
 }
 
-/* === PRICE BOX === */
+/* === PRICE BOX - PREMIUM === */
 .price-box {
-    background: linear-gradient(135deg, var(--brand-50), var(--neutral-0));
-    border: 2px solid var(--brand-200);
-    border-radius: var(--r-lg);
-    padding: var(--sp-5);
+    background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 50%, #fed7aa 100%);
+    border: 2px solid rgba(249,115,22,0.3);
+    border-radius: 16px;
+    padding: var(--sp-6);
+    box-shadow: 0 4px 20px rgba(249,115,22,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.price-box::before {
+    content: '€';
+    position: absolute;
+    top: -20px;
+    right: -10px;
+    font-size: 120px;
+    font-weight: 900;
+    color: rgba(249,115,22,0.08);
+    pointer-events: none;
 }
 
 .price-total {
     font-size: var(--text-3xl);
-    font-weight: 700;
-    color: var(--brand-600);
+    font-weight: 800;
+    color: #ea580c;
+    letter-spacing: -0.02em;
 }
 
 .price-label {
@@ -4519,101 +4697,51 @@ def staff_traiter_demande(tid):
                 st.success("✅ Accord validé - Statut mis à jour!")
                 st.rerun()
         
-        # Bouton principal
-        st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            tech_name = technicien if technicien != "-- Non assigné --" else ""
-            if st.button("💾 ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
-                update_ticket(tid, panne=new_panne, panne_detail=panne_detail, 
-                             devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup)
-                if comment:
-                    ajouter_note(tid, comment)
-                if new_statut != statut_actuel:
-                    changer_statut(tid, new_statut)
-                st.success("Demande mise à jour !")
-                st.rerun()
-        with col_btn2:
-            if st.button("🎫 Ticket Client", use_container_width=True, key=f"print_client_{tid}"):
-                st.session_state[f"show_ticket_{tid}"] = "client"
-                st.rerun()
+        # Bouton principal Enregistrer
+        st.markdown("""<div style="height:20px;"></div>""", unsafe_allow_html=True)
+        tech_name = technicien if technicien != "-- Non assigné --" else ""
+        if st.button("💾 ENREGISTRER LES MODIFICATIONS", type="primary", use_container_width=True, key=f"save_{tid}"):
+            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, 
+                         devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup)
+            if comment:
+                ajouter_note(tid, comment)
+            if new_statut != statut_actuel:
+                changer_statut(tid, new_statut)
+            st.success("✅ Demande mise à jour !")
+            st.rerun()
         
-        # Ligne boutons tickets avec envoi par email
-        st.markdown("##### 📄 Documents")
+        # Section Documents Premium
+        st.markdown("""
+        <div style="margin-top:24px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <span style="color:white;font-size:16px;">📄</span>
+            </div>
+            <span style="font-size:16px;font-weight:600;color:#1e293b;">Documents & Tickets</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Grille de boutons tickets premium (5 colonnes égales)
         col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns(5)
         with col_t1:
-            if st.button("📋 Staff", use_container_width=True, key=f"print_staff_{tid}"):
-                st.session_state[f"show_ticket_{tid}"] = "staff"
+            if st.button("🎫\nClient", use_container_width=True, key=f"print_client_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "client"
                 st.rerun()
         with col_t2:
-            if st.button("🖨️ Les 2", use_container_width=True, key=f"print_both_{tid}", type="primary"):
-                st.session_state[f"show_ticket_{tid}"] = "both"
+            if st.button("📋\nStaff", use_container_width=True, key=f"print_staff_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "staff"
                 st.rerun()
         with col_t3:
-            if st.button("📝 Devis", use_container_width=True, key=f"print_devis_{tid}", type="secondary"):
-                st.session_state[f"show_ticket_{tid}"] = "devis"
+            if st.button("🖨️\nLes 2 tickets", use_container_width=True, key=f"print_both_{tid}", type="primary"):
+                st.session_state[f"show_ticket_{tid}"] = "both"
                 st.rerun()
         with col_t4:
-            if st.button("🧾 Reçu", use_container_width=True, key=f"print_facture_{tid}"):
-                st.session_state[f"show_ticket_{tid}"] = "facture"
+            if st.button("📝\nDevis", use_container_width=True, key=f"print_devis_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "devis"
                 st.rerun()
         with col_t5:
-            # Bouton envoi devis par email
-            email_client = t.get('client_email', '')
-            if email_client and get_param("SMTP_HOST"):
-                if st.button("📧 Email Devis", use_container_width=True, key=f"email_devis_{tid}"):
-                    st.session_state[f"send_devis_email_{tid}"] = True
-                    st.rerun()
-            else:
-                st.button("📧", disabled=True, use_container_width=True, help="Email client ou SMTP non configuré")
-        
-        # Dialogue envoi devis par email
-        if st.session_state.get(f"send_devis_email_{tid}"):
-            st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
-            st.markdown("""
-            <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:10px;padding:1rem;">
-                <strong>📧 Envoyer le devis par email</strong>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            email_dest = t.get('client_email', '')
-            devis_val = t.get('devis_estime') or 0
-            modele_court = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
-            panne_txt = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
-            
-            msg_devis_email = f"""Bonjour {t.get('client_prenom', '')},
-
-Suite au diagnostic de votre {modele_court}, voici notre devis:
-
-🔧 Réparation: {panne_txt}
-💰 Montant: {devis_val:.2f} € TTC
-
-Merci de nous confirmer votre accord pour procéder à la réparation.
-
-Cordialement,
-{get_param('NOM_BOUTIQUE') or 'Klikphone'}
-📞 {get_param('TEL_BOUTIQUE') or '04 79 60 89 22'}
-📍 {get_param('ADRESSE_BOUTIQUE') or '79 Place Saint Léger, Chambéry'}"""
-            
-            msg_email_edit = st.text_area("Message", value=msg_devis_email, height=200, key=f"msg_devis_email_{tid}")
-            
-            col_send, col_cancel = st.columns(2)
-            with col_send:
-                if st.button("📤 Envoyer", key=f"do_send_devis_{tid}", type="primary", use_container_width=True):
-                    sujet = f"Devis réparation {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
-                    success, result = envoyer_email(email_dest, sujet, msg_email_edit)
-                    if success:
-                        st.success(f"✅ Devis envoyé à {email_dest}!")
-                        ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_dest}")
-                        update_ticket(tid, msg_email=1)
-                        del st.session_state[f"send_devis_email_{tid}"]
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Erreur: {result}")
-            with col_cancel:
-                if st.button("Annuler", key=f"cancel_devis_email_{tid}", use_container_width=True):
-                    del st.session_state[f"send_devis_email_{tid}"]
-                    st.rerun()
+            if st.button("🧾\nReçu", use_container_width=True, key=f"print_facture_{tid}"):
+                st.session_state[f"show_ticket_{tid}"] = "facture"
+                st.rerun()
         
         # === SECTION CONTACT CLIENT ===
         st.markdown("---")
