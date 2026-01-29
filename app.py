@@ -4291,6 +4291,62 @@ def staff_traiter_demande(tid):
                     ajouter_note(tid, note)
                     st.success("Note ajoutée!")
                     st.rerun()
+        
+        # === AFFICHAGE DU TICKET DANS COL1 (à gauche) ===
+        ticket_type = st.session_state.get(f"show_ticket_{tid}")
+        if ticket_type:
+            st.markdown("---")
+            
+            # En-tête avec bouton fermer
+            col_header, col_close = st.columns([4, 1])
+            with col_header:
+                if ticket_type == "client":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #fb923c;">
+                        <strong>🎫 TICKET CLIENT</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "staff":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #6b7280;">
+                        <strong>📋 TICKET STAFF</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "both":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
+                        <strong>🖨️ TICKETS CLIENT + STAFF</strong> (saut de page auto)
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "devis":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                        <strong>📝 DEVIS</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "facture":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
+                        <strong>🧾 RÉCAPITULATIF</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with col_close:
+                if st.button("✕ Fermer", key=f"close_ticket_left_{tid}", type="secondary", use_container_width=True):
+                    del st.session_state[f"show_ticket_{tid}"]
+                    st.rerun()
+            
+            # Affichage du ticket selon le type
+            if ticket_type == "client":
+                st.components.v1.html(ticket_client_html(t), height=650, scrolling=True)
+            elif ticket_type == "staff":
+                st.components.v1.html(ticket_staff_html(t), height=700, scrolling=True)
+            elif ticket_type == "both":
+                st.components.v1.html(ticket_combined_html(t), height=800, scrolling=True)
+            elif ticket_type == "devis":
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=700, scrolling=True)
+            elif ticket_type == "facture":
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=700, scrolling=True)
     
     # === COLONNE DROITE: Actions ===
     with col2:
@@ -4364,28 +4420,61 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_edit_appareil_{tid}"] = True
                 st.rerun()
         
-        # Date de récupération
+        # Date de récupération avec calendrier
         st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
         st.markdown("""<div class="detail-card-header">📅 Date récupération prévue</div>""", unsafe_allow_html=True)
         
+        from datetime import datetime, timedelta, date as date_type
+        
+        # Parser la date existante si présente
         date_recup_actuelle = t.get('date_recuperation') or ""
-        col_date, col_btns = st.columns([2, 2])
-        with col_date:
-            date_recup = st.text_input("Date/Heure", value=date_recup_actuelle, placeholder="Ex: 30/01 à 18h", key=f"date_recup_{tid}")
-        with col_btns:
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("24h", key=f"btn_24h_{tid}", use_container_width=True):
-                    from datetime import datetime, timedelta
-                    demain = datetime.now() + timedelta(days=1)
-                    st.session_state[f"date_recup_{tid}"] = demain.strftime("%d/%m à 18h")
-                    st.rerun()
-            with c2:
-                if st.button("48h", key=f"btn_48h_{tid}", use_container_width=True):
-                    from datetime import datetime, timedelta
-                    apres_demain = datetime.now() + timedelta(days=2)
-                    st.session_state[f"date_recup_{tid}"] = apres_demain.strftime("%d/%m à 18h")
-                    st.rerun()
+        default_date = datetime.now().date() + timedelta(days=1)
+        default_hour = 18
+        
+        # Essayer de parser la date existante
+        if date_recup_actuelle:
+            try:
+                # Format "30/01 à 18h"
+                parts = date_recup_actuelle.replace("à", "").replace("h", "").split()
+                if len(parts) >= 2:
+                    day_month = parts[0].split("/")
+                    if len(day_month) == 2:
+                        day = int(day_month[0])
+                        month = int(day_month[1])
+                        year = datetime.now().year
+                        default_date = date_type(year, month, day)
+                    default_hour = int(parts[1]) if len(parts) > 1 else 18
+            except:
+                pass
+        
+        # Disposition en ligne : Date | Heure | Boutons rapides
+        col_cal, col_hour, col_btn24, col_btn48 = st.columns([1.5, 1, 0.75, 0.75])
+        
+        with col_cal:
+            date_picked = st.date_input("Date", value=default_date, min_value=datetime.now().date(), key=f"date_cal_{tid}", label_visibility="collapsed")
+        
+        with col_hour:
+            heures = ["09h", "10h", "11h", "12h", "14h", "15h", "16h", "17h", "18h", "19h"]
+            heure_defaut = f"{default_hour:02d}h" if f"{default_hour:02d}h" in heures else "18h"
+            heure_idx = heures.index(heure_defaut) if heure_defaut in heures else 8
+            heure_picked = st.selectbox("Heure", heures, index=heure_idx, key=f"heure_sel_{tid}", label_visibility="collapsed")
+        
+        with col_btn24:
+            if st.button("24h", key=f"btn_24h_{tid}", use_container_width=True, type="secondary"):
+                demain = datetime.now() + timedelta(days=1)
+                st.session_state[f"date_cal_{tid}"] = demain.date()
+                st.session_state[f"heure_sel_{tid}"] = "18h"
+                st.rerun()
+        
+        with col_btn48:
+            if st.button("48h", key=f"btn_48h_{tid}", use_container_width=True, type="secondary"):
+                apres_demain = datetime.now() + timedelta(days=2)
+                st.session_state[f"date_cal_{tid}"] = apres_demain.date()
+                st.session_state[f"heure_sel_{tid}"] = "18h"
+                st.rerun()
+        
+        # Construire la date formatée
+        date_recup = f"{date_picked.strftime('%d/%m')} à {heure_picked}"
         
         comment = st.text_area("Commentaire interne", placeholder="Ajouter un commentaire...", height=60, key=f"comment_{tid}")
         
@@ -4477,62 +4566,6 @@ def staff_traiter_demande(tid):
                     st.rerun()
             else:
                 st.button("📧", disabled=True, use_container_width=True, help="Email client ou SMTP non configuré")
-        
-        # === AFFICHAGE DU TICKET ICI (juste après les boutons) ===
-        ticket_type = st.session_state.get(f"show_ticket_{tid}")
-        if ticket_type:
-            st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
-            
-            # En-tête avec bouton fermer
-            col_header, col_close = st.columns([4, 1])
-            with col_header:
-                if ticket_type == "client":
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #fb923c;">
-                        <strong>🎫 TICKET CLIENT</strong>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif ticket_type == "staff":
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #6b7280;">
-                        <strong>📋 TICKET STAFF</strong>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif ticket_type == "both":
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
-                        <strong>🖨️ TICKETS CLIENT + STAFF</strong> (saut de page auto)
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif ticket_type == "devis":
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
-                        <strong>📝 DEVIS</strong>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif ticket_type == "facture":
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
-                        <strong>🧾 RÉCAPITULATIF</strong>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            with col_close:
-                if st.button("✕ Fermer", key=f"close_ticket_{tid}", type="secondary", use_container_width=True):
-                    del st.session_state[f"show_ticket_{tid}"]
-                    st.rerun()
-            
-            # Affichage du ticket selon le type
-            if ticket_type == "client":
-                st.components.v1.html(ticket_client_html(t), height=650, scrolling=True)
-            elif ticket_type == "staff":
-                st.components.v1.html(ticket_staff_html(t), height=700, scrolling=True)
-            elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=800, scrolling=True)
-            elif ticket_type == "devis":
-                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=700, scrolling=True)
-            elif ticket_type == "facture":
-                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=700, scrolling=True)
         
         # Dialogue envoi devis par email
         if st.session_state.get(f"send_devis_email_{tid}"):
@@ -5929,7 +5962,7 @@ def tech_detail_ticket(tid):
         st.markdown(f"### Ticket {t['ticket_code']}")
     
     status_class = get_status_class(t.get('statut', ''))
-    st.markdown(f"<span class='status-badge {status_class}' style='font-size:1.1rem;'>{t.get('statut','')}</span>", unsafe_allow_html=True)
+    st.markdown(f"<span class='badge {status_class}' style='font-size:1.1rem;'>{t.get('statut','')}</span>", unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -6314,7 +6347,7 @@ def afficher_suivi_ticket(t):
             <div>
                 <span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {t['ticket_code']}</span>
             </div>
-            <span class="status-badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
+            <span class="badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
         </div>
         
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
