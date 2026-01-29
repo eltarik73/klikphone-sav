@@ -1017,10 +1017,9 @@ h1, h2, h3 {
     color: #374151 !important;
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
     border-radius: 12px !important;
-    padding: 14px 18px 14px 40px !important;
+    padding: 14px 18px !important;
     border: 1px solid #e2e8f0 !important;
     transition: all 0.2s ease !important;
-    position: relative !important;
 }
 
 .streamlit-expanderHeader:hover {
@@ -1028,41 +1027,9 @@ h1, h2, h3 {
     border-color: rgba(249,115,22,0.3) !important;
 }
 
-/* MASQUER COMPLETEMENT l'icône Material Icons corrompue "arrow_" */
-.streamlit-expanderHeader svg,
-.streamlit-expanderHeader [data-testid="stExpanderToggleIcon"],
-.streamlit-expanderHeader span[class*="icon"],
-.streamlit-expanderHeader [class*="Icon"],
-.streamlit-expanderHeader [data-baseweb="icon"],
-[data-testid="stExpander"] summary > span:first-child,
-[data-testid="stExpander"] details > summary > div > span:first-child {
+/* Cacher seulement l'icône SVG, pas le texte */
+.streamlit-expanderHeader svg {
     display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
-    font-size: 0 !important;
-    opacity: 0 !important;
-    position: absolute !important;
-    left: -9999px !important;
-}
-
-/* Ajouter une flèche propre via CSS */
-.streamlit-expanderHeader::before {
-    content: "›" !important;
-    position: absolute !important;
-    left: 16px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    font-size: 1.2rem !important;
-    font-weight: bold !important;
-    color: #94a3b8 !important;
-    transition: transform 0.2s ease !important;
-}
-
-[data-testid="stExpander"][open] .streamlit-expanderHeader::before,
-details[open] .streamlit-expanderHeader::before {
-    transform: translateY(-50%) rotate(90deg) !important;
 }
 
 /* Style pour le contenu */
@@ -3317,9 +3284,17 @@ def ui_client():
                 reset_client()
                 st.rerun()
         
-        # Expander pour voir le ticket
+        # Bouton pour voir le ticket (remplace l'expander)
         if t:
-            with st.expander("Voir le ticket de dépôt"):
+            if "show_ticket_depot" not in st.session_state:
+                st.session_state.show_ticket_depot = False
+            
+            if st.button("🎫 Voir le ticket de dépôt" + (" ▼" if st.session_state.show_ticket_depot else " ▶"), 
+                        key="toggle_ticket_depot", use_container_width=True, type="secondary"):
+                st.session_state.show_ticket_depot = not st.session_state.show_ticket_depot
+                st.rerun()
+            
+            if st.session_state.show_ticket_depot:
                 st.components.v1.html(ticket_client_html(t), height=500, scrolling=True)
         
         # Forcer un rerun pour le compteur
@@ -6513,21 +6488,46 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     # === SECTION INFÉRIEURE ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
-    # Message pour l'accueil
-    with st.expander("Message pour l'accueil", expanded=False):
+    # Message pour l'accueil - Toggle avec session_state
+    if f"show_msg_accueil_{tid}" not in st.session_state:
+        st.session_state[f"show_msg_accueil_{tid}"] = False
+    
+    col_toggle1, col_spacer1 = st.columns([3, 1])
+    with col_toggle1:
+        if st.button("📝 Message pour l'accueil" + (" ▼" if st.session_state[f"show_msg_accueil_{tid}"] else " ▶"), 
+                     key=f"toggle_msg_{tid}", use_container_width=True, type="secondary"):
+            st.session_state[f"show_msg_accueil_{tid}"] = not st.session_state[f"show_msg_accueil_{tid}"]
+            st.rerun()
+    
+    if st.session_state[f"show_msg_accueil_{tid}"]:
+        st.markdown("""<div style="background:white;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:16px;margin-top:-10px;">""", unsafe_allow_html=True)
         comment_client = st.text_area("Message à transmettre au client via l'accueil", 
                                       value=t.get('commentaire_client') or "", 
                                       height=80, 
                                       placeholder="Ex: Écran remplacé, test OK. Attention batterie faible...",
                                       key=f"tech_client_comment_{tid}")
-        if st.button("💾 Enregistrer", key=f"tech_save_client_comment_{tid}"):
+        if st.button("💾 Enregistrer le message", key=f"tech_save_client_comment_{tid}", type="primary"):
             update_ticket(tid, commentaire_client=comment_client)
             st.success("✅ Message enregistré!")
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    # Actions rapides (statuts)
-    with st.expander("Changer le statut manuellement", expanded=False):
-        st.markdown("**Attention:** Utilisez les boutons d'action ci-dessus pour un workflow optimal.")
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    
+    # Changer statut - Toggle avec session_state
+    if f"show_statuts_{tid}" not in st.session_state:
+        st.session_state[f"show_statuts_{tid}"] = False
+    
+    col_toggle2, col_spacer2 = st.columns([3, 1])
+    with col_toggle2:
+        if st.button("⚙️ Changer le statut manuellement" + (" ▼" if st.session_state[f"show_statuts_{tid}"] else " ▶"), 
+                     key=f"toggle_statuts_{tid}", use_container_width=True, type="secondary"):
+            st.session_state[f"show_statuts_{tid}"] = not st.session_state[f"show_statuts_{tid}"]
+            st.rerun()
+    
+    if st.session_state[f"show_statuts_{tid}"]:
+        st.markdown("""<div style="background:white;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:16px;margin-top:-10px;">""", unsafe_allow_html=True)
+        st.caption("⚠️ Utilisez les boutons d'action ci-dessus pour un workflow optimal.")
         cols = st.columns(3)
         for i, s in enumerate(STATUTS):
             with cols[i % 3]:
@@ -6535,6 +6535,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                 if st.button(s, key=f"tech_status_{tid}_{s}", use_container_width=True, disabled=is_current, type="primary" if is_current else "secondary"):
                     changer_statut(tid, s)
                     st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # Footer
     st.markdown("""
