@@ -6179,16 +6179,54 @@ def tech_detail_ticket(tid):
     }
     etape_actuelle = etapes.get(statut_actuel, 1)
     
+    # Générer le HTML du workflow
+    def step_style(num):
+        if num < etape_actuelle:
+            return "background:linear-gradient(135deg,#22c55e,#16a34a);color:white;"
+        elif num == etape_actuelle:
+            return "background:linear-gradient(135deg,#f97316,#ea580c);color:white;box-shadow:0 4px 12px rgba(249,115,22,0.4);"
+        else:
+            return "background:#e2e8f0;color:#94a3b8;"
+    
+    def label_style(num):
+        if num == etape_actuelle:
+            return "color:#f97316;font-weight:700;"
+        else:
+            return "color:#64748b;font-weight:400;"
+    
+    def bar_style(num):
+        return "#22c55e" if num < etape_actuelle else "#e2e8f0"
+    
+    labels = ["Diagnostic", "Devis", "Réparation", "Terminé", "Rendu"]
+    icons = ["🔍", "💰", "🔧", "✅", "🤝"]
+    
     st.markdown(f"""
-    <div style="background:white;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            {' '.join([f'''
-            <div style="flex:1;text-align:center;">
-                <div style="width:40px;height:40px;margin:0 auto;border-radius:50%;background:{'linear-gradient(135deg,#f97316,#ea580c)' if i <= etape_actuelle else '#e2e8f0'};color:{'white' if i <= etape_actuelle else '#94a3b8'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;{'box-shadow:0 4px 12px rgba(249,115,22,0.3);' if i == etape_actuelle else ''}">{i}</div>
-                <div style="font-size:0.75rem;margin-top:6px;color:{'#f97316' if i == etape_actuelle else '#64748b'};font-weight:{'600' if i == etape_actuelle else '400'};">{["Diagnostic","Devis","Réparation","Terminé","Rendu"][i-1]}</div>
+    <div style="background:white;border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="text-align:center;flex:1;">
+                <div style="width:44px;height:44px;margin:0 auto;border-radius:50%;{step_style(1)}display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">{icons[0]}</div>
+                <div style="font-size:0.75rem;margin-top:8px;{label_style(1)}">{labels[0]}</div>
             </div>
-            {'<div style="flex:0.5;height:3px;background:' + ('#f97316' if i < etape_actuelle else '#e2e8f0') + ';margin-top:-20px;"></div>' if i < 5 else ''}
-            ''' for i in range(1, 6)])}
+            <div style="flex:0.8;height:4px;background:{bar_style(1)};border-radius:2px;margin:0 -5px;margin-top:-20px;"></div>
+            <div style="text-align:center;flex:1;">
+                <div style="width:44px;height:44px;margin:0 auto;border-radius:50%;{step_style(2)}display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">{icons[1]}</div>
+                <div style="font-size:0.75rem;margin-top:8px;{label_style(2)}">{labels[1]}</div>
+            </div>
+            <div style="flex:0.8;height:4px;background:{bar_style(2)};border-radius:2px;margin:0 -5px;margin-top:-20px;"></div>
+            <div style="text-align:center;flex:1;">
+                <div style="width:44px;height:44px;margin:0 auto;border-radius:50%;{step_style(3)}display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">{icons[2]}</div>
+                <div style="font-size:0.75rem;margin-top:8px;{label_style(3)}">{labels[2]}</div>
+            </div>
+            <div style="flex:0.8;height:4px;background:{bar_style(3)};border-radius:2px;margin:0 -5px;margin-top:-20px;"></div>
+            <div style="text-align:center;flex:1;">
+                <div style="width:44px;height:44px;margin:0 auto;border-radius:50%;{step_style(4)}display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">{icons[3]}</div>
+                <div style="font-size:0.75rem;margin-top:8px;{label_style(4)}">{labels[3]}</div>
+            </div>
+            <div style="flex:0.8;height:4px;background:{bar_style(4)};border-radius:2px;margin:0 -5px;margin-top:-20px;"></div>
+            <div style="text-align:center;flex:1;">
+                <div style="width:44px;height:44px;margin:0 auto;border-radius:50%;{step_style(5)}display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">{icons[4]}</div>
+                <div style="font-size:0.75rem;margin-top:8px;{label_style(5)}">{labels[4]}</div>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -6298,13 +6336,14 @@ def tech_detail_ticket(tid):
             tel = t.get('client_tel', '')
             email = t.get('client_email', '')
             nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+            devis_montant = new_devis if new_devis else devis
             
             msg_devis = f"""Bonjour {t.get('client_prenom', '')},
 
 Suite au diagnostic de votre {modele_txt}, voici notre devis:
 
 🔧 Réparation: {panne}
-💰 Montant: {new_devis if 'new_devis' in dir() else devis:.2f} € TTC
+💰 Montant: {devis_montant:.2f} € TTC
 
 Merci de nous confirmer votre accord pour procéder à la réparation.
 
