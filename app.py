@@ -6727,61 +6727,94 @@ def staff_config():
             st.success("PIN mis à jour!")
         
         st.markdown("---")
-        st.markdown("### 💾 Sauvegarde et restauration des données")
-        st.markdown("Exportez vos données pour les sauvegarder ou les transférer vers une autre installation.")
+        st.markdown("### 💾 Sauvegarde et restauration de la BASE DE DONNÉES")
+        st.markdown("""
+        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <strong>💡 Important:</strong> Faites une sauvegarde régulière de vos données !<br>
+            Le fichier JSON contient TOUTE votre base de données (clients, tickets, paramètres, équipe, catalogue, commandes).
+        </div>
+        """, unsafe_allow_html=True)
         
-        # === EXPORT ===
-        st.markdown("#### 📤 Exporter les données")
+        # === EXPORT COMPLET ===
+        st.markdown("#### 📤 Exporter la base de données complète")
         
-        col_exp1, col_exp2 = st.columns(2)
+        col_exp1, col_exp2, col_exp3 = st.columns(3)
+        
         with col_exp1:
-            if st.button("📥 Télécharger la sauvegarde (JSON)", type="primary", use_container_width=True):
+            if st.button("💾 SAUVEGARDE COMPLÈTE (JSON)", type="primary", use_container_width=True):
                 import json
                 from datetime import datetime as dt
                 
-                # Récupérer tous les clients
                 conn = get_db()
                 c = conn.cursor()
+                
+                # Récupérer TOUTES les tables
                 c.execute("SELECT * FROM clients ORDER BY id")
                 clients_data = [dict(row) for row in c.fetchall()]
                 
-                # Récupérer tous les tickets
                 c.execute("SELECT * FROM tickets ORDER BY id")
                 tickets_data = [dict(row) for row in c.fetchall()]
                 
-                # Récupérer les params
                 c.execute("SELECT cle, valeur FROM params")
                 params_data = {row['cle']: row['valeur'] for row in c.fetchall()}
                 
-                # Récupérer les membres équipe
                 c.execute("SELECT * FROM membres_equipe")
                 membres_data = [dict(row) for row in c.fetchall()]
                 
+                c.execute("SELECT * FROM catalog_marques ORDER BY categorie, marque")
+                marques_data = [dict(row) for row in c.fetchall()]
+                
+                c.execute("SELECT * FROM catalog_modeles ORDER BY categorie, marque, modele")
+                modeles_data = [dict(row) for row in c.fetchall()]
+                
+                # Commandes pièces si table existe
+                commandes_data = []
+                try:
+                    c.execute("SELECT * FROM commandes_pieces ORDER BY id")
+                    commandes_data = [dict(row) for row in c.fetchall()]
+                except:
+                    pass
+                
                 conn.close()
                 
-                # Créer le fichier JSON
+                # Créer le fichier JSON complet
                 backup_data = {
-                    "version": "1.0",
+                    "version": "2.0",
+                    "type": "full_backup",
                     "date_export": dt.now().isoformat(),
-                    "clients": clients_data,
-                    "tickets": tickets_data,
-                    "params": params_data,
-                    "membres_equipe": membres_data
+                    "stats": {
+                        "clients": len(clients_data),
+                        "tickets": len(tickets_data),
+                        "params": len(params_data),
+                        "membres_equipe": len(membres_data),
+                        "marques": len(marques_data),
+                        "modeles": len(modeles_data),
+                        "commandes_pieces": len(commandes_data)
+                    },
+                    "data": {
+                        "clients": clients_data,
+                        "tickets": tickets_data,
+                        "params": params_data,
+                        "membres_equipe": membres_data,
+                        "catalog_marques": marques_data,
+                        "catalog_modeles": modeles_data,
+                        "commandes_pieces": commandes_data
+                    }
                 }
                 
                 json_str = json.dumps(backup_data, indent=2, ensure_ascii=False, default=str)
                 
                 st.download_button(
-                    label="💾 Cliquez pour télécharger",
+                    label="⬇️ Télécharger la sauvegarde",
                     data=json_str,
-                    file_name=f"klikphone_backup_{dt.now().strftime('%Y%m%d_%H%M')}.json",
+                    file_name=f"klikphone_DB_COMPLETE_{dt.now().strftime('%Y%m%d_%H%M')}.json",
                     mime="application/json",
-                    key="download_backup"
+                    key="download_full_backup"
                 )
-                st.success(f"✅ Sauvegarde prête: {len(clients_data)} clients, {len(tickets_data)} tickets")
+                st.success(f"✅ Sauvegarde complète: {len(clients_data)} clients, {len(tickets_data)} tickets, {len(marques_data)} marques, {len(modeles_data)} modèles")
         
         with col_exp2:
-            if st.button("📊 Télécharger en Excel", use_container_width=True):
+            if st.button("📊 Export Excel", use_container_width=True):
                 try:
                     import pandas as pd
                     from io import BytesIO
@@ -6790,11 +6823,9 @@ def staff_config():
                     conn = get_db()
                     c = conn.cursor()
                     
-                    # Clients
                     c.execute("SELECT * FROM clients ORDER BY id")
                     clients_df = pd.DataFrame([dict(row) for row in c.fetchall()])
                     
-                    # Tickets avec infos clients
                     c.execute("""SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, 
                                 c.telephone as client_tel, c.email as client_email
                                 FROM tickets t LEFT JOIN clients c ON t.client_id = c.id ORDER BY t.id""")
@@ -6802,7 +6833,6 @@ def staff_config():
                     
                     conn.close()
                     
-                    # Créer le fichier Excel avec plusieurs feuilles
                     output = BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         if not clients_df.empty:
@@ -6811,7 +6841,7 @@ def staff_config():
                             tickets_df.to_excel(writer, sheet_name='Tickets', index=False)
                     
                     st.download_button(
-                        label="📊 Cliquez pour télécharger Excel",
+                        label="⬇️ Télécharger Excel",
                         data=output.getvalue(),
                         file_name=f"klikphone_export_{dt.now().strftime('%Y%m%d')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -6819,87 +6849,205 @@ def staff_config():
                     )
                     st.success("✅ Export Excel prêt!")
                 except ImportError:
-                    st.error("Module pandas ou openpyxl non installé. Utilisez l'export JSON.")
+                    st.error("Module pandas ou openpyxl non installé.")
+        
+        with col_exp3:
+            if st.button("📋 Contacts simples", use_container_width=True):
+                try:
+                    import pandas as pd
+                    from io import BytesIO
+                    
+                    conn = get_db()
+                    c = conn.cursor()
+                    c.execute("SELECT nom, prenom, telephone, email FROM clients ORDER BY nom, prenom")
+                    contacts = [dict(row) for row in c.fetchall()]
+                    conn.close()
+                    
+                    if contacts:
+                        df = pd.DataFrame(contacts)
+                        output = BytesIO()
+                        df.to_excel(output, index=False, sheet_name='Contacts')
+                        
+                        st.download_button(
+                            label="⬇️ Télécharger contacts",
+                            data=output.getvalue(),
+                            file_name="klikphone_contacts.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="download_contacts"
+                        )
+                        st.success(f"✅ {len(contacts)} contacts!")
+                except:
+                    st.error("Erreur export contacts")
         
         st.markdown("---")
         
-        # === IMPORT ===
-        st.markdown("#### 📥 Restaurer les données")
-        st.warning("⚠️ L'import va AJOUTER les données au système existant. Les doublons (même téléphone) seront ignorés.")
+        # === IMPORT / RESTAURATION ===
+        st.markdown("#### 📥 Restaurer la base de données")
         
-        uploaded_file = st.file_uploader("Choisir un fichier de sauvegarde (.json)", type=['json'], key="upload_backup")
+        st.markdown("""
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <strong>⚠️ Attention:</strong><br>
+            • <strong>Mode AJOUTER:</strong> Les nouvelles données s'ajoutent aux données existantes (doublons ignorés)<br>
+            • <strong>Mode REMPLACER:</strong> Efface TOUTES les données actuelles et les remplace par la sauvegarde (nécessite PIN)
+        </div>
+        """, unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader("📁 Choisir un fichier de sauvegarde (.json)", type=['json'], key="upload_backup")
         
         if uploaded_file is not None:
             import json
             try:
                 backup_data = json.load(uploaded_file)
                 
+                # Vérifier le format (v1 ou v2)
+                is_v2 = backup_data.get('version') == '2.0' and 'data' in backup_data
+                
+                if is_v2:
+                    stats = backup_data.get('stats', {})
+                    data = backup_data.get('data', {})
+                else:
+                    # Format v1 (ancien)
+                    stats = {
+                        "clients": len(backup_data.get('clients', [])),
+                        "tickets": len(backup_data.get('tickets', [])),
+                        "params": len(backup_data.get('params', {})),
+                        "membres_equipe": len(backup_data.get('membres_equipe', []))
+                    }
+                    data = backup_data
+                
                 st.info(f"""
-                **Contenu du fichier:**
-                - 📅 Date export: {backup_data.get('date_export', 'N/A')}
-                - 👥 Clients: {len(backup_data.get('clients', []))}
-                - 🎫 Tickets: {len(backup_data.get('tickets', []))}
-                - ⚙️ Paramètres: {len(backup_data.get('params', {}))}
-                - 👷 Membres équipe: {len(backup_data.get('membres_equipe', []))}
+                **📁 Contenu du fichier de sauvegarde:**
+                - 📅 Date: {backup_data.get('date_export', 'N/A')}
+                - 👥 Clients: **{stats.get('clients', 0)}**
+                - 🎫 Tickets: **{stats.get('tickets', 0)}**
+                - ⚙️ Paramètres: {stats.get('params', 0)}
+                - 👷 Équipe: {stats.get('membres_equipe', 0)}
+                - 🏷️ Marques: {stats.get('marques', 0)}
+                - 📱 Modèles: {stats.get('modeles', 0)}
                 """)
+                
+                mode_import = st.radio("Mode d'importation:", 
+                    ["➕ AJOUTER aux données existantes", "🔄 REMPLACER toutes les données"],
+                    key="import_mode")
+                
+                if "REMPLACER" in mode_import:
+                    st.error("⚠️ ATTENTION: Cette action va EFFACER toutes vos données actuelles!")
+                    pin_confirm = st.text_input("🔐 Entrez le code PIN pour confirmer:", type="password", key="pin_restore")
+                else:
+                    pin_confirm = "ok"
                 
                 col_imp1, col_imp2 = st.columns(2)
                 
                 with col_imp1:
-                    if st.button("✅ Importer les données", type="primary", use_container_width=True):
-                        conn = get_db()
-                        c = conn.cursor()
-                        
-                        imported_clients = 0
-                        imported_tickets = 0
-                        
-                        # Importer les clients
-                        for client in backup_data.get('clients', []):
-                            try:
-                                c.execute("""INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby)
-                                            VALUES (?, ?, ?, ?, ?, ?)""",
-                                         (client.get('nom'), client.get('prenom'), client.get('telephone'),
-                                          client.get('email'), client.get('societe'), client.get('carte_camby', 0)))
-                                imported_clients += 1
-                            except:
-                                pass  # Doublon téléphone
-                        
-                        # Importer les tickets
-                        for ticket in backup_data.get('tickets', []):
-                            try:
-                                # Vérifier si le ticket existe déjà
-                                c.execute("SELECT id FROM tickets WHERE ticket_code=?", (ticket.get('ticket_code'),))
-                                if not c.fetchone():
-                                    c.execute("""INSERT INTO tickets (ticket_code, client_id, categorie, marque, modele, 
-                                                modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, 
-                                                notes_internes, devis_estime, acompte, tarif_final, statut, date_depot)
-                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                                             (ticket.get('ticket_code'), ticket.get('client_id'), ticket.get('categorie'),
-                                              ticket.get('marque'), ticket.get('modele'), ticket.get('modele_autre'),
-                                              ticket.get('imei'), ticket.get('panne'), ticket.get('panne_detail'),
-                                              ticket.get('pin'), ticket.get('pattern'), ticket.get('notes_client'),
-                                              ticket.get('notes_internes'), ticket.get('devis_estime'), ticket.get('acompte'),
-                                              ticket.get('tarif_final'), ticket.get('statut'), ticket.get('date_depot')))
-                                    imported_tickets += 1
-                            except Exception as e:
-                                pass
-                        
-                        # Importer les paramètres
-                        for cle, valeur in backup_data.get('params', {}).items():
-                            try:
-                                c.execute("INSERT OR REPLACE INTO params (cle, valeur) VALUES (?, ?)", (cle, valeur))
-                            except:
-                                pass
-                        
-                        conn.commit()
-                        conn.close()
-                        
-                        st.success(f"✅ Import terminé: {imported_clients} clients, {imported_tickets} tickets importés!")
-                        st.balloons()
+                    if st.button("✅ RESTAURER", type="primary", use_container_width=True):
+                        if "REMPLACER" in mode_import and pin_confirm != "2626":
+                            st.error("❌ Code PIN incorrect!")
+                        else:
+                            conn = get_db()
+                            c = conn.cursor()
+                            
+                            imported_clients = 0
+                            imported_tickets = 0
+                            
+                            # Si mode REMPLACER, vider les tables d'abord
+                            if "REMPLACER" in mode_import:
+                                c.execute("DELETE FROM tickets")
+                                c.execute("DELETE FROM clients")
+                                c.execute("DELETE FROM params")
+                                c.execute("DELETE FROM membres_equipe")
+                                try:
+                                    c.execute("DELETE FROM catalog_marques")
+                                    c.execute("DELETE FROM catalog_modeles")
+                                    c.execute("DELETE FROM commandes_pieces")
+                                except:
+                                    pass
+                                conn.commit()
+                            
+                            # Importer les clients
+                            clients_list = data.get('clients', [])
+                            for client in clients_list:
+                                try:
+                                    c.execute("""INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby)
+                                                VALUES (?, ?, ?, ?, ?, ?)""",
+                                             (client.get('nom'), client.get('prenom'), client.get('telephone'),
+                                              client.get('email'), client.get('societe'), client.get('carte_camby', 0)))
+                                    imported_clients += 1
+                                except:
+                                    pass
+                            
+                            # Importer les tickets
+                            tickets_list = data.get('tickets', [])
+                            for ticket in tickets_list:
+                                try:
+                                    c.execute("SELECT id FROM tickets WHERE ticket_code=?", (ticket.get('ticket_code'),))
+                                    if not c.fetchone():
+                                        c.execute("""INSERT INTO tickets (ticket_code, client_id, categorie, marque, modele, 
+                                                    modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, 
+                                                    notes_internes, devis_estime, acompte, tarif_final, statut, date_depot,
+                                                    technicien_assigne, date_recuperation, commande_piece, paye)
+                                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                                 (ticket.get('ticket_code'), ticket.get('client_id'), ticket.get('categorie'),
+                                                  ticket.get('marque'), ticket.get('modele'), ticket.get('modele_autre'),
+                                                  ticket.get('imei'), ticket.get('panne'), ticket.get('panne_detail'),
+                                                  ticket.get('pin'), ticket.get('pattern'), ticket.get('notes_client'),
+                                                  ticket.get('notes_internes'), ticket.get('devis_estime'), ticket.get('acompte'),
+                                                  ticket.get('tarif_final'), ticket.get('statut'), ticket.get('date_depot'),
+                                                  ticket.get('technicien_assigne'), ticket.get('date_recuperation'),
+                                                  ticket.get('commande_piece', 0), ticket.get('paye', 0)))
+                                        imported_tickets += 1
+                                except:
+                                    pass
+                            
+                            # Importer les paramètres
+                            params_dict = data.get('params', {})
+                            for cle, valeur in params_dict.items():
+                                try:
+                                    c.execute("INSERT OR REPLACE INTO params (cle, valeur) VALUES (?, ?)", (cle, valeur))
+                                except:
+                                    pass
+                            
+                            # Importer les membres équipe
+                            membres_list = data.get('membres_equipe', [])
+                            for membre in membres_list:
+                                try:
+                                    c.execute("SELECT id FROM membres_equipe WHERE nom=?", (membre.get('nom'),))
+                                    if not c.fetchone():
+                                        c.execute("INSERT INTO membres_equipe (nom, role, couleur, actif) VALUES (?, ?, ?, ?)",
+                                                 (membre.get('nom'), membre.get('role'), membre.get('couleur'), membre.get('actif', 1)))
+                                except:
+                                    pass
+                            
+                            # Importer le catalogue (v2 uniquement)
+                            if is_v2:
+                                for marque in data.get('catalog_marques', []):
+                                    try:
+                                        c.execute("INSERT OR IGNORE INTO catalog_marques (categorie, marque) VALUES (?, ?)",
+                                                 (marque.get('categorie'), marque.get('marque')))
+                                    except:
+                                        pass
+                                
+                                for modele in data.get('catalog_modeles', []):
+                                    try:
+                                        c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)",
+                                                 (modele.get('categorie'), modele.get('marque'), modele.get('modele')))
+                                    except:
+                                        pass
+                            
+                            conn.commit()
+                            conn.close()
+                            
+                            # Vider les caches
+                            keys_to_delete = [k for k in st.session_state.keys() if k.startswith('_cache_')]
+                            for k in keys_to_delete:
+                                del st.session_state[k]
+                            
+                            st.success(f"✅ Restauration terminée: {imported_clients} clients, {imported_tickets} tickets importés!")
+                            st.balloons()
                 
                 with col_imp2:
                     if st.button("❌ Annuler", use_container_width=True):
                         st.rerun()
+                        
             except Exception as e:
                 st.error(f"❌ Erreur lors de la lecture du fichier: {str(e)}")
 
