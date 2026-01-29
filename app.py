@@ -1855,8 +1855,9 @@ def is_postgres():
         return False
 
 
-def _pg_connect():
-    """Crée une connexion Postgres (Supabase)."""
+@st.cache_resource
+def _get_pg_connection():
+    """Connexion Postgres persistante (cache_resource)"""
     if psycopg2 is None:
         raise RuntimeError("psycopg2 n'est pas installé. Ajoute 'psycopg2-binary' dans requirements.txt")
 
@@ -1887,6 +1888,19 @@ def _pg_connect():
         host=host, port=port, dbname=database, user=user, password=password,
         sslmode=sslmode, connect_timeout=10
     )
+
+
+def _pg_connect():
+    """Récupère la connexion Postgres persistante."""
+    conn = _get_pg_connection()
+    # Vérifier si la connexion est encore valide
+    try:
+        conn.cursor().execute("SELECT 1")
+    except:
+        # Connexion fermée, on clear le cache et on réessaie
+        _get_pg_connection.clear()
+        conn = _get_pg_connection()
+    return conn
 
 
 class _PgCursorWrapper:
@@ -1951,7 +1965,8 @@ class _PgConnProxy:
         return self._conn.commit()
 
     def close(self):
-        return self._conn.close()
+        # Ne PAS fermer la connexion persistante
+        pass
 
     def __getattr__(self, name):
         return getattr(self._conn, name)
