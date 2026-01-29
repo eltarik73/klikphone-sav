@@ -1625,6 +1625,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nom TEXT, prenom TEXT, telephone TEXT UNIQUE, email TEXT,
         societe TEXT,
+        carte_camby INTEGER DEFAULT 0,
         date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
     
     c.execute("""CREATE TABLE IF NOT EXISTS tickets (
@@ -1703,6 +1704,7 @@ def init_db():
         "ALTER TABLE tickets ADD COLUMN msg_sms INTEGER DEFAULT 0",
         "ALTER TABLE tickets ADD COLUMN msg_email INTEGER DEFAULT 0",
         "ALTER TABLE clients ADD COLUMN societe TEXT",
+        "ALTER TABLE clients ADD COLUMN carte_camby INTEGER DEFAULT 0",
     ]
     for sql in migrations:
         try:
@@ -1799,20 +1801,29 @@ def ajouter_modele(cat, marque, modele):
 # =============================================================================
 # MÉTIER
 # =============================================================================
-def get_or_create_client(nom, tel, prenom="", email="", societe=""):
+def get_or_create_client(nom, tel, prenom="", email="", societe="", carte_camby=0):
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=? WHERE id=?", (nom, prenom, email, societe, cid))
+        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=? WHERE id=?", (nom, prenom, email, societe, carte_camby, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe) VALUES (?,?,?,?,?)", (nom, prenom, tel, email, societe))
+        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby) VALUES (?,?,?,?,?,?)", (nom, prenom, tel, email, societe, carte_camby))
         cid = c.lastrowid
     conn.commit()
     conn.close()
     return cid
+
+def check_client_exists(tel):
+    """Vérifie si un client existe déjà par son téléphone"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, nom, prenom FROM clients WHERE telephone=?", (tel,))
+    r = c.fetchone()
+    conn.close()
+    return dict(r) if r else None
 
 def get_all_clients():
     """Récupère tous les clients"""
@@ -1996,7 +2007,8 @@ def get_ticket_full(tid=None, code=None):
     conn = get_db()
     c = conn.cursor()
     q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, 
-           c.telephone as client_tel, c.email as client_email 
+           c.telephone as client_tel, c.email as client_email,
+           c.societe as client_societe, c.carte_camby as client_carte_camby
            FROM tickets t JOIN clients c ON t.client_id=c.id"""
     if tid: c.execute(q + " WHERE t.id=?", (tid,))
     elif code: c.execute(q + " WHERE t.ticket_code=?", (code,))
@@ -2029,7 +2041,8 @@ def changer_statut(tid, statut):
 def chercher_tickets(statut=None, tel=None, code=None, nom=None):
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel 
+    q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel,
+           c.carte_camby as client_carte_camby
            FROM tickets t JOIN clients c ON t.client_id=c.id WHERE 1=1"""
     p = []
     if statut: q += " AND t.statut=?"; p.append(statut)
@@ -2941,65 +2954,37 @@ def ui_client():
             reset_client()
             st.rerun()
         
-        # Écran de succès magnifique
+        # Écran de succès
         st.markdown(f"""
-        <div style="min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
-            
-            <!-- Animation checkmark -->
-            <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);display:flex;align-items:center;justify-content:center;margin-bottom:2rem;box-shadow:0 20px 60px rgba(34,197,94,0.35);animation:successPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);">
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+        <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+            <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;box-shadow:0 15px 40px rgba(34,197,94,0.3);">
+                <span style="font-size:50px;color:white;">✓</span>
             </div>
-            
-            <!-- Titre -->
-            <h1 style="font-size:2.5rem;font-weight:800;color:#1e293b;margin-bottom:0.5rem;letter-spacing:-1px;">
+            <h1 style="font-size:2rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem;">
                 Demande enregistrée !
             </h1>
-            <p style="font-size:1.1rem;color:#64748b;margin-bottom:2rem;">
-                Votre appareil est entre de bonnes mains 🛠️
+            <p style="font-size:1rem;color:#64748b;margin-bottom:1.5rem;">
+                Votre appareil est entre de bonnes mains
             </p>
-            
-            <!-- Numéro de ticket -->
-            <div style="margin-bottom:2rem;">
-                <p style="font-size:0.85rem;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin-bottom:0.75rem;">
-                    Votre numéro de ticket
-                </p>
-                <div style="display:inline-block;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);color:white;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:2rem;font-weight:700;padding:1.25rem 2.5rem;border-radius:16px;letter-spacing:3px;box-shadow:0 10px 40px rgba(30,41,59,0.25);">
-                    {code}
-                </div>
+            <p style="font-size:0.85rem;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin-bottom:0.5rem;">
+                Votre numéro de ticket
+            </p>
+            <div style="display:inline-block;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);color:white;font-family:monospace;font-size:1.8rem;font-weight:700;padding:1rem 2rem;border-radius:12px;letter-spacing:2px;margin-bottom:1.5rem;">
+                {code}
             </div>
-            
-            <!-- QR Code -->
-            <div style="background:white;padding:1.5rem;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.08);margin-bottom:1.5rem;">
-                <img src="{qr_url(f'{url}?ticket={code}')}" style="width:140px;height:140px;"/>
-                <p style="font-size:0.8rem;color:#94a3b8;margin-top:0.75rem;">Scannez pour suivre votre réparation</p>
+            <div style="background:white;padding:1rem;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:1rem;">
+                <img src="{qr_url(f'{url}?ticket={code}')}" style="width:120px;height:120px;"/>
+                <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">Scannez pour suivre</p>
             </div>
-            
-            <!-- Infos -->
-            <div style="background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border:1px solid #fed7aa;border-radius:16px;padding:1.25rem 2rem;margin-bottom:2rem;max-width:400px;">
-                <p style="color:#9a3412;font-size:0.9rem;margin:0;">
-                    📱 <strong>Conservez ce numéro</strong> pour suivre l'avancement de votre réparation et être notifié quand votre appareil sera prêt.
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:1rem 1.5rem;max-width:350px;">
+                <p style="color:#9a3412;font-size:0.85rem;margin:0;">
+                    📱 Conservez ce numéro pour suivre votre réparation
                 </p>
             </div>
-            
-            <!-- Compte à rebours -->
-            <div style="display:flex;align-items:center;gap:0.5rem;color:#94a3b8;font-size:0.9rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                Retour automatique dans <strong style="color:#1e293b;">{remaining}s</strong>
-            </div>
+            <p style="color:#94a3b8;font-size:0.85rem;margin-top:1.5rem;">
+                ⏱️ Retour automatique dans <strong style="color:#1e293b;">{remaining}s</strong>
+            </p>
         </div>
-        
-        <style>
-        @keyframes successPop {{
-            0% {{ transform: scale(0); opacity: 0; }}
-            50% {{ transform: scale(1.15); }}
-            100% {{ transform: scale(1); opacity: 1; }}
-        }}
-        </style>
         """, unsafe_allow_html=True)
         
         # Bouton prochain client
@@ -3504,18 +3489,41 @@ def client_step5():
 
 def client_step6():
     """Étape 6: Coordonnées du client"""
+    
+    # Vérifier si un client existe déjà (popup)
+    if st.session_state.get("client_exists_popup"):
+        client_info = st.session_state.client_exists_popup
+        st.markdown(f"""
+        <div style="background:#fef3c7;border:2px solid #f59e0b;border-radius:16px;padding:2rem;text-align:center;margin:2rem auto;max-width:450px;">
+            <div style="font-size:3rem;margin-bottom:1rem;">👋</div>
+            <h2 style="color:#92400e;margin-bottom:1rem;">Vous êtes déjà enregistré !</h2>
+            <p style="color:#78350f;font-size:1rem;margin-bottom:1.5rem;">
+                Bonjour <strong>{client_info.get('prenom', '')} {client_info.get('nom', '')}</strong>,<br>
+                votre numéro de téléphone est déjà dans notre système.
+            </p>
+            <p style="color:#92400e;font-size:0.95rem;">
+                📍 Merci de vous diriger vers l'accueil,<br>
+                un conseiller va s'occuper de vous.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🏠 Nouveau client", type="primary", use_container_width=True):
+            st.session_state.client_exists_popup = None
+            reset_client()
+            st.rerun()
+        return
+    
     st.markdown("""
-    <div class="step-title">
-        <h2>👤 Vos coordonnées</h2>
-        <p>Pour vous contacter quand votre appareil sera prêt</p>
+    <div style="text-align:center;margin-bottom:1.5rem;">
+        <h2 style="font-size:1.5rem;font-weight:700;color:#1e293b;">👤 Vos coordonnées</h2>
+        <p style="color:#64748b;">Pour vous contacter quand votre appareil sera prêt</p>
     </div>
     """, unsafe_allow_html=True)
     
     if st.button("← Retour", key="back6", type="secondary"):
         st.session_state.step = 5
         st.rerun()
-    
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
@@ -3536,57 +3544,68 @@ def client_step6():
         height=80
     )
     
-    # Option commande de pièce
-    commande_piece = st.checkbox(
-        "⚙️ Une pièce doit être commandée pour cette réparation",
-        help="Cochez si une pièce spécifique doit être commandée"
-    )
+    st.markdown("---")
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Options supplémentaires
+    col_opt1, col_opt2 = st.columns(2)
+    with col_opt1:
+        carte_camby = st.checkbox(
+            "🎫 J'ai la carte Camby",
+            help="Cochez si vous possédez la carte de fidélité Camby"
+        )
+    with col_opt2:
+        commande_piece = st.checkbox(
+            "⚙️ Pièce à commander",
+            help="Cochez si une pièce doit être commandée"
+        )
     
     st.markdown("---")
     
     # CGV
     st.markdown("""
-    <div class="cgv-box">
-        <strong>CONDITIONS GÉNÉRALES DE DÉPÔT ET DE RÉPARATION</strong><br><br>
-        • Klikphone ne consulte pas et n'accède pas aux données présentes dans votre appareil.<br>
-        • Une perte de données reste possible — pensez à sauvegarder avant dépôt.<br>
-        • Un diagnostic est effectué avant toute réparation.<br>
-        • Les délais de réparation sont donnés à titre indicatif.<br>
-        • Garantie de 3 mois sur les réparations (hors casse, oxydation, mauvaise utilisation).<br>
-        • L'appareil doit être récupéré dans un délai de 30 jours après notification.
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:1rem;font-size:0.8rem;color:#64748b;max-height:150px;overflow-y:auto;margin-bottom:1rem;">
+        <strong>CONDITIONS GÉNÉRALES</strong><br>
+        • Klikphone ne consulte pas les données de votre appareil.<br>
+        • Pensez à sauvegarder avant dépôt.<br>
+        • Garantie 3 mois sur les réparations.<br>
+        • Récupération sous 30 jours après notification.
     </div>
     """, unsafe_allow_html=True)
     
-    consent = st.checkbox("✅ J'accepte les conditions générales de dépôt et de réparation")
+    consent = st.checkbox("✅ J'accepte les conditions générales")
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Bouton d'envoi stylé
+    # Bouton d'envoi
     if st.button("🚀 ENVOYER MA DEMANDE", type="primary", use_container_width=True):
         if not nom or not prenom or not telephone:
             st.error("❌ Le nom, prénom et téléphone sont obligatoires")
         elif not consent:
             st.error("❌ Veuillez accepter les conditions générales")
         else:
-            d = st.session_state.data
-            cid = get_or_create_client(nom, telephone, prenom, email, societe)
-            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
-                               d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
-                               d.get("pin",""), d.get("pattern",""), notes, "", 1 if commande_piece else 0)
-            
-            # Si commande pièce cochée, créer une entrée dans commandes_pieces
-            if commande_piece:
-                t = get_ticket(code=code)
-                if t:
-                    modele_txt = f"{d.get('marque','')} {d.get('modèle','')}"
-                    if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
-                    panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
-                    ajouter_commande_piece(t['id'], f"Pièce pour {panne_txt} - {modele_txt}", "A définir", "", 0, "Commande créée depuis totem client")
-            
-            st.session_state.done = code
-            st.rerun()
+            # Vérifier si le client existe déjà
+            existing_client = check_client_exists(telephone)
+            if existing_client:
+                # Afficher le popup
+                st.session_state.client_exists_popup = existing_client
+                st.rerun()
+            else:
+                # Nouveau client - créer le ticket
+                d = st.session_state.data
+                cid = get_or_create_client(nom, telephone, prenom, email, societe, 1 if carte_camby else 0)
+                code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
+                                   d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
+                                   d.get("pin",""), d.get("pattern",""), notes, "", 1 if commande_piece else 0)
+                
+                # Si commande pièce cochée, créer une entrée dans commandes_pieces
+                if commande_piece:
+                    t = get_ticket(code=code)
+                    if t:
+                        modele_txt = f"{d.get('marque','')} {d.get('modèle','')}"
+                        if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
+                        panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
+                        ajouter_commande_piece(t['id'], f"Pièce pour {panne_txt} - {modele_txt}", "A définir", "", 0, "Commande créée depuis totem client")
+                
+                st.session_state.done = code
+                st.rerun()
 
 # =============================================================================
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
@@ -3865,10 +3884,13 @@ def staff_liste_demandes():
             if len(statut) > 18:
                 statut_short = statut[:16] + "..."
             
-            # Contact
-            wa_bg = "#dcfce7" if t.get('msg_whatsapp') else "#f5f5f5"
-            sms_bg = "#dbeafe" if t.get('msg_sms') else "#f5f5f5"
-            email_bg = "#fef3c7" if t.get('msg_email') else "#f5f5f5"
+            # Contact - INDICATEURS PLUS VISIBLES
+            wa_bg = "#22c55e" if t.get('msg_whatsapp') else "#e5e5e5"
+            wa_color = "white" if t.get('msg_whatsapp') else "#a3a3a3"
+            sms_bg = "#3b82f6" if t.get('msg_sms') else "#e5e5e5"
+            sms_color = "white" if t.get('msg_sms') else "#a3a3a3"
+            email_bg = "#f59e0b" if t.get('msg_email') else "#e5e5e5"
+            email_color = "white" if t.get('msg_email') else "#a3a3a3"
             
             # Date formatée
             date_depot = t.get('date_depot', '')
@@ -3931,10 +3953,10 @@ def staff_liste_demandes():
             # Contact
             with row_cols[5]:
                 st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:2px;">
-                    <div style="width:20px;height:20px;border-radius:4px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="WhatsApp">📱</div>
-                    <div style="width:20px;height:20px;border-radius:4px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="SMS">💬</div>
-                    <div style="width:20px;height:20px;border-radius:4px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="Email">✉️</div>
+                <div style="display:flex;align-items:center;gap:3px;">
+                    <div style="width:22px;height:22px;border-radius:5px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{wa_color};" title="WhatsApp {'✓' if t.get('msg_whatsapp') else ''}">📱</div>
+                    <div style="width:22px;height:22px;border-radius:5px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{sms_color};" title="SMS {'✓' if t.get('msg_sms') else ''}">💬</div>
+                    <div style="width:22px;height:22px;border-radius:5px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{email_color};" title="Email {'✓' if t.get('msg_email') else ''}">✉️</div>
                 </div>
                 ''', unsafe_allow_html=True)
             
@@ -4012,11 +4034,18 @@ def staff_traiter_demande(tid):
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
+        # Badge carte Camby
+        camby_badge = ""
+        if t.get('client_carte_camby'):
+            camby_badge = '<span style="background:#22c55e;color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;">🎫 CAMBY</span>'
+        
+        societe_info = f'<div class="detail-row"><span class="detail-label">Société</span><span class="detail-value">{t.get("client_societe")}</span></div>' if t.get('client_societe') else ''
+        
         st.markdown(f"""
         <div class="detail-card">
             <div class="detail-row">
                 <span class="detail-label">Nom complet</span>
-                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}</span>
+                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_badge}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Téléphone</span>
@@ -4026,6 +4055,7 @@ def staff_traiter_demande(tid):
                 <span class="detail-label">Email</span>
                 <span class="detail-value">{t.get('client_email') or '—'}</span>
             </div>
+            {societe_info}
             <div class="detail-row">
                 <span class="detail-label">Appareil</span>
                 <span class="detail-value">{modele_txt}</span>
@@ -5692,12 +5722,24 @@ def tech_detail_ticket(tid):
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
+        # Badge Camby
+        camby_badge = "🎫 CAMBY" if t.get('client_carte_camby') else ""
+        
         st.markdown(f"""
-        **Client:** {t.get('client_nom','')} {t.get('client_prenom','')}<br>
+        **Client:** {t.get('client_nom','')} {t.get('client_prenom','')} {camby_badge}<br>
         **Tél:** {t.get('client_tel','')}<br>
         **Appareil:** {modele_txt}<br>
         **Problème:** {panne}
         """, unsafe_allow_html=True)
+        
+        # Date de récupération si définie
+        date_recup = t.get('date_recuperation')
+        if date_recup:
+            st.markdown(f"""
+            <div style="background:#dcfce7;border:1px solid #22c55e;border-radius:6px;padding:0.5rem;margin:0.5rem 0;">
+                <strong style="color:#166534;">📅 Récupération prévue:</strong> {date_recup}
+            </div>
+            """, unsafe_allow_html=True)
         
         # Sécurité
         st.markdown(f"""
@@ -5826,9 +5868,10 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                 st.warning("⏳ En attente de la réponse du client...")
         
         for s in STATUTS:
-            btn_type = "primary" if s == "Rendu au client" else "secondary"
-            disabled = (s == statut_actuel)
-            if st.button(s, key=f"tech_status_{tid}_{s}", use_container_width=True, disabled=disabled, type=btn_type if s == "Rendu au client" else "secondary"):
+            is_current = (s == statut_actuel)
+            # Le statut ACTUEL est en primary (orange), les autres en secondary
+            btn_type = "primary" if is_current else "secondary"
+            if st.button(s, key=f"tech_status_{tid}_{s}", use_container_width=True, disabled=is_current, type=btn_type):
                 changer_statut(tid, s)
                 st.success(f"Statut mis à jour: {s}")
                 st.rerun()
