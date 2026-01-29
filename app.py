@@ -1017,9 +1017,10 @@ h1, h2, h3 {
     color: #374151 !important;
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
     border-radius: 12px !important;
-    padding: 14px 18px !important;
+    padding: 14px 18px 14px 40px !important;
     border: 1px solid #e2e8f0 !important;
     transition: all 0.2s ease !important;
+    position: relative !important;
 }
 
 .streamlit-expanderHeader:hover {
@@ -1027,24 +1028,44 @@ h1, h2, h3 {
     border-color: rgba(249,115,22,0.3) !important;
 }
 
-/* Cacher l'icône SVG corrompue des expanders */
-.streamlit-expanderHeader svg {
+/* MASQUER COMPLETEMENT l'icône Material Icons corrompue "arrow_" */
+.streamlit-expanderHeader svg,
+.streamlit-expanderHeader [data-testid="stExpanderToggleIcon"],
+.streamlit-expanderHeader span[class*="icon"],
+.streamlit-expanderHeader [class*="Icon"],
+.streamlit-expanderHeader [data-baseweb="icon"],
+[data-testid="stExpander"] summary > span:first-child,
+[data-testid="stExpander"] details > summary > div > span:first-child {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
 }
 
-/* Ajouter une flèche CSS propre */
+/* Ajouter une flèche propre via CSS */
 .streamlit-expanderHeader::before {
-    content: "▶" !important;
-    margin-right: 10px !important;
-    font-size: 0.7rem !important;
+    content: "›" !important;
+    position: absolute !important;
+    left: 16px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
     color: #94a3b8 !important;
     transition: transform 0.2s ease !important;
 }
 
-[data-testid="stExpander"][aria-expanded="true"] .streamlit-expanderHeader::before {
-    content: "▼" !important;
+[data-testid="stExpander"][open] .streamlit-expanderHeader::before,
+details[open] .streamlit-expanderHeader::before {
+    transform: translateY(-50%) rotate(90deg) !important;
 }
 
+/* Style pour le contenu */
 .streamlit-expanderContent {
     border: 1px solid #e2e8f0 !important;
     border-top: none !important;
