@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime
 import urllib.parse
 
+import html
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -1823,9 +1824,34 @@ hr {
 # =============================================================================
 # DATABASE
 # =============================================================================
+def _h(x):
+    """Échappe les valeurs dynamiques insérées dans du HTML (anti-casse mise en page)."""
+    return html.escape("" if x is None else str(x), quote=True)
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    """Connexion SQLite par session Streamlit (réduit les locks et la latence)."""
+    conn = st.session_state.get("_db_conn")
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")
+            return conn
+        except Exception:
+            # Connexion fermée / invalide -> recréer
+            pass
+
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
+
+    # Robustesse SQLite (locks / intégrité)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+        conn.execute("PRAGMA busy_timeout=5000;")
+    except Exception:
+        pass
+
+    st.session_state["_db_conn"] = conn
     return conn
 
 def init_db():
@@ -1922,6 +1948,21 @@ def init_db():
             c.execute(sql)
         except:
             pass
+
+    # Index pour accélérer les recherches (tickets / clients)
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON tickets(client_id)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_ticket_code ON tickets(ticket_code)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_statut ON tickets(statut)",
+        "CREATE INDEX IF NOT EXISTS idx_clients_nom ON clients(nom)",
+        "CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email)",
+    ]
+    for sql in indexes:
+        try:
+            c.execute(sql)
+        except:
+            pass
+
     
     conn.commit()
     
@@ -2318,7 +2359,6 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
     from email.mime.multipart import MIMEMultipart
     from email.header import Header
     from email.utils import formataddr
-    from email.policy import EmailPolicy
     
     # Récupérer les paramètres SMTP
     smtp_host = get_param("SMTP_HOST")
@@ -2332,14 +2372,11 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
         return False, "Configuration SMTP incomplète. Allez dans Config > Email."
     
     try:
-        # Politique UTF-8 pour l'encodage
-        utf8_policy = EmailPolicy(utf8=True)
-        
         # Créer le message avec encodage UTF-8
-        msg = MIMEMultipart('alternative', policy=utf8_policy)
-        msg['From'] = formataddr((smtp_from_name, smtp_from or smtp_user))
+        msg = MIMEMultipart('alternative')
+        msg['From'] = formataddr((str(Header(smtp_from_name, 'utf-8')), smtp_from or smtp_user))
         msg['To'] = destinataire
-        msg['Subject'] = sujet
+        msg['Subject'] = Header(sujet, 'utf-8')
         
         # Corps du message en texte (UTF-8)
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
@@ -2351,11 +2388,11 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
             html_clean = html_clean.replace('IMPRIMER', '')
             msg.attach(MIMEText(html_clean, 'html', 'utf-8'))
         
-        # Connexion et envoi
+        # Connexion et envoi - Encoder en bytes UTF-8
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
+        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
         server.quit()
         
         return True, "Email envoyé avec succès!"
@@ -2368,8 +2405,8 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     from email.mime.application import MIMEApplication
+    from email.header import Header
     from email.utils import formataddr
-    from email.policy import EmailPolicy
     
     smtp_host = get_param("SMTP_HOST")
     smtp_port = get_param("SMTP_PORT")
@@ -2382,13 +2419,10 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
         return False, "Configuration SMTP incomplète."
     
     try:
-        # Politique UTF-8
-        utf8_policy = EmailPolicy(utf8=True)
-        
-        msg = MIMEMultipart(policy=utf8_policy)
-        msg['From'] = formataddr((smtp_from_name, smtp_from or smtp_user))
+        msg = MIMEMultipart()
+        msg['From'] = formataddr((str(Header(smtp_from_name, 'utf-8')), smtp_from or smtp_user))
         msg['To'] = destinataire
-        msg['Subject'] = sujet
+        msg['Subject'] = Header(sujet, 'utf-8')
         
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
         
@@ -2400,7 +2434,7 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
+        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
         server.quit()
         
         return True, "Email avec PDF envoyé!"
@@ -2681,11 +2715,26 @@ L'équipe {nom_boutique}
 # =============================================================================
 def ticket_client_html(t, for_email=False):
     """Ticket client - version impression thermique ou email"""
-    panne = t.get("panne", "")
-    if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele_txt = t.get("modele", "")
-    if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
-    
+    # Sécurisation des champs injectés dans du HTML
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+
+    panne = _h(t.get("panne", ""))
+    panne_detail = _h(t.get("panne_detail", ""))
+    if panne_detail:
+        panne += f" ({panne_detail})"
+
+    modele_txt = _h(t.get("modele", ""))
+    modele_autre = _h(t.get("modele_autre", ""))
+    if modele_autre:
+        modele_txt += f" ({modele_autre})"
+
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
+    date_depot_disp = _h(t.get("date_depot", ""))
+
     # Tarifs
     devis = t.get('devis_estime')
     tarif = t.get('tarif_final')
@@ -2705,7 +2754,7 @@ def ticket_client_html(t, for_email=False):
     
     # URL de suivi
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
-    ticket_code = t.get('ticket_code', '')
+    ticket_code = ticket_code_raw
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
     
@@ -2737,16 +2786,16 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <h1>KLIKPHONE</h1>
 <p>Spécialiste Apple - 79 Place Saint Léger, Chambéry</p>
 </div>
-<div class="ticket-num">TICKET N° {t['ticket_code']}</div>
+<div class="ticket-num">TICKET N° {ticket_code_disp}</div>
 <div class="content">
 <div class="section">
 <div class="section-title">Client</div>
-<div><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div>Tél: {t.get('client_tel','')}</div>
+<div><strong>{client_nom} {client_prenom}</strong></div>
+<div>Tél: {client_tel}</div>
 </div>
 <div class="section">
 <div class="section-title">Appareil</div>
-<div><strong>{t.get('marque','')} {modele_txt}</strong></div>
+<div><strong>{marque} {modele_txt}</strong></div>
 </div>
 <div class="section">
 <div class="section-title">Réparation</div>
@@ -2914,12 +2963,12 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     </div>
 
     <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Nom:</strong> {client_nom} {client_prenom}</div>
+    <div class="info-line"><strong>Tél:</strong> {client_tel}</div>
 
     <h2>Demande</h2>
-    <div class="info-line"><strong>N°:</strong> {t['ticket_code']}</div>
-    <div class="info-line"><strong>Appareil:</strong> {t.get('marque','')} {modele_txt}</div>
+    <div class="info-line"><strong>N°:</strong> {ticket_code_disp}</div>
+    <div class="info-line"><strong>Appareil:</strong> {marque} {modele_txt}</div>
     <div class="info-line"><strong>Motif:</strong> {panne}</div>
     <div class="info-line"><strong>Date:</strong> {fmt_date(t.get('date_depot',''))}</div>
 
@@ -2944,17 +2993,32 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 
 def ticket_staff_html(t):
     """Ticket staff - 80mm x 200mm STRICT avec logo + gros QR code"""
-    panne = t.get("panne", "")
-    if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele = t.get("modele", "")
-    if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
-    
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+
+    panne = _h(t.get("panne", ""))
+    panne_detail = _h(t.get("panne_detail", ""))
+    if panne_detail:
+        panne += f" ({panne_detail})"
+
+    modele = _h(t.get("modele", ""))
+    modele_autre = _h(t.get("modele_autre", ""))
+    if modele_autre:
+        modele += f" ({modele_autre})"
+
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
+    date_depot_disp = _h(t.get("date_depot", ""))
+
     notes = t.get('notes_internes') or 'N/A'
     if len(notes) > 60: notes = notes[:60] + "..."
+    notes = _h(notes)
     
     # URL de suivi pour QR code
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
-    ticket_code = t.get('ticket_code', '')
+    ticket_code = ticket_code_raw
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
     
@@ -3118,15 +3182,15 @@ def ticket_staff_html(t):
         <p>Scanner pour accéder au dossier</p>
     </div>
 
-    <div class="ticket-num">N° {t['ticket_code']}</div>
+    <div class="ticket-num">N° {ticket_code_disp}</div>
     <div class="status">STATUT: {t.get('statut','')}</div>
 
     <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Nom:</strong> {client_nom} {client_prenom}</div>
+    <div class="info-line"><strong>Tél:</strong> {client_tel}</div>
 
     <h2>Appareil</h2>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele}</div>
+    <div class="info-line"><strong>Modèle:</strong> {marque} {modele}</div>
     <div class="info-line"><strong>Panne:</strong> {panne}</div>
 
     <div class="security-box">
@@ -3152,19 +3216,30 @@ def ticket_staff_html(t):
 
 def ticket_devis_facture_html(t, doc_type="devis", for_email=False):
     """Génère un ticket DEVIS ou RÉCAPITULATIF - version impression ou email"""
-    modele_txt = t.get("modele", "")
-    if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
-    
-    panne = t.get('panne', '')
-    if panne == "Autre" and t.get('panne_detail'):
-        panne = t.get('panne_detail')
-    elif t.get('panne_detail'):
-        panne += f" ({t['panne_detail']})"
-    
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
+
+    modele_txt = _h(t.get("modele", ""))
+    modele_autre = _h(t.get("modele_autre", ""))
+    if modele_autre:
+        modele_txt += f" ({modele_autre})"
+
+    panne = _h(t.get('panne', ''))
+    panne_detail = _h(t.get('panne_detail', ''))
+    if panne == "Autre" and panne_detail:
+        panne = panne_detail
+    elif panne_detail:
+        panne += f" ({panne_detail})"
+
     # Tarifs
     devis_val = t.get('devis_estime') or 0
     acompte_val = t.get('acompte') or 0
-    rep_supp = t.get('reparation_supp') or ""
+    rep_supp = _h(t.get('reparation_supp') or "")
     prix_supp = t.get('prix_supp') or 0
     
     # Calculs TVA (prix TTC)
@@ -3176,7 +3251,7 @@ def ticket_devis_facture_html(t, doc_type="devis", for_email=False):
     # Type de document
     is_facture = doc_type == "facture"
     doc_title = "REÇU" if is_facture else "DEVIS"
-    doc_num = f"R-{t['ticket_code']}" if is_facture else f"D-{t['ticket_code']}"
+    doc_num = f"R-{ticket_code_disp}" if is_facture else f"D-{ticket_code_disp}"
     
     from datetime import datetime
     date_doc = datetime.now().strftime("%d/%m/%Y")
@@ -3225,12 +3300,12 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </div>
 <div class="section">
 <div class="section-title">Client</div>
-<p><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></p>
-<p>Tél: {t.get('client_tel','')}</p>
+<p><strong>{client_nom} {client_prenom}</strong></p>
+<p>Tél: {client_tel}</p>
 </div>
 <div class="section">
 <div class="section-title">Appareil</div>
-<p><strong>{t.get('marque','')} {modele_txt}</strong></p>
+<p><strong>{marque} {modele_txt}</strong></p>
 </div>
 <div class="section">
 <div class="section-title">Prestations</div>
@@ -3409,11 +3484,11 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     </div>
 
     <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Nom:</strong> {client_nom} {client_prenom}</div>
+    <div class="info-line"><strong>Téléphone:</strong> {client_tel}</div>
 
     <h2>Appareil</h2>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
+    <div class="info-line"><strong>Modèle:</strong> {marque} {modele_txt}</div>
 
     <h2>Prestations</h2>
     <div class="info-line"><strong>{panne}:</strong> {devis_val:.2f} €</div>
@@ -3440,20 +3515,34 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 
 def ticket_combined_html(t):
     """Génère les deux tickets - 80mm x 200mm STRICT chacun"""
-    panne = t.get("panne", "")
-    if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele_txt = t.get("modele", "")
-    if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
-    
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+
+    panne = _h(t.get("panne", ""))
+    panne_detail = _h(t.get("panne_detail", ""))
+    if panne_detail:
+        panne += f" ({panne_detail})"
+
+    modele_txt = _h(t.get("modele", ""))
+    modele_autre = _h(t.get("modele_autre", ""))
+    if modele_autre:
+        modele_txt += f" ({modele_autre})"
+
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
+
     # URL de suivi
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
-    ticket_code = t.get('ticket_code', '')
+    ticket_code = ticket_code_raw
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
     qr_url_val = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
     
     # Notes
     notes = t.get('notes_internes') or 'N/A'
     if len(notes) > 60: notes = notes[:60] + "..."
+    notes = _h(notes)
     
     return f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3675,12 +3764,12 @@ def ticket_combined_html(t):
     </div>
 
     <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Nom:</strong> {client_nom} {client_prenom}</div>
+    <div class="info-line"><strong>Tél:</strong> {client_tel}</div>
 
     <h2>Demande</h2>
-    <div class="info-line"><strong>N°:</strong> {t['ticket_code']}</div>
-    <div class="info-line"><strong>Appareil:</strong> {t.get('marque','')} {modele_txt}</div>
+    <div class="info-line"><strong>N°:</strong> {ticket_code_disp}</div>
+    <div class="info-line"><strong>Appareil:</strong> {marque} {modele_txt}</div>
     <div class="info-line"><strong>Motif:</strong> {panne}</div>
     <div class="info-line"><strong>Date:</strong> {fmt_date(t.get('date_depot',''))}</div>
 
@@ -3713,15 +3802,15 @@ def ticket_combined_html(t):
         <p>Scanner pour accéder au dossier</p>
     </div>
 
-    <div class="ticket-num">N° {t['ticket_code']}</div>
+    <div class="ticket-num">N° {ticket_code_disp}</div>
     <div class="status">STATUT: {t.get('statut','')}</div>
 
     <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Nom:</strong> {client_nom} {client_prenom}</div>
+    <div class="info-line"><strong>Tél:</strong> {client_tel}</div>
 
     <h2>Appareil</h2>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
+    <div class="info-line"><strong>Modèle:</strong> {marque} {modele_txt}</div>
     <div class="info-line"><strong>Panne:</strong> {panne}</div>
 
     <div class="security-box">
@@ -4704,18 +4793,20 @@ def staff_liste_demandes():
     else:
         for idx, t in enumerate(tickets_page):
             status_class = get_status_class(t.get('statut', ''))
+            ticket_code_raw = "" if t.get('ticket_code') is None else str(t.get('ticket_code'))
+            ticket_code_disp = _h(ticket_code_raw)
             
             # Données client
-            client_nom = t.get('client_nom', '')
-            client_prenom = t.get('client_prenom', '')
+            client_nom = _h(t.get('client_nom', ''))
+            client_prenom = _h(t.get('client_prenom', ''))
             client_full = f"{client_nom} {client_prenom}".strip()
             if len(client_full) > 16:
                 client_full = client_full[:14] + "..."
-            client_tel = t.get('client_tel', '')
+            client_tel = _h(t.get('client_tel', ''))
             initials = get_initials(client_nom, client_prenom)
             
             # Données appareil - MODELE VISIBLE
-            marque = t.get('marque', '')
+            marque = _h(t.get('marque', ''))
             modele = t.get('modele', '')
             if t.get('modele_autre'): 
                 modele = t['modele_autre']
@@ -4780,7 +4871,7 @@ def staff_liste_demandes():
             with row_cols[0]:
                 st.markdown(f'''
                 <div>
-                    <div style="font-family:'SF Mono',Monaco,monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
+                    <div style="font-family:'SF Mono',Monaco,monospace;font-size:12px;font-weight:600;color:#171717;">{ticket_code_disp}</div>
                     <div style="font-size:10px;color:#a3a3a3;">{date_formatted}</div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -4869,10 +4960,18 @@ def staff_traiter_demande(tid):
     if not t:
         st.error("Demande non trouvée")
         return
+
+    # Variables d'affichage (sécurisées pour HTML)
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
     
     # === HEADER ===
     status_class = get_status_class(t.get('statut', ''))
-    modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+    modele_txt = f"{marque} {t.get('modele','')}"
     if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
     
     col_back, col_info = st.columns([1, 6])
@@ -4884,8 +4983,8 @@ def staff_traiter_demande(tid):
     st.markdown(f"""
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
         <div>
-            <span style="font-size:var(--text-2xl);font-weight:700;color:var(--neutral-900);">{t['ticket_code']}</span>
-            <span style="margin-left:16px;font-size:var(--text-base);color:var(--neutral-500);">{t.get('client_nom','')} {t.get('client_prenom','')}</span>
+            <span style="font-size:var(--text-2xl);font-weight:700;color:var(--neutral-900);">{ticket_code_disp}</span>
+            <span style="margin-left:16px;font-size:var(--text-base);color:var(--neutral-500);">{client_nom} {client_prenom}</span>
         </div>
         <span class="badge {status_class}" style="font-size:var(--text-sm);padding:8px 16px;">{t.get('statut','')}</span>
     </div>
@@ -4928,11 +5027,11 @@ def staff_traiter_demande(tid):
         <div class="detail-card">
             <div class="detail-row">
                 <span class="detail-label">Nom complet</span>
-                <span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_html}</span>
+                <span class="detail-value">{client_nom} {client_prenom}{camby_html}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Téléphone</span>
-                <span class="detail-value" style="font-family:monospace;">{t.get('client_tel','')}</span>
+                <span class="detail-value" style="font-family:monospace;">{client_tel}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Email</span>
@@ -5140,7 +5239,7 @@ def staff_traiter_demande(tid):
                     st.session_state[f"show_edit_appareil_{tid}"] = False
                     st.rerun()
         else:
-            modele_actuel = f"{t.get('marque','')} {t.get('modele','')}"
+            modele_actuel = f"{marque} {t.get('modele','')}"
             if t.get('modele_autre'): modele_actuel = t['modele_autre']
             st.write(f"**{modele_actuel}**")
             if st.button("✏️ Modifier", key=f"btn_edit_appareil_{tid}"):
@@ -5320,7 +5419,7 @@ def staff_traiter_demande(tid):
         
         # Message devis prédéfini pour WhatsApp
         nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
-        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+        modele_txt = f"{marque} {t.get('modele','')}"
         if t.get('modele_autre'): modele_txt = t['modele_autre']
         devis_val = t.get('devis_estime') or 0
         
@@ -5404,7 +5503,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
         
         if email_client:
             # Préparer le contenu du devis pour email
-            modele_email = f"{t.get('marque','')} {t.get('modele','')}"
+            modele_email = f"{marque} {t.get('modele','')}"
             if t.get('modele_autre'): modele_email = t['modele_autre']
             devis_email = t.get('devis_estime') or 0
             panne_email = t.get('panne', '')
@@ -5500,7 +5599,7 @@ Cordialement,
     
     devis_val = t.get('devis_estime') or 0
     acompte_val = t.get('acompte') or 0
-    rep_supp = t.get('reparation_supp') or ""
+    rep_supp = _h(t.get('reparation_supp') or "")
     prix_supp = t.get('prix_supp') or 0
     panne_detail_accueil = t.get('panne_detail') or ""
     
@@ -5961,7 +6060,7 @@ def staff_commandes_pieces():
         
         # Sélection du ticket (optionnel)
         tickets_ouverts = [t for t in chercher_tickets() if t.get('statut') not in ['Clôturé', 'Rendu au client']]
-        ticket_options = ["-- Sans ticket --"] + [f"{t['ticket_code']} - {t.get('client_nom', '')} ({t.get('marque', '')} {t.get('modele', '')})" for t in tickets_ouverts]
+        ticket_options = ["-- Sans ticket --"] + [f"{t.get('ticket_code','')} - {t.get('client_nom', '')} ({t.get('marque', '')} {t.get('modele', '')})" for t in tickets_ouverts]
         
         selected_ticket = st.selectbox("Associer à un ticket (optionnel)", ticket_options, key="cmd_ticket")
         
@@ -6131,6 +6230,18 @@ def staff_attestation():
 
 def generate_attestation_html(nom, prenom, adresse, marque, modele, imei, etat, motif, compte_rendu, date_jour, include_print_btn=True):
     """Génère le HTML de l'attestation"""
+    # Échapper les champs injectés dans du HTML
+    nom = _h(nom)
+    prenom = _h(prenom)
+    adresse = _h(adresse)
+    marque = _h(marque)
+    modele = _h(modele)
+    imei = _h(imei)
+    etat = _h(etat)
+    motif = _h(motif)
+    compte_rendu = _h(compte_rendu)
+    date_jour = _h(date_jour)
+
     print_btn = '<button class="print-btn" onclick="window.print()">IMPRIMER L\'ATTESTATION</button>' if include_print_btn else ''
     
     return f"""
@@ -6578,6 +6689,12 @@ def ui_tech():
     
     # Affichage en liste avec boutons
     for t in tickets_page:
+        ticket_code_raw = "" if t.get('ticket_code') is None else str(t.get('ticket_code'))
+        ticket_code_disp = _h(ticket_code_raw)
+        client_nom = _h(t.get('client_nom', ''))
+        client_prenom = _h(t.get('client_prenom', ''))
+        client_tel = _h(t.get('client_tel', ''))
+        marque = _h(t.get('marque', ''))
         tid = t['id']
         status_class = get_status_class(t.get('statut', ''))
         
@@ -6620,11 +6737,11 @@ def ui_tech():
         
         with row_cols[0]:
             st.markdown(f'''
-            <div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
+            <div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{ticket_code_disp}</div>
             ''', unsafe_allow_html=True)
         
         with row_cols[1]:
-            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()
+            client_nom = f"{client_nom} {client_prenom}".strip()
             if len(client_nom) > 16:
                 client_nom = client_nom[:14] + "..."
             st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
@@ -6679,6 +6796,14 @@ def tech_detail_ticket(tid):
         return
     
     statut_actuel = t.get('statut', STATUTS[0])
+
+    # Variables d'affichage (sécurisées pour HTML)
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
     
     # === HEADER PREMIUM ===
     col_back, col_spacer = st.columns([1, 5])
@@ -6688,7 +6813,7 @@ def tech_detail_ticket(tid):
             st.rerun()
     
     # Card header avec infos essentielles
-    modele_txt = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+    modele_txt = t.get('modele_autre') if t.get('modele_autre') else f"{marque} {t.get('modele','')}"
     panne = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
     status_class = get_status_class(statut_actuel)
     camby_badge = '<span style="background:#8b5cf6;color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;">CAMBY</span>' if t.get('client_carte_camby') else ""
@@ -6697,8 +6822,8 @@ def tech_detail_ticket(tid):
     <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:16px;padding:24px;margin-bottom:20px;color:white;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
             <div>
-                <div style="font-size:2rem;font-weight:800;letter-spacing:-0.02em;">🎫 {t['ticket_code']}</div>
-                <div style="font-size:1.1rem;opacity:0.9;margin-top:4px;">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_badge}</div>
+                <div style="font-size:2rem;font-weight:800;letter-spacing:-0.02em;">🎫 {ticket_code_disp}</div>
+                <div style="font-size:1.1rem;opacity:0.9;margin-top:4px;">{client_nom} {client_prenom}{camby_badge}</div>
             </div>
             <span class="badge {status_class}" style="font-size:0.95rem;padding:10px 18px;">{statut_actuel}</span>
         </div>
@@ -7154,8 +7279,16 @@ def ui_suivi():
 
 def afficher_suivi_ticket(t):
     """Affiche le suivi d'un ticket"""
+    # Variables d'affichage (sécurisées pour HTML)
+    ticket_code_raw = "" if t.get("ticket_code") is None else str(t.get("ticket_code"))
+    ticket_code_disp = _h(ticket_code_raw)
+    client_nom = _h(t.get("client_nom", ""))
+    client_prenom = _h(t.get("client_prenom", ""))
+    client_tel = _h(t.get("client_tel", ""))
+    marque = _h(t.get("marque", ""))
+
     status_class = get_status_class(t.get('statut', ''))
-    modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+    modele_txt = f"{marque} {t.get('modele','')}"
     if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
     
     panne = t.get('panne', '')
@@ -7183,7 +7316,7 @@ def afficher_suivi_ticket(t):
     st.markdown(f"""
 <div style="background:white;border-radius:16px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:1rem;">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-<span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {t['ticket_code']}</span>
+<span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {ticket_code_disp}</span>
 <span class="badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
 </div>
 </div>
@@ -7193,7 +7326,7 @@ def afficher_suivi_ticket(t):
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Client**")
-        st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')}")
+        st.write(f"{client_nom} {client_prenom}")
         st.markdown("**Réparation**")
         st.write(panne)
     with col2:
