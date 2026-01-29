@@ -1827,6 +1827,218 @@ hr {
     color: #64748b;
     line-height: 1.6;
 }
+
+/* =========================================================
+   PREMIUM OVERRIDES v3.0 (Linear/Stripe-like)
+   - Ne touche pas à la logique Python
+   - Améliore: layout, inputs, boutons, sidebar, tables, métriques
+   ========================================================= */
+
+/* --- Core surfaces --- */
+:root{
+  --bg-app: #F6F7FB;
+  --surface: #FFFFFF;
+  --surface-2: #FBFCFE;
+  --border: #E6E8EF;
+  --border-2: #D9DDE8;
+  --text: #0F172A;
+  --text-2: #1F2937;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+
+  --accent: #F97316;         /* orange Klikphone */
+  --accent-2: #EA580C;
+  --accent-soft: rgba(249,115,22,.12);
+
+  --radius: 16px;
+  --radius-sm: 12px;
+
+  --shadow-1: 0 1px 2px rgba(15,23,42,.05);
+  --shadow-2: 0 8px 24px rgba(15,23,42,.08);
+  --shadow-3: 0 14px 40px rgba(15,23,42,.10);
+}
+
+/* --- App background + container rhythm --- */
+.stApp{ background: var(--bg-app) !important; }
+.main .block-container{
+  padding: 28px 28px 56px !important;
+  max-width: 1380px !important;
+}
+
+/* --- Typography polish --- */
+h1,h2,h3{ color: var(--text) !important; }
+p,li,span,div,label{
+  color: var(--text-2);
+}
+small, .caption, .stCaption{ color: var(--muted) !important; }
+
+/* --- Cards: remove glass effect, keep premium depth --- */
+.card,
+.form-card,
+.detail-card,
+div[data-testid="stMetric"],
+div[data-testid="stExpander"] > div{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.card:hover{
+  transform: none !important;
+  border-color: rgba(249,115,22,.28) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+
+/* --- Section headers --- */
+.section-header{
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* --- Sidebar: clean SaaS panel --- */
+[data-testid="stSidebar"]{
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border) !important;
+}
+[data-testid="stSidebar"] .block-container{
+  padding: 22px 18px !important;
+}
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] h3{
+  color: var(--text) !important;
+}
+
+/* --- Inputs (BaseWeb) --- */
+[data-baseweb="input"] > div,
+[data-baseweb="textarea"] > div,
+[data-baseweb="select"] > div{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+input, textarea{
+  font-size: 0.95rem !important;
+}
+[data-baseweb="input"] > div:focus-within,
+[data-baseweb="textarea"] > div:focus-within,
+[data-baseweb="select"] > div:focus-within{
+  border-color: rgba(249,115,22,.55) !important;
+  box-shadow: 0 0 0 4px rgba(249,115,22,.15) !important;
+}
+textarea{ line-height: 1.35 !important; }
+
+/* --- Buttons --- */
+.stButton > button{
+  border-radius: 12px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.01em !important;
+  transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease !important;
+}
+.stButton > button:active{ transform: translateY(1px) !important; }
+
+/* Primary button */
+.stButton > button[kind="primary"]{
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(234,88,12,.22) !important;
+}
+.stButton > button[kind="primary"]:hover{
+  box-shadow: 0 14px 32px rgba(234,88,12,.28) !important;
+}
+
+/* Secondary buttons */
+.stButton > button:not([kind="primary"]){
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-1) !important;
+}
+.stButton > button:not([kind="primary"]):hover{
+  border-color: var(--border-2) !important;
+  box-shadow: var(--shadow-2) !important;
+}
+
+/* --- Tabs / Segmented controls --- */
+div[data-testid="stTabs"] [data-baseweb="tab"]{
+  border-radius: 12px 12px 0 0 !important;
+}
+div[data-testid="stTabs"] [aria-selected="true"]{
+  color: var(--text) !important;
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+/* --- Metrics --- */
+div[data-testid="stMetric"]{
+  padding: 16px 16px !important;
+}
+div[data-testid="stMetric"] label{
+  color: var(--muted) !important;
+  font-size: .85rem !important;
+}
+div[data-testid="stMetric"] div{
+  color: var(--text) !important;
+}
+
+/* --- Dataframes / Tables --- */
+div[data-testid="stDataFrame"]{
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-2) !important;
+  background: var(--surface) !important;
+}
+div[data-testid="stDataFrame"] *{
+  font-family: var(--font) !important;
+}
+
+/* Streamlit table */
+table{
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+thead tr th{
+  background: var(--surface-2) !important;
+  color: var(--muted) !important;
+  font-weight: 650 !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+tbody tr td{
+  border-bottom: 1px solid var(--border) !important;
+}
+tbody tr:hover td{
+  background: rgba(249,115,22,.045) !important;
+}
+
+/* --- Badges (si déjà utilisés) --- */
+.badge{
+  border-radius: 999px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface-2) !important;
+}
+
+/* --- Ticket / print buttons remain visible and premium --- */
+.print-btn{
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-2) !important;
+}
+
+/* --- Scrollbar subtle --- */
+*::-webkit-scrollbar{ height: 10px; width: 10px; }
+*::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,.6);
+  border-radius: 999px;
+  border: 2px solid rgba(246,247,251,.9);
+}
+*::-webkit-scrollbar-track{ background: transparent; }
+
 </style>
 """, unsafe_allow_html=True)
 # =============================================================================
