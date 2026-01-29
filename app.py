@@ -2318,6 +2318,7 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
     from email.mime.multipart import MIMEMultipart
     from email.header import Header
     from email.utils import formataddr
+    from email.policy import EmailPolicy
     
     # Récupérer les paramètres SMTP
     smtp_host = get_param("SMTP_HOST")
@@ -2331,11 +2332,14 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
         return False, "Configuration SMTP incomplète. Allez dans Config > Email."
     
     try:
+        # Politique UTF-8 pour l'encodage
+        utf8_policy = EmailPolicy(utf8=True)
+        
         # Créer le message avec encodage UTF-8
-        msg = MIMEMultipart('alternative')
-        msg['From'] = formataddr((str(Header(smtp_from_name, 'utf-8')), smtp_from or smtp_user))
+        msg = MIMEMultipart('alternative', policy=utf8_policy)
+        msg['From'] = formataddr((smtp_from_name, smtp_from or smtp_user))
         msg['To'] = destinataire
-        msg['Subject'] = Header(sujet, 'utf-8')
+        msg['Subject'] = sujet
         
         # Corps du message en texte (UTF-8)
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
@@ -2347,11 +2351,11 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
             html_clean = html_clean.replace('IMPRIMER', '')
             msg.attach(MIMEText(html_clean, 'html', 'utf-8'))
         
-        # Connexion et envoi - Encoder en bytes UTF-8
+        # Connexion et envoi
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
+        server.send_message(msg)
         server.quit()
         
         return True, "Email envoyé avec succès!"
@@ -2364,8 +2368,8 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     from email.mime.application import MIMEApplication
-    from email.header import Header
     from email.utils import formataddr
+    from email.policy import EmailPolicy
     
     smtp_host = get_param("SMTP_HOST")
     smtp_port = get_param("SMTP_PORT")
@@ -2378,10 +2382,13 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
         return False, "Configuration SMTP incomplète."
     
     try:
-        msg = MIMEMultipart()
-        msg['From'] = formataddr((str(Header(smtp_from_name, 'utf-8')), smtp_from or smtp_user))
+        # Politique UTF-8
+        utf8_policy = EmailPolicy(utf8=True)
+        
+        msg = MIMEMultipart(policy=utf8_policy)
+        msg['From'] = formataddr((smtp_from_name, smtp_from or smtp_user))
         msg['To'] = destinataire
-        msg['Subject'] = Header(sujet, 'utf-8')
+        msg['Subject'] = sujet
         
         msg.attach(MIMEText(message, 'plain', 'utf-8'))
         
@@ -2393,7 +2400,7 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
+        server.send_message(msg)
         server.quit()
         
         return True, "Email avec PDF envoyé!"
