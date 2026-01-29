@@ -1916,16 +1916,29 @@ class _PgCursorWrapper:
         if params is None:
             params = ()
         sql2 = sql.replace("?", "%s")
+        
+        # Convertir syntaxe SQLite -> PostgreSQL
+        s = sql2.lstrip().lower()
+        
+        # INSERT OR REPLACE INTO params -> INSERT ... ON CONFLICT (cle) DO UPDATE
+        if "insert or replace into params" in s:
+            sql2 = "INSERT INTO params (cle, valeur) VALUES (%s, %s) ON CONFLICT (cle) DO UPDATE SET valeur = EXCLUDED.valeur"
+        
+        # INSERT OR IGNORE -> INSERT ... ON CONFLICT DO NOTHING
+        if "insert or ignore" in s:
+            sql2 = sql2.replace("INSERT OR IGNORE", "INSERT")
+            sql2 = sql2.replace("insert or ignore", "INSERT")
+            sql2 = sql2.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
 
         s = sql2.lstrip().lower()
-        if s.startswith("insert into clients") and "returning" not in s:
+        if s.startswith("insert into clients") and "returning" not in s and "on conflict" not in s:
             sql2 = sql2.rstrip().rstrip(";") + " RETURNING id"
             self._cur.execute(sql2, params)
             row = self._cur.fetchone()
             self.lastrowid = row[0] if row else None
             return self
 
-        if s.startswith("insert into tickets") and "returning" not in s:
+        if s.startswith("insert into tickets") and "returning" not in s and "on conflict" not in s:
             sql2 = sql2.rstrip().rstrip(";") + " RETURNING id"
             self._cur.execute(sql2, params)
             row = self._cur.fetchone()
