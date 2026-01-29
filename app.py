@@ -2945,8 +2945,32 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            @page {{
+                size: 80mm 200mm;
+                margin: 0;
+            }}
+            html, body {{
+                background: #fff;
+                padding: 0;
+                margin: 0;
+                width: 80mm;
+                height: 200mm;
+                overflow: hidden;
+            }}
+            .ticket {{
+                border: none;
+                border-radius: 0;
+                padding: 2mm;
+                width: 80mm;
+                height: 200mm;
+                box-sizing: border-box;
+                overflow: hidden;
+            }}
+            /* Densifier légèrement pour éviter le débordement -> pages fantômes */
+            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
+            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
+            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
+            .qr-box img {{ width: 120px; height: 120px; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3164,8 +3188,32 @@ def ticket_staff_html(t):
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            @page {{
+                size: 80mm 200mm;
+                margin: 0;
+            }}
+            html, body {{
+                background: #fff;
+                padding: 0;
+                margin: 0;
+                width: 80mm;
+                height: 200mm;
+                overflow: hidden;
+            }}
+            .ticket {{
+                border: none;
+                border-radius: 0;
+                padding: 2mm;
+                width: 80mm;
+                height: 200mm;
+                box-sizing: border-box;
+                overflow: hidden;
+            }}
+            /* Densifier légèrement pour éviter le débordement -> pages fantômes */
+            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
+            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
+            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
+            .qr-box img {{ width: 120px; height: 120px; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3724,27 +3772,38 @@ def ticket_combined_html(t):
                 size: 80mm 200mm;
                 margin: 0;
             }}
-            body {{ 
+            html, body {{ 
                 background: #fff; 
                 padding: 0; 
                 margin: 0;
                 width: 80mm;
+                /* on force une hauteur de page pour éviter les sauts bizarres */
+                overflow: hidden;
             }}
             .print-btn {{ display: none !important; }}
             .separator {{ display: none !important; }}
+
+            /* Chaque ticket doit tenir sur 1 page (80x200) */
             .ticket {{
-                border: none;
-                border-radius: 0;
-                padding: 3mm;
-                margin: 0;
                 width: 80mm;
                 height: 200mm;
-                max-height: 200mm;
+                box-sizing: border-box;
+                padding: 2mm;
+                margin: 0;
                 overflow: hidden;
                 page-break-after: always;
                 page-break-inside: avoid;
             }}
             .ticket:last-child {{ page-break-after: auto; }}
+
+            /* Densité typographique pour éviter un 3e page dû à un léger dépassement */
+            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
+            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
+            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
+
+            /* QR plus compact en impression thermique */
+            .qr-box img {{ width: 120px; height: 120px; }}
+            .security-box, .price-box, .footer-note {{ margin-top: 1mm; padding: 1.5mm; }}
         }}
     </style>
 </head>
