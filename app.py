@@ -11,6 +11,10 @@ from datetime import datetime
 import urllib.parse
 
 import html
+import os
+import shutil
+import tempfile
+
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -21,7 +25,47 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-DB_PATH = "klikphone_sav.db"
+DB_PATH = os.environ.get("KLIK_DB_PATH", "klikphone_sav.db")
+
+def _db_file_exists() -> bool:
+    """Vérifie la présence du fichier SQLite."""
+    try:
+        return os.path.exists(DB_PATH) and os.path.getsize(DB_PATH) > 0
+    except Exception:
+        return False
+
+def _close_db_connection():
+    """Ferme la connexion SQLite en session (si ouverte)."""
+    conn = st.session_state.get("_db_conn")
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    st.session_state["_db_conn"] = None
+
+def _restore_db_from_upload(uploaded_bytes: bytes) -> None:
+    """Remplace la base SQLite actuelle par un fichier uploadé (atomique)."""
+    # Écrire dans un fichier temporaire puis swap atomique
+    tmp_dir = tempfile.mkdtemp(prefix="klikdb_")
+    tmp_path = os.path.join(tmp_dir, "restore.db")
+    with open(tmp_path, "wb") as f:
+        f.write(uploaded_bytes)
+        f.flush()
+        os.fsync(f.fileno())
+
+    # Fermer la connexion active avant remplacement
+    _close_db_connection()
+
+    # Remplacement atomique
+    os.replace(tmp_path, DB_PATH)
+
+    # Nettoyage
+    try:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    except Exception:
+        pass
+
 
 # Logo Klikphone en base64
 LOGO_B64 = "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"
@@ -2945,32 +2989,8 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            @page {{
-                size: 80mm 200mm;
-                margin: 0;
-            }}
-            html, body {{
-                background: #fff;
-                padding: 0;
-                margin: 0;
-                width: 80mm;
-                height: 200mm;
-                overflow: hidden;
-            }}
-            .ticket {{
-                border: none;
-                border-radius: 0;
-                padding: 2mm;
-                width: 80mm;
-                height: 200mm;
-                box-sizing: border-box;
-                overflow: hidden;
-            }}
-            /* Densifier légèrement pour éviter le débordement -> pages fantômes */
-            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
-            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
-            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
-            .qr-box img {{ width: 120px; height: 120px; }}
+            body {{ background: #fff; padding: 0; margin: 0; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3188,32 +3208,8 @@ def ticket_staff_html(t):
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            @page {{
-                size: 80mm 200mm;
-                margin: 0;
-            }}
-            html, body {{
-                background: #fff;
-                padding: 0;
-                margin: 0;
-                width: 80mm;
-                height: 200mm;
-                overflow: hidden;
-            }}
-            .ticket {{
-                border: none;
-                border-radius: 0;
-                padding: 2mm;
-                width: 80mm;
-                height: 200mm;
-                box-sizing: border-box;
-                overflow: hidden;
-            }}
-            /* Densifier légèrement pour éviter le débordement -> pages fantômes */
-            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
-            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
-            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
-            .qr-box img {{ width: 120px; height: 120px; }}
+            body {{ background: #fff; padding: 0; margin: 0; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3772,38 +3768,27 @@ def ticket_combined_html(t):
                 size: 80mm 200mm;
                 margin: 0;
             }}
-            html, body {{ 
+            body {{ 
                 background: #fff; 
                 padding: 0; 
                 margin: 0;
                 width: 80mm;
-                /* on force une hauteur de page pour éviter les sauts bizarres */
-                overflow: hidden;
             }}
             .print-btn {{ display: none !important; }}
             .separator {{ display: none !important; }}
-
-            /* Chaque ticket doit tenir sur 1 page (80x200) */
             .ticket {{
+                border: none;
+                border-radius: 0;
+                padding: 3mm;
+                margin: 0;
                 width: 80mm;
                 height: 200mm;
-                box-sizing: border-box;
-                padding: 2mm;
-                margin: 0;
+                max-height: 200mm;
                 overflow: hidden;
                 page-break-after: always;
                 page-break-inside: avoid;
             }}
             .ticket:last-child {{ page-break-after: auto; }}
-
-            /* Densité typographique pour éviter un 3e page dû à un léger dépassement */
-            h1 {{ margin: 0 0 1mm; font-size: 13px; }}
-            h2 {{ margin: 2mm 0 1mm; font-size: 10px; }}
-            p, .info-line {{ margin: 0.5mm 0; font-size: 9px; line-height: 1.15; }}
-
-            /* QR plus compact en impression thermique */
-            .qr-box img {{ width: 120px; height: 120px; }}
-            .security-box, .price-box, .footer-note {{ margin-top: 1mm; padding: 1.5mm; }}
         }}
     </style>
 </head>
@@ -6640,6 +6625,43 @@ def staff_config():
             set_param("PIN_ACCUEIL", pin_acc)
             set_param("PIN_TECH", pin_tech)
             st.success("PIN mis à jour!")
+st.markdown("---")
+st.markdown("### 💾 Sauvegarde / restauration des données")
+st.caption(
+    f"Base actuelle : `{DB_PATH}`. "
+    "Si tu héberges sur **Streamlit Community Cloud**, le stockage local est **éphémère** : "
+    "un reboot peut repartir d'un clone GitHub sans ton fichier SQLite."
+)
+
+if _db_file_exists():
+    try:
+        with open(DB_PATH, "rb") as f:
+            db_bytes = f.read()
+        st.download_button(
+            "⬇️ Télécharger la sauvegarde (SQLite .db)",
+            data=db_bytes,
+            file_name="klikphone_sav_backup.db",
+            mime="application/octet-stream",
+            use_container_width=True,
+        )
+    except Exception as e:
+        st.error(f"Impossible de lire la base : {e}")
+else:
+    st.warning("Aucun fichier de base SQLite trouvé à sauvegarder (fichier absent ou vide).")
+
+st.markdown("#### Restaurer une sauvegarde (.db)")
+uploaded = st.file_uploader("Choisir un fichier .db", type=["db", "sqlite", "sqlite3"])
+confirm_restore = st.checkbox("Je confirme : remplacer la base actuelle par ce fichier", value=False)
+
+if uploaded is not None and confirm_restore:
+    if st.button("♻️ Restaurer maintenant", type="primary", use_container_width=True):
+        try:
+            _restore_db_from_upload(uploaded.getvalue())
+            st.success("Base restaurée. L'application va se recharger.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Restauration impossible : {e}")
+
 
 # =============================================================================
 # INTERFACE TECHNICIEN
