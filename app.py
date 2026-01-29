@@ -2502,7 +2502,6 @@ def ui_accueil():
             <span class="nav-logo-text">KLIKPHONE</span>
             <span style="color:var(--neutral-400);font-size:var(--text-sm);margin-left:8px;">SAV Manager</span>
         </div>
-        <div class="nav-actions" id="nav-btns"></div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2518,34 +2517,48 @@ def ui_accueil():
             st.session_state.auth = False
             st.rerun()
     
-    # === KPI CARDS ===
+    # === KPI CARDS CLIQUABLES ===
     all_tickets = chercher_tickets()
     commandes_attente = get_commandes_pieces(statut="A commander")
     nb_total = len(all_tickets)
     nb_attente = len([t for t in all_tickets if t.get('statut') == "En attente de diagnostic"])
     nb_encours = len([t for t in all_tickets if t.get('statut') == "En cours de réparation"])
+    nb_attente_piece = len([t for t in all_tickets if t.get('statut') == "En attente de pièce"])
+    nb_attente_accord = len([t for t in all_tickets if t.get('statut') == "En attente d'accord client"])
     nb_commandes = len(commandes_attente)
     
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Total tickets</div>
-            <div class="kpi-value">{nb_total}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">En attente</div>
-            <div class="kpi-value warning">{nb_attente}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">En réparation</div>
-            <div class="kpi-value info">{nb_encours}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Pièces à commander</div>
-            <div class="kpi-value" style="color:{'var(--error)' if nb_commandes > 0 else 'var(--success)'};">{nb_commandes}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Filtre actif
+    filtre_actif = st.session_state.get("filtre_kpi", None)
+    
+    # KPI cliquables avec design amélioré
+    col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
+    with col_k1:
+        selected = filtre_actif is None
+        if st.button(f"📋 **{nb_total}**\nTotal", key="kpi_total", use_container_width=True, type="primary" if selected else "secondary"):
+            st.session_state.filtre_kpi = None
+            st.rerun()
+    with col_k2:
+        selected = filtre_actif == "En attente de diagnostic"
+        if st.button(f"⏳ **{nb_attente}**\nDiagnostic", key="kpi_attente", use_container_width=True, type="primary" if selected else "secondary"):
+            st.session_state.filtre_kpi = "En attente de diagnostic"
+            st.rerun()
+    with col_k3:
+        selected = filtre_actif == "En cours de réparation"
+        if st.button(f"🔧 **{nb_encours}**\nRéparation", key="kpi_encours", use_container_width=True, type="primary" if selected else "secondary"):
+            st.session_state.filtre_kpi = "En cours de réparation"
+            st.rerun()
+    with col_k4:
+        selected = filtre_actif == "En attente d'accord client"
+        color = "primary" if (selected or nb_attente_accord > 0) else "secondary"
+        if st.button(f"⚠️ **{nb_attente_accord}**\nAccord", key="kpi_accord", use_container_width=True, type=color):
+            st.session_state.filtre_kpi = "En attente d'accord client"
+            st.rerun()
+    with col_k5:
+        selected = filtre_actif == "En attente de pièce"
+        color = "primary" if (selected or nb_attente_piece > 0) else "secondary"
+        if st.button(f"📦 **{nb_attente_piece}**\nPièces", key="kpi_pieces", use_container_width=True, type=color):
+            st.session_state.filtre_kpi = "En attente de pièce"
+            st.rerun()
     
     # === TABS ===
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "📄 Attestation", "⚙️ Config"])
@@ -2576,11 +2589,22 @@ def staff_liste_demandes():
         staff_traiter_demande(st.session_state.edit_id)
         return
     
+    # Appliquer filtre KPI si défini
+    filtre_kpi = st.session_state.get("filtre_kpi", None)
+    if filtre_kpi:
+        st.info(f"🔍 Filtre actif: **{filtre_kpi}** - [Voir tous](javascript:void(0))")
+        if st.button("❌ Effacer le filtre", key="clear_kpi_filter"):
+            st.session_state.filtre_kpi = None
+            st.rerun()
+    
     # === FILTER BAR ===
-    st.markdown('<div class="filter-bar">', unsafe_allow_html=True)
     col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
     with col1:
-        f_statut = st.selectbox("Filtrer par statut", ["Tous"] + STATUTS, key="f_statut", label_visibility="collapsed")
+        # Si filtre KPI actif, pré-sélectionner le statut
+        default_idx = 0
+        if filtre_kpi and filtre_kpi in STATUTS:
+            default_idx = STATUTS.index(filtre_kpi) + 1
+        f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, index=default_idx, key="f_statut", label_visibility="collapsed")
     with col2:
         f_code = st.text_input("N° Ticket", key="f_code", placeholder="🔍 KP-...", label_visibility="collapsed")
     with col3:
@@ -2588,23 +2612,24 @@ def staff_liste_demandes():
     with col4:
         f_nom = st.text_input("Nom", key="f_nom", placeholder="👤 Nom client", label_visibility="collapsed")
     with col5:
-        tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="f_tri", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
+        # Filtre par technicien
+        membres = get_membres_equipe()
+        tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
+        f_tech = st.selectbox("Tech", tech_options, key="f_tech", label_visibility="collapsed")
     
     # Recherche avec les filtres
+    statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (f_statut if f_statut != "Tous" else None)
+    
     tickets = chercher_tickets(
-        statut=f_statut if f_statut != "Tous" else None,
+        statut=statut_filtre,
         code=f_code.strip() if f_code and f_code.strip() else None, 
         tel=f_tel.strip() if f_tel and f_tel.strip() else None, 
         nom=f_nom.strip() if f_nom and f_nom.strip() else None
     )
     
-    # Appliquer le tri
-    if "Ancien" in tri:
-        tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
-    elif "Statut" in tri:
-        ordre_statut = {s: i for i, s in enumerate(STATUTS)}
-        tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
+    # Filtrer par technicien si sélectionné
+    if f_tech != "👥 Tous":
+        tickets = [t for t in tickets if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
     
     # Pagination
     ITEMS_PER_PAGE = 8
@@ -2619,70 +2644,73 @@ def staff_liste_demandes():
     tickets_page = tickets[start_idx:end_idx]
     
     # Header avec compteur
-    st.markdown(f"""
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <span style="font-size:var(--text-sm);color:var(--neutral-500);">{len(tickets)} ticket(s) trouvé(s)</span>
-        <span style="font-size:var(--text-sm);color:var(--neutral-400);">Page {current_page}/{total_pages}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"**{len(tickets)} ticket(s)** • Page {current_page}/{total_pages}")
     
-    # Table header
+    # Table header amélioré
     st.markdown("""
-    <div class="table-header">
-        <div style="min-width:90px;">Ticket</div>
-        <div style="flex:1;">Client</div>
-        <div style="flex:1;">Appareil</div>
-        <div style="min-width:80px;">Date</div>
-        <div style="min-width:140px;">Statut</div>
-        <div style="min-width:100px;">Note</div>
-        <div style="min-width:70px;">Action</div>
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 80px 70px;gap:8px;padding:10px;background:#f1f5f9;border-radius:8px;font-weight:600;font-size:0.8rem;margin-bottom:8px;">
+        <div>Ticket</div>
+        <div>Client</div>
+        <div>Appareil</div>
+        <div>Technicien</div>
+        <div>Statut</div>
+        <div>Contact</div>
+        <div>Action</div>
     </div>
     """, unsafe_allow_html=True)
     
     # Liste des tickets
     if not tickets_page:
-        st.markdown("""
-        <div class="empty-state">
-            <div class="empty-icon">📭</div>
-            <div class="empty-title">Aucun ticket trouvé</div>
-            <div class="empty-text">Modifiez vos filtres ou créez un nouveau ticket</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.info("📭 Aucun ticket trouvé. Modifiez vos filtres ou créez un nouveau ticket.")
     else:
         for t in tickets_page:
             status_class = get_status_class(t.get('statut', ''))
             modele = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'): modele += f" ({t['modele_autre']})"
-            modele = modele[:25] + "..." if len(modele) > 25 else modele
+            if t.get('modele_autre'): modele = t['modele_autre']
+            modele = modele[:22] + "..." if len(modele) > 22 else modele
             
             client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}"
-            client_nom = client_nom[:20] + "..." if len(client_nom) > 20 else client_nom
+            client_nom = client_nom[:18] + "..." if len(client_nom) > 18 else client_nom
             
-            has_message = t.get('commentaire_client')
-            date_short = fmt_date(t.get('date_depot',''))[:10]
+            # Technicien assigné avec couleur
+            tech = t.get('technicien_assigne', '')
+            tech_display = "—"
+            tech_color = "#9CA3AF"
+            if tech:
+                for m in get_membres_equipe():
+                    if m['nom'] in tech:
+                        tech_display = m['nom']
+                        tech_color = m['couleur']
+                        break
             
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.5, 1.5, 1, 1.8, 1.2, 0.8])
+            # Indicateurs de contact
+            wa = "✅" if t.get('msg_whatsapp') else "⚪"
+            sms = "✅" if t.get('msg_sms') else "⚪"
+            email = "✅" if t.get('msg_email') else "⚪"
+            contact_icons = f"{wa}{sms}{email}"
+            
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1.3, 1.3, 1.2, 1.5, 1, 0.8])
             with col1:
-                st.markdown(f"<span class='ticket-code'>{t['ticket_code']}</span>", unsafe_allow_html=True)
+                st.markdown(f"**{t['ticket_code']}**")
             with col2:
-                st.markdown(f"<span class='ticket-client'>{client_nom}</span>", unsafe_allow_html=True)
+                st.write(client_nom)
             with col3:
-                st.markdown(f"<span class='ticket-device'>{modele}</span>", unsafe_allow_html=True)
+                st.caption(modele)
             with col4:
-                st.markdown(f"<span class='ticket-date'>{date_short}</span>", unsafe_allow_html=True)
-            with col5:
-                st.markdown(f"<span class='badge {status_class}'>{t.get('statut','')}</span>", unsafe_allow_html=True)
-            with col6:
-                if has_message:
-                    st.markdown("<span class='ticket-alert'>📢 Message</span>", unsafe_allow_html=True)
+                if tech_display != "—":
+                    st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.75rem;'>{tech_display}</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<span style='color:var(--neutral-300);'>—</span>", unsafe_allow_html=True)
+                    st.caption("Non assigné")
+            with col5:
+                st.markdown(f"<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:18]}</span>", unsafe_allow_html=True)
+            with col6:
+                st.caption(contact_icons)
             with col7:
-                if st.button("Ouvrir", key=f"process_{t['id']}", type="primary", use_container_width=True):
+                if st.button("📂", key=f"process_{t['id']}", use_container_width=True):
                     st.session_state.edit_id = t['id']
                     st.rerun()
             
-            st.markdown("<div style='height:1px;background:var(--neutral-100);margin:8px 0;'></div>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
     
     # Navigation pagination
     if total_pages > 1:
@@ -2872,7 +2900,43 @@ def staff_traiter_demande(tid):
                     st.markdown(f"<div style='width:20px;height:20px;background:{m['couleur']};border-radius:50%;display:inline-block;'></div>", unsafe_allow_html=True)
                     break
         
-        personne = st.text_input("Personne en charge", value=t.get('personne_charge') or "", key=f"personne_{tid}")
+        # Modification appareil/modèle
+        st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="detail-card-header">📱 Modifier l'appareil</div>""", unsafe_allow_html=True)
+        
+        if st.session_state.get(f"show_edit_appareil_{tid}"):
+            col_cat, col_marque = st.columns(2)
+            with col_cat:
+                new_cat = st.selectbox("Catégorie", CATEGORIES, index=CATEGORIES.index(t.get('categorie', CATEGORIES[0])) if t.get('categorie') in CATEGORIES else 0, key=f"edit_cat_{tid}")
+            with col_marque:
+                marques_dispo = get_marques(new_cat)
+                new_marque = st.selectbox("Marque", marques_dispo, index=marques_dispo.index(t.get('marque')) if t.get('marque') in marques_dispo else 0, key=f"edit_marque_{tid}")
+            
+            col_mod, col_autre = st.columns(2)
+            with col_mod:
+                modeles_dispo = get_modeles(new_cat, new_marque)
+                new_modele = st.selectbox("Modèle", modeles_dispo, index=modeles_dispo.index(t.get('modele')) if t.get('modele') in modeles_dispo else 0, key=f"edit_modele_{tid}")
+            with col_autre:
+                new_modele_autre = st.text_input("Modèle (autre)", value=t.get('modele_autre', ''), key=f"edit_modele_autre_{tid}")
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.button("💾 Enregistrer appareil", key=f"save_appareil_{tid}", type="primary"):
+                    update_ticket(tid, categorie=new_cat, marque=new_marque, modele=new_modele, modele_autre=new_modele_autre)
+                    st.session_state[f"show_edit_appareil_{tid}"] = False
+                    st.success("✅ Appareil mis à jour!")
+                    st.rerun()
+            with col_cancel:
+                if st.button("❌ Annuler", key=f"cancel_appareil_{tid}"):
+                    st.session_state[f"show_edit_appareil_{tid}"] = False
+                    st.rerun()
+        else:
+            modele_actuel = f"{t.get('marque','')} {t.get('modele','')}"
+            if t.get('modele_autre'): modele_actuel = t['modele_autre']
+            st.write(f"**{modele_actuel}**")
+            if st.button("✏️ Modifier", key=f"btn_edit_appareil_{tid}"):
+                st.session_state[f"show_edit_appareil_{tid}"] = True
+                st.rerun()
         
         # Date de récupération
         st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
@@ -2930,13 +2994,23 @@ def staff_traiter_demande(tid):
         idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
         new_statut = st.selectbox("Statut", STATUTS, index=idx_statut, key=f"statut_{tid}")
         
+        # Alerte accord client si en attente
+        if statut_actuel == "En attente d'accord client":
+            st.warning("⚠️ En attente de validation du client")
+            if st.button("✅ CLIENT A ACCEPTÉ", key=f"btn_accord_{tid}", type="primary", use_container_width=True):
+                update_ticket(tid, client_accord=1)
+                changer_statut(tid, "En cours de réparation")
+                ajouter_note(tid, "[ACCUEIL] Client a accepté le devis")
+                st.success("✅ Accord validé - Statut mis à jour!")
+                st.rerun()
+        
         # Bouton principal
         st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             tech_name = technicien if technicien != "-- Non assigné --" else ""
             if st.button("💾 ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
-                update_ticket(tid, panne=new_panne, panne_detail=panne_detail, personne_charge=personne, 
+                update_ticket(tid, panne=new_panne, panne_detail=panne_detail, 
                              devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup)
                 if comment:
                     ajouter_note(tid, comment)
@@ -2961,48 +3035,112 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_ticket_{tid}"] = "devis"
                 st.rerun()
         with col_t3:
-            if st.button("🧾 RÉCAPITULATIF", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
+            if st.button("🧾 REÇU", use_container_width=True, key=f"print_facture_{tid}", type="primary"):
                 st.session_state[f"show_ticket_{tid}"] = "facture"
                 st.rerun()
         with col_t4:
             pass  # Espace réservé
         
-        # Boutons envoi par email
+        # === SECTION CONTACT CLIENT ===
+        st.markdown("---")
+        st.markdown("##### 📞 Contacter le client")
+        
+        tel_client = t.get('client_tel', '')
         email_client = t.get('client_email', '')
+        
+        # Indicateurs de contact
+        wa_sent = t.get('msg_whatsapp', 0)
+        sms_sent = t.get('msg_sms', 0)
+        email_sent = t.get('msg_email', 0)
+        
+        st.markdown(f"""
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="padding:4px 10px;border-radius:12px;font-size:0.8rem;background:{'#dcfce7' if wa_sent else '#f3f4f6'};color:{'#166534' if wa_sent else '#6b7280'};">
+                WhatsApp {'✅' if wa_sent else '⚪'}
+            </span>
+            <span style="padding:4px 10px;border-radius:12px;font-size:0.8rem;background:{'#dbeafe' if sms_sent else '#f3f4f6'};color:{'#1d4ed8' if sms_sent else '#6b7280'};">
+                SMS {'✅' if sms_sent else '⚪'}
+            </span>
+            <span style="padding:4px 10px;border-radius:12px;font-size:0.8rem;background:{'#fef3c7' if email_sent else '#f3f4f6'};color:{'#b45309' if email_sent else '#6b7280'};">
+                Email {'✅' if email_sent else '⚪'}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Message devis prédéfini pour WhatsApp
+        nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modele_txt = t['modele_autre']
+        devis_val = t.get('devis_estime') or 0
+        
+        msg_devis = f"""Bonjour {t.get('client_prenom', '')},
+
+Suite à notre diagnostic de votre {modele_txt}, voici notre devis:
+
+🔧 Réparation: {t.get('panne', '')}
+💰 Montant: {devis_val:.2f} € TTC
+
+Merci de nous confirmer votre accord pour procéder à la réparation.
+
+{nom_boutique}
+📞 {get_param('TEL_BOUTIQUE')}"""
+        
+        col_wa, col_sms = st.columns(2)
+        with col_wa:
+            if tel_client:
+                wa_url = wa_link(tel_client, msg_devis)
+                if st.button("📱 WhatsApp Devis", key=f"wa_devis_{tid}", use_container_width=True, type="primary"):
+                    update_ticket(tid, msg_whatsapp=1)
+                    ajouter_note(tid, "[WHATSAPP] Devis envoyé")
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={wa_url}">', unsafe_allow_html=True)
+                    st.rerun()
+        with col_sms:
+            if tel_client:
+                sms_url = sms_link(tel_client, msg_devis)
+                if st.button("💬 SMS", key=f"sms_devis_{tid}", use_container_width=True):
+                    update_ticket(tid, msg_sms=1)
+                    ajouter_note(tid, "[SMS] Message envoyé")
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={sms_url}">', unsafe_allow_html=True)
+                    st.rerun()
+        
+        # Boutons envoi par email
         if email_client and get_param("SMTP_HOST"):
             st.markdown("##### 📧 Envoyer par email")
             col_e1, col_e2, col_e3 = st.columns(3)
             with col_e1:
-                if st.button("📧 Envoyer Ticket", use_container_width=True, key=f"email_client_{tid}"):
+                if st.button("📧 Ticket", use_container_width=True, key=f"email_client_{tid}"):
                     sujet = f"Ticket {t.get('ticket_code','')} - Klikphone"
                     html = ticket_client_html(t)
                     msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre ticket de dépôt.\n\nCordialement,\nKlikphone"
                     success, result = envoyer_email(email_client, sujet, msg, html)
                     if success:
+                        update_ticket(tid, msg_email=1)
                         st.success("✅ Ticket envoyé par email!")
                         ajouter_note(tid, f"[EMAIL] Ticket envoyé à {email_client}")
                     else:
                         st.error(f"Erreur: {result}")
             with col_e2:
-                if st.button("📧 Envoyer Devis", use_container_width=True, key=f"email_devis_{tid}"):
+                if st.button("📧 Devis", use_container_width=True, key=f"email_devis_{tid}"):
                     sujet = f"Devis D-{t.get('ticket_code','')} - Klikphone"
                     html = ticket_devis_facture_html(t, "devis")
                     msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre devis.\n\nCordialement,\nKlikphone"
                     success, result = envoyer_email(email_client, sujet, msg, html)
                     if success:
+                        update_ticket(tid, msg_email=1)
                         st.success("✅ Devis envoyé par email!")
                         ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_client}")
                     else:
                         st.error(f"Erreur: {result}")
             with col_e3:
-                if st.button("📧 Envoyer Récap.", use_container_width=True, key=f"email_recap_{tid}"):
-                    sujet = f"Récapitulatif R-{t.get('ticket_code','')} - Klikphone"
+                if st.button("📧 Reçu", use_container_width=True, key=f"email_recap_{tid}"):
+                    sujet = f"Reçu R-{t.get('ticket_code','')} - Klikphone"
                     html = ticket_devis_facture_html(t, "facture")
-                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre récapitulatif de paiement.\n\nCordialement,\nKlikphone"
+                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre reçu de paiement.\n\nCordialement,\nKlikphone"
                     success, result = envoyer_email(email_client, sujet, msg, html)
                     if success:
-                        st.success("✅ Récapitulatif envoyé par email!")
-                        ajouter_note(tid, f"[EMAIL] Récapitulatif envoyé à {email_client}")
+                        update_ticket(tid, msg_email=1)
+                        st.success("✅ Reçu envoyé par email!")
+                        ajouter_note(tid, f"[EMAIL] Reçu envoyé à {email_client}")
                     else:
                         st.error(f"Erreur: {result}")
         elif not email_client:
@@ -3390,31 +3528,69 @@ def staff_commandes_pieces():
             st.markdown(f"**{len(commandes)} pièce(s) à commander**")
             
             for cmd in commandes:
-                with st.container():
-                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1])
-                    with col1:
-                        ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
-                        st.markdown(f"**{cmd['description']}**")
-                        st.caption(f"📋 {ticket_info}")
-                        if cmd.get('marque') and cmd.get('modele'):
-                            st.caption(f"📱 {cmd['marque']} {cmd['modele']}")
-                    with col2:
-                        st.write(f"🏪 {cmd.get('fournisseur', 'N/A')}")
-                        if cmd.get('reference'):
-                            st.caption(f"Réf: {cmd['reference']}")
-                    with col3:
-                        if cmd.get('prix') and cmd['prix'] > 0:
-                            st.write(f"💰 {cmd['prix']:.2f} €")
-                    with col4:
-                        if st.button("✅ Commandée", key=f"cmd_done_{cmd['id']}", type="primary"):
-                            from datetime import datetime
-                            update_commande_piece(cmd['id'], statut="Commandée", date_commande=datetime.now().strftime("%Y-%m-%d %H:%M"))
-                            st.rerun()
-                        if st.button("🗑️", key=f"cmd_del_{cmd['id']}", help="Supprimer"):
-                            delete_commande_piece(cmd['id'])
-                            st.rerun()
-                    
-                    st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
+                cmd_id = cmd['id']
+                
+                # Vérifier si on est en mode édition pour cette commande
+                if st.session_state.get(f"edit_cmd_{cmd_id}"):
+                    with st.container():
+                        st.markdown(f"**✏️ Modifier la commande #{cmd_id}**")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            edit_desc = st.text_input("Description", value=cmd['description'], key=f"edit_desc_{cmd_id}")
+                            edit_fournisseur = st.selectbox("Fournisseur", FOURNISSEURS, 
+                                index=FOURNISSEURS.index(cmd.get('fournisseur')) if cmd.get('fournisseur') in FOURNISSEURS else 0,
+                                key=f"edit_fourn_{cmd_id}")
+                        with col2:
+                            edit_ref = st.text_input("Référence", value=cmd.get('reference', ''), key=f"edit_ref_{cmd_id}")
+                            edit_prix = st.number_input("Prix (€)", value=float(cmd.get('prix', 0)), min_value=0.0, step=1.0, key=f"edit_prix_{cmd_id}")
+                        
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            if st.button("💾 Enregistrer", key=f"save_edit_cmd_{cmd_id}", type="primary"):
+                                conn = get_db()
+                                c = conn.cursor()
+                                c.execute("UPDATE commandes_pieces SET description=?, fournisseur=?, reference=?, prix=? WHERE id=?",
+                                         (edit_desc, edit_fournisseur, edit_ref, edit_prix, cmd_id))
+                                conn.commit()
+                                conn.close()
+                                st.session_state[f"edit_cmd_{cmd_id}"] = False
+                                st.success("✅ Commande modifiée!")
+                                st.rerun()
+                        with col_cancel:
+                            if st.button("❌ Annuler", key=f"cancel_edit_cmd_{cmd_id}"):
+                                st.session_state[f"edit_cmd_{cmd_id}"] = False
+                                st.rerun()
+                        st.markdown("---")
+                else:
+                    with st.container():
+                        col1, col2, col3, col4, col5 = st.columns([2, 1.5, 0.8, 0.8, 0.8])
+                        with col1:
+                            ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
+                            st.markdown(f"**{cmd['description']}**")
+                            st.caption(f"📋 {ticket_info}")
+                            if cmd.get('marque') and cmd.get('modele'):
+                                st.caption(f"📱 {cmd['marque']} {cmd['modele']}")
+                        with col2:
+                            st.write(f"🏪 {cmd.get('fournisseur', 'N/A')}")
+                            if cmd.get('reference'):
+                                st.caption(f"Réf: {cmd['reference']}")
+                        with col3:
+                            if cmd.get('prix') and cmd['prix'] > 0:
+                                st.write(f"💰 {cmd['prix']:.2f} €")
+                        with col4:
+                            if st.button("✏️", key=f"btn_edit_cmd_{cmd_id}", help="Modifier"):
+                                st.session_state[f"edit_cmd_{cmd_id}"] = True
+                                st.rerun()
+                            if st.button("✅", key=f"cmd_done_{cmd_id}", help="Commandée"):
+                                from datetime import datetime
+                                update_commande_piece(cmd_id, statut="Commandée", date_commande=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                                st.rerun()
+                        with col5:
+                            if st.button("🗑️", key=f"cmd_del_{cmd_id}", help="Supprimer"):
+                                delete_commande_piece(cmd_id)
+                                st.rerun()
+                        
+                        st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
     
     with sub_tab2:
         # Pièces commandées (en attente de réception)
@@ -3999,13 +4175,13 @@ def staff_config():
 def ui_tech():
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
-        st.markdown("<h1 class='page-title'>Espace Technicien</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
     with col2:
         if st.button("🏠 Accueil", key="goto_accueil", type="secondary"):
             st.session_state.mode = "accueil"
             st.rerun()
     with col3:
-        if st.button("🚪 Déconnexion", key="logout_tech"):
+        if st.button("🚪 Sortir", key="logout_tech"):
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
@@ -4015,14 +4191,19 @@ def ui_tech():
         tech_detail_ticket(st.session_state.tech_selected)
         return
     
-    # Filtres et tri
-    col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
+    # Filtres améliorés
+    col_f1, col_f2, col_f3, col_f4 = st.columns([1.5, 1.5, 1.5, 1.5])
     with col_f1:
-        filtre_statut = st.selectbox("Filtrer par statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
+        filtre_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
     with col_f2:
-        tri = st.selectbox("Trier par", ["Plus recent", "Plus ancien", "Statut", "Client"], key="tech_tri")
+        # Filtre par technicien
+        membres = get_membres_equipe()
+        tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
+        filtre_tech = st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
     with col_f3:
-        recherche = st.text_input("Rechercher", placeholder="Ticket, nom, tel...", key="tech_recherche")
+        tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
+    with col_f4:
+        recherche = st.text_input("Recherche", placeholder="Ticket, nom...", key="tech_recherche")
     
     st.markdown("---")
     
@@ -4032,6 +4213,12 @@ def ui_tech():
     else:
         tickets = chercher_tickets(statut=filtre_statut)
     
+    # Filtrer par technicien
+    if filtre_tech == "🔴 Non assignés":
+        tickets = [t for t in tickets if not t.get('technicien_assigne')]
+    elif filtre_tech not in ["👥 Tous"]:
+        tickets = [t for t in tickets if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
+    
     # Filtrer par recherche
     if recherche:
         recherche_lower = recherche.lower()
@@ -4039,19 +4226,19 @@ def ui_tech():
                    recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
                    recherche_lower in t.get('client_prenom', '').lower() or
+                   recherche_lower in t.get('marque', '').lower() or
+                   recherche_lower in t.get('modele', '').lower() or
                    recherche_lower in t.get('client_tel', '').lower()]
     
     # Trier
-    if tri == "Plus ancien":
+    if "Ancien" in tri:
         tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
-    elif tri == "Statut":
+    elif "Statut" in tri:
         ordre_statut = {s: i for i, s in enumerate(STATUTS)}
         tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
-    elif tri == "Client":
-        tickets = sorted(tickets, key=lambda x: x.get('client_nom', '').lower())
     
     # Pagination
-    ITEMS_PER_PAGE = 5
+    ITEMS_PER_PAGE = 6
     total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
     
     if "tech_page" not in st.session_state:
@@ -4062,16 +4249,17 @@ def ui_tech():
     end_idx = start_idx + ITEMS_PER_PAGE
     tickets_page = tickets[start_idx:end_idx]
     
-    st.markdown(f"**{len(tickets)} réparation(s)** - Page {current_page}/{total_pages}")
+    st.markdown(f"**{len(tickets)} réparation(s)** • Page {current_page}/{total_pages}")
     
-    # En-tete du tableau
+    # En-tete du tableau amélioré
     st.markdown("""
-    <div style="display:flex; background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold;">
-        <div style="flex:1.5;">Ticket</div>
-        <div style="flex:2;">Client</div>
-        <div style="flex:2;">Appareil</div>
-        <div style="flex:1.5;">Statut</div>
-        <div style="flex:1;">Action</div>
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 70px;gap:8px;padding:10px;background:#1e293b;color:white;border-radius:8px;margin-bottom:8px;font-weight:600;font-size:0.8rem;">
+        <div>Ticket</div>
+        <div>Client</div>
+        <div>Appareil</div>
+        <div>Assigné</div>
+        <div>Statut</div>
+        <div>Action</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -4079,42 +4267,61 @@ def ui_tech():
     for t in tickets_page:
         tid = t['id']
         status_class = get_status_class(t.get('statut', ''))
-        modèle = f"{t.get('marque','')} {t.get('modele','')}"
-        if t.get('modele_autre'): modèle += f" ({t['modele_autre']})"
         
-        # Message technicien en attente?
-        has_message = t.get('commentaire_client')
+        # Modèle
+        modele = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+        modele = modele[:20] + "..." if len(modele) > 20 else modele
         
-        col1, col2, col3, col4, col5 = st.columns([1.5, 2, 2, 1.5, 1])
+        # Technicien avec couleur
+        tech = t.get('technicien_assigne', '')
+        tech_display = "—"
+        tech_color = "#9CA3AF"
+        if tech:
+            for m in get_membres_equipe():
+                if m['nom'] in tech:
+                    tech_display = m['nom']
+                    tech_color = m['couleur']
+                    break
+        
+        # Indicateur accord client
+        accord_icon = ""
+        if t.get('statut') == "En attente d'accord client":
+            accord_icon = "⚠️"
+        
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1.3, 1.3, 1.1, 1.5, 0.8])
         with col1:
             st.markdown(f"**{t['ticket_code']}**")
         with col2:
-            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')}")
+            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')[:10]}")
         with col3:
-            st.write(modèle[:25])
+            st.caption(modele)
         with col4:
-            st.markdown(f"<span class='status-badge {status_class}'>{t.get('statut','')[:15]}</span>", unsafe_allow_html=True)
+            if tech_display != "—":
+                st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;'>{tech_display}</span>", unsafe_allow_html=True)
+            else:
+                st.caption("Non assigné")
         with col5:
-            if st.button("Ouvrir", key=f"tech_open_{tid}", use_container_width=True):
+            st.markdown(f"{accord_icon}<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:16]}</span>", unsafe_allow_html=True)
+        with col6:
+            if st.button("📂", key=f"tech_open_{tid}", use_container_width=True):
                 st.session_state.tech_selected = tid
                 st.rerun()
         
-        st.markdown("<hr style='margin:5px 0; border-color:#eee;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
     
     # Navigation pagination
     if total_pages > 1:
-        st.markdown("---")
         col_prev, col_pages, col_next = st.columns([1, 3, 1])
         with col_prev:
             if current_page > 1:
-                if st.button("< Précédent", key="tech_prev"):
+                if st.button("◀ Préc", key="tech_prev"):
                     st.session_state.tech_page = current_page - 1
                     st.rerun()
         with col_pages:
             st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
         with col_next:
             if current_page < total_pages:
-                if st.button("Suivant >", key="tech_next"):
+                if st.button("Suiv ▶", key="tech_next"):
                     st.session_state.tech_page = current_page + 1
                     st.rerun()
 
@@ -4216,9 +4423,70 @@ def tech_detail_ticket(tid):
         </div>
         """, unsafe_allow_html=True)
         
+        # === MODIFIER LE DEVIS ===
+        st.markdown("---")
+        st.markdown("##### 💰 Créer / Modifier le devis")
+        
+        col_devis1, col_devis2 = st.columns(2)
+        with col_devis1:
+            new_devis = st.number_input("Devis TTC (€)", value=float(devis), min_value=0.0, step=5.0, key=f"tech_new_devis_{tid}")
+        with col_devis2:
+            new_acompte = st.number_input("Acompte (€)", value=float(acompte), min_value=0.0, step=5.0, key=f"tech_new_acompte_{tid}")
+        
+        if st.button("💾 Enregistrer le devis", key=f"tech_save_devis_{tid}", type="primary", use_container_width=True):
+            update_ticket(tid, devis_estime=new_devis, acompte=new_acompte)
+            st.success("✅ Devis mis à jour!")
+            st.rerun()
+        
+        # === ENVOYER DEVIS PAR WHATSAPP ===
+        st.markdown("##### 📱 Envoyer le devis au client")
+        
+        tel = t.get('client_tel', '')
+        nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+        modele_court = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+        
+        msg_devis_tech = f"""Bonjour {t.get('client_prenom', '')},
+
+Suite au diagnostic de votre {modele_court}, voici notre devis:
+
+🔧 Réparation: {panne_affichee}
+💰 Montant: {new_devis if new_devis else devis:.2f} € TTC
+
+Merci de nous confirmer votre accord pour procéder à la réparation.
+
+{nom_boutique}
+📞 {get_param('TEL_BOUTIQUE')}"""
+        
+        col_wa, col_attente = st.columns(2)
+        with col_wa:
+            if tel:
+                wa_url = wa_link(tel, msg_devis_tech)
+                if st.button("📱 WhatsApp Devis", key=f"tech_wa_devis_{tid}", type="primary", use_container_width=True):
+                    update_ticket(tid, msg_whatsapp=1)
+                    ajouter_note(tid, "[TECH-WHATSAPP] Devis envoyé au client")
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={wa_url}">', unsafe_allow_html=True)
+                    st.rerun()
+        
+        with col_attente:
+            if st.button("⏳ Demander accord", key=f"tech_demande_accord_{tid}", type="secondary", use_container_width=True):
+                changer_statut(tid, "En attente d'accord client")
+                ajouter_note(tid, "[TECH] Demande d'accord client envoyée")
+                st.success("✅ Statut mis à 'En attente d'accord client'")
+                st.rerun()
+        
+        st.markdown("---")
+        
         # Changer statut
         st.markdown("**Changer le statut:**")
         statut_actuel = t.get('statut', STATUTS[0])
+        
+        # Afficher alerte si en attente d'accord
+        if statut_actuel == "En attente d'accord client":
+            if t.get('client_accord'):
+                st.success("✅ Le client a accepté le devis!")
+            else:
+                st.warning("⏳ En attente de la réponse du client...")
+        
         for s in STATUTS:
             btn_type = "primary" if s == "Rendu au client" else "secondary"
             disabled = (s == statut_actuel)
