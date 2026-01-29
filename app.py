@@ -3443,7 +3443,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </html>"""
 
 def ticket_combined_html(t):
-    """Génère les deux tickets (client + staff) - optimisé 80mm x 200mm"""
+    """Génère les deux tickets - IDENTIQUES aux tickets individuels"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
@@ -3464,7 +3464,6 @@ def ticket_combined_html(t):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tickets Klikphone</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -3473,20 +3472,23 @@ def ticket_combined_html(t):
             background-color: #f0f2f5;
             margin: 0;
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }}
         .print-btn {{
             display: block;
-            width: 100%;
-            max-width: 400px;
+            width: 80mm;
             margin: 0 auto 1rem auto;
             background-color: #000;
             color: white;
-            padding: 1rem;
-            border-radius: 8px;
+            padding: 3mm;
+            border-radius: 2mm;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 11px;
             cursor: pointer;
             border: none;
+            text-align: center;
         }}
         .print-btn:hover {{ background-color: #333; }}
         
@@ -3498,6 +3500,7 @@ def ticket_combined_html(t):
             margin: 0 auto 1.5rem auto;
             padding: 4mm;
             border: 1px solid #ccc;
+            border-radius: 4px;
             font-size: 11px;
             line-height: 1.4;
             color: #000;
@@ -3509,6 +3512,8 @@ def ticket_combined_html(t):
         .logo-center img {{
             width: 18mm;
             height: 18mm;
+            display: block;
+            margin: 0 auto;
         }}
         h1 {{
             text-align: center;
@@ -3538,7 +3543,7 @@ def ticket_combined_html(t):
         }}
         .info-line {{
             font-size: 10px;
-            margin: 1mm 0;
+            margin: 1.5mm 0;
             color: #000;
         }}
         .info-line strong {{
@@ -3554,12 +3559,51 @@ def ticket_combined_html(t):
         .qr-box img {{
             width: 35mm;
             height: 35mm;
+            display: block;
+            margin: 0 auto;
+        }}
+        .qr-box.big img {{
+            width: 40mm;
+            height: 40mm;
         }}
         .qr-box p {{
             font-size: 9px;
             margin-top: 2mm;
             font-weight: 600;
             color: #000;
+            text-align: center;
+        }}
+        .ticket-num {{
+            text-align: center;
+            font-size: 14px;
+            font-weight: 900;
+            padding: 2mm;
+            border: 2px solid #000;
+            margin: 3mm 0;
+            color: #000;
+        }}
+        .status {{
+            text-align: center;
+            font-weight: 700;
+            font-size: 11px;
+            margin-bottom: 3mm;
+            color: #000;
+        }}
+        .security-box {{
+            border: 2px solid #000;
+            padding: 2mm;
+            margin: 3mm 0;
+            text-align: center;
+            background: #f9f9f9;
+        }}
+        .security-box .title {{
+            font-weight: 800;
+            font-size: 10px;
+            margin-bottom: 1mm;
+        }}
+        .security-box .codes {{
+            font-size: 12px;
+            font-weight: 900;
         }}
         .disclaimer {{
             font-size: 7px;
@@ -3584,6 +3628,7 @@ def ticket_combined_html(t):
             padding: 5mm 0;
             color: #999;
             font-size: 10px;
+            width: 80mm;
         }}
 
         @media print {{
@@ -3600,10 +3645,11 @@ def ticket_combined_html(t):
             }}
             .ticket {{
                 border: none;
-                margin: 0;
+                border-radius: 0;
                 padding: 3mm;
-                page-break-after: always;
+                margin: 0;
                 min-height: auto;
+                page-break-after: always;
             }}
             .ticket:last-child {{
                 page-break-after: avoid;
@@ -3615,7 +3661,7 @@ def ticket_combined_html(t):
 
 <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LES 2 TICKETS</button>
 
-<!-- ========== TICKET CLIENT ========== -->
+<!-- ========== TICKET CLIENT - IDENTIQUE AU TICKET INDIVIDUEL ========== -->
 <div class="ticket">
     <div class="logo-center">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
@@ -3657,20 +3703,20 @@ def ticket_combined_html(t):
 
 <div class="separator">✂️ ─────────── Découper ici ─────────── ✂️</div>
 
-<!-- ========== TICKET STAFF ========== -->
+<!-- ========== TICKET STAFF - IDENTIQUE AU TICKET INDIVIDUEL ========== -->
 <div class="ticket">
     <div class="logo-center">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
     </div>
     <h1>Ticket Staff - Interne</h1>
 
-    <div class="qr-box">
+    <div class="qr-box big">
         <img src="{qr_url_val}" alt="QR Code">
         <p>Scanner pour accéder au dossier</p>
     </div>
 
-    <h2>N° {t['ticket_code']}</h2>
-    <div style="text-align:center;font-weight:700;margin-bottom:3mm;">STATUT: {t.get('statut','')}</div>
+    <div class="ticket-num">N° {t['ticket_code']}</div>
+    <div class="status">STATUT: {t.get('statut','')}</div>
 
     <h2>Client</h2>
     <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
@@ -3680,9 +3726,11 @@ def ticket_combined_html(t):
     <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
     <div class="info-line"><strong>Panne:</strong> {panne}</div>
 
-    <h2>Codes Sécurité</h2>
-    <div class="info-line"><strong>PIN:</strong> {t.get('pin') or 'N/A'}</div>
-    <div class="info-line"><strong>Schéma:</strong> {t.get('pattern') or 'N/A'}</div>
+    <div class="security-box">
+        <div class="title">🔐 CODES SÉCURITÉ</div>
+        <div class="codes">PIN: {t.get('pin') or '----'}</div>
+        <div class="codes">Schéma: {t.get('pattern') or '----'}</div>
+    </div>
 
     <h2>Tarifs</h2>
     <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))}</div>
