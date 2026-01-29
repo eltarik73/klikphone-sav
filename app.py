@@ -1012,7 +1012,7 @@ h1, h2, h3 {
 
 /* === EXPANDER - PREMIUM === */
 .streamlit-expanderHeader {
-    font-size: 0.9rem !important;
+    font-size: 0.95rem !important;
     font-weight: 600 !important;
     color: #374151 !important;
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
@@ -1025,6 +1025,24 @@ h1, h2, h3 {
 .streamlit-expanderHeader:hover {
     background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%) !important;
     border-color: rgba(249,115,22,0.3) !important;
+}
+
+/* Cacher l'icône SVG corrompue des expanders */
+.streamlit-expanderHeader svg {
+    display: none !important;
+}
+
+/* Ajouter une flèche CSS propre */
+.streamlit-expanderHeader::before {
+    content: "▶" !important;
+    margin-right: 10px !important;
+    font-size: 0.7rem !important;
+    color: #94a3b8 !important;
+    transition: transform 0.2s ease !important;
+}
+
+[data-testid="stExpander"][aria-expanded="true"] .streamlit-expanderHeader::before {
+    content: "▼" !important;
 }
 
 .streamlit-expanderContent {
