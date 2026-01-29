@@ -3130,10 +3130,13 @@ def ticket_staff_html(t):
     <h2>Tarifs</h2>
     <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))} | <strong>Acompte:</strong> {fmt_prix(t.get('acompte'))} | <strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
 
+    <h2>Dates</h2>
+    <div class="info-line"><strong>Dépôt:</strong> {fmt_date(t.get('date_depot',''))} | <strong>Récup:</strong> {fmt_date(t.get('date_recup',''))}</div>
+
     <h2>Notes</h2>
     <div class="info-line">{notes}</div>
 
-    <div class="footer">Dépôt: {fmt_date(t.get('date_depot',''))}</div>
+    <div class="footer">Motif: {panne}</div>
 
     <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
@@ -3710,10 +3713,13 @@ def ticket_combined_html(t):
     <h2>Tarifs</h2>
     <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))} | <strong>Acompte:</strong> {fmt_prix(t.get('acompte'))} | <strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
 
+    <h2>Dates</h2>
+    <div class="info-line"><strong>Dépôt:</strong> {fmt_date(t.get('date_depot',''))} | <strong>Récup:</strong> {fmt_date(t.get('date_recup',''))}</div>
+
     <h2>Notes</h2>
     <div class="info-line">{notes}</div>
 
-    <div class="footer">Dépôt: {fmt_date(t.get('date_depot',''))}</div>
+    <div class="footer">Motif: {panne}</div>
 </div>
 
 </body>
