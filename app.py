@@ -3624,19 +3624,31 @@ def ticket_combined_html(t):
         }}
 
         @media print {{
-            body {{ background: #fff; padding: 0; margin: 0; }}
+            @page {{
+                size: 80mm 200mm;
+                margin: 0;
+            }}
+            body {{ 
+                background: #fff; 
+                padding: 0; 
+                margin: 0;
+                width: 80mm;
+            }}
             .print-btn {{ display: none !important; }}
             .separator {{ display: none !important; }}
             .ticket {{
                 border: none;
                 border-radius: 0;
-                padding: 2mm;
+                padding: 3mm;
                 margin: 0;
-                height: auto;
-                max-height: none;
+                width: 80mm;
+                height: 200mm;
+                max-height: 200mm;
+                overflow: hidden;
                 page-break-after: always;
+                page-break-inside: avoid;
             }}
-            .ticket:last-child {{ page-break-after: avoid; }}
+            .ticket:last-child {{ page-break-after: auto; }}
         }}
     </style>
 </head>
