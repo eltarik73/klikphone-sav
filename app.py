@@ -3280,7 +3280,7 @@ def ui_client():
         
         # Expander pour voir le ticket
         if t:
-            with st.expander("📄 Voir le ticket de dépôt"):
+            with st.expander("Voir le ticket de dépôt"):
                 st.components.v1.html(ticket_client_html(t), height=500, scrolling=True)
         
         # Forcer un rerun pour le compteur
@@ -6475,7 +6475,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
     # Message pour l'accueil
-    with st.expander("💬 Message pour l'accueil", expanded=False):
+    with st.expander("Message pour l'accueil", expanded=False):
         comment_client = st.text_area("Message à transmettre au client via l'accueil", 
                                       value=t.get('commentaire_client') or "", 
                                       height=80, 
@@ -6487,7 +6487,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
             st.rerun()
     
     # Actions rapides (statuts)
-    with st.expander("⚡ Changer le statut manuellement", expanded=False):
+    with st.expander("Changer le statut manuellement", expanded=False):
         st.markdown("**Attention:** Utilisez les boutons d'action ci-dessus pour un workflow optimal.")
         cols = st.columns(3)
         for i, s in enumerate(STATUTS):
