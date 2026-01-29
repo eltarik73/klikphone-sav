@@ -757,28 +757,41 @@ h1, h2, h3 {
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-    background: var(--brand-500) !important;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
     color: white !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 14px rgba(249,115,22,0.25) !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 .stButton > button[data-testid="baseButton-primary"]:hover {
-    background: var(--brand-600) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: var(--shadow-md) !important;
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(249,115,22,0.35) !important;
 }
 
 .stButton > button[kind="secondary"],
 .stButton > button[data-testid="baseButton-secondary"] {
-    background: var(--neutral-0) !important;
+    background: white !important;
     color: var(--neutral-700) !important;
-    border: 1px solid var(--neutral-300) !important;
+    border: 2px solid #e2e8f0 !important;
+    font-weight: 500 !important;
 }
 
 .stButton > button[kind="secondary"]:hover,
 .stButton > button[data-testid="baseButton-secondary"]:hover {
-    background: var(--neutral-50) !important;
-    border-color: var(--neutral-400) !important;
+    background: #f8fafc !important;
+    border-color: #f97316 !important;
+    color: #f97316 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Client Interface - Larger Buttons */
+.main .block-container .stButton > button {
+    padding: 14px 24px !important;
+    font-size: 1rem !important;
+    border-radius: 14px !important;
+    min-height: 52px !important;
 }
 
 /* === FORM INPUTS === */
@@ -1093,6 +1106,506 @@ hr {
     .stButton, .nav-header, .stTabs [data-baseweb="tab-list"] {
         display: none !important;
     }
+}
+
+/* ==============================================
+   CLIENT INTERFACE - PREMIUM DESIGN
+   Inspiration: Apple Store, Linear, Stripe
+   ============================================== */
+
+/* Client Page Background */
+.client-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+}
+
+/* Logo Header */
+.client-hero {
+    text-align: center;
+    padding: 2.5rem 1rem 2rem;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(249,115,22,0.03) 100%);
+}
+
+.client-logo-container {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 1rem;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(249,115,22,0.15), 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid rgba(249,115,22,0.1);
+}
+
+.client-logo-container img {
+    width: 60px;
+    height: 60px;
+}
+
+.client-brand {
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+}
+
+.client-tagline {
+    font-size: 1rem;
+    color: #64748b;
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+.client-contact {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.client-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Progress Steps */
+.progress-container {
+    max-width: 500px;
+    margin: 0 auto 2rem;
+    padding: 0 1rem;
+}
+
+.progress-bar-wrapper {
+    position: relative;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
+    border-radius: 100px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px rgba(249,115,22,0.4);
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.progress-step-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.progress-step-dot.completed {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(249,115,22,0.3);
+}
+
+.progress-step-dot.current {
+    background: white;
+    color: #f97316;
+    border: 2px solid #f97316;
+    box-shadow: 0 0 0 4px rgba(249,115,22,0.15);
+}
+
+.progress-step-dot.pending {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 2px solid #e2e8f0;
+}
+
+.progress-step-label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: center;
+    max-width: 60px;
+}
+
+.progress-step-label.active {
+    color: #f97316;
+    font-weight: 600;
+}
+
+/* Step Title */
+.step-title {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.step-title h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.step-title p {
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+/* Device Cards */
+.device-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.device-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.device-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(249,115,22,0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.device-card:hover {
+    border-color: #fb923c;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(249,115,22,0.15), 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.device-card:hover::before {
+    opacity: 1;
+}
+
+.device-card:hover .device-icon {
+    transform: scale(1.1);
+}
+
+.device-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    transition: transform 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.device-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    position: relative;
+    z-index: 1;
+}
+
+.device-card-special {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-style: dashed;
+}
+
+/* Brand Cards */
+.brand-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.brand-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.brand-card:hover {
+    border-color: #f97316;
+    background: linear-gradient(135deg, #fff7ed 0%, white 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(249,115,22,0.12);
+}
+
+.brand-logo {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.brand-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Model Grid */
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.model-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.model-card:hover {
+    border-color: #f97316;
+    background: #fff7ed;
+}
+
+/* Problem Cards */
+.problem-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.problem-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.problem-card:hover {
+    border-color: #f97316;
+    background: linear-gradient(90deg, #fff7ed 0%, white 100%);
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(249,115,22,0.1);
+}
+
+.problem-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.problem-text {
+    font-size: 0.95rem;
+    color: #374151;
+    font-weight: 500;
+    text-align: left;
+}
+
+/* Success Screen */
+.success-screen {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+.success-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 40px rgba(34,197,94,0.3);
+    animation: successPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes successPop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.success-icon svg {
+    width: 50px;
+    height: 50px;
+    color: white;
+}
+
+.success-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.success-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.success-ticket-code {
+    display: inline-block;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 1rem 2rem;
+    border-radius: 16px;
+    letter-spacing: 2px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 24px rgba(30,41,59,0.2);
+}
+
+.success-qr {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: white;
+    border-radius: 16px;
+    display: inline-block;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+/* Back Button */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    margin-bottom: 1rem;
+}
+
+.back-button:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+/* Security Section */
+.security-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 450px;
+    margin: 0 auto 1.5rem;
+}
+
+.security-option {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.security-option:hover, .security-option.selected {
+    border-color: #f97316;
+    background: #fff7ed;
+}
+
+.security-option.selected {
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.2);
+}
+
+.security-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.security-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Form Card */
+.form-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 1.5rem;
+    max-width: 500px;
+    margin: 0 auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+}
+
+/* CGV */
+.cgv-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.6;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2409,11 +2922,11 @@ def ui_client():
     
     if "step" not in st.session_state: reset_client()
     
-    # Écran de succès
+    # Écran de succès PREMIUM
     if st.session_state.done:
         code = st.session_state.done
         t = get_ticket_full(code=code)
-        url = get_param("URL_SUIVI")
+        url = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
         
         # Initialiser le timestamp si pas encore fait
         if "success_timestamp" not in st.session_state:
@@ -2428,60 +2941,140 @@ def ui_client():
             reset_client()
             st.rerun()
         
+        # Écran de succès magnifique
         st.markdown(f"""
-        <div class="success-overlay">
-            <h1>Demande enregistree !</h1>
-            <p>Votre numéro de ticket</p>
-            <div class="ticket-code">{code}</div>
-            <p>Conservez ce numéro pour suivre votre réparation</p>
+        <div style="min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+            
+            <!-- Animation checkmark -->
+            <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);display:flex;align-items:center;justify-content:center;margin-bottom:2rem;box-shadow:0 20px 60px rgba(34,197,94,0.35);animation:successPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            
+            <!-- Titre -->
+            <h1 style="font-size:2.5rem;font-weight:800;color:#1e293b;margin-bottom:0.5rem;letter-spacing:-1px;">
+                Demande enregistrée !
+            </h1>
+            <p style="font-size:1.1rem;color:#64748b;margin-bottom:2rem;">
+                Votre appareil est entre de bonnes mains 🛠️
+            </p>
+            
+            <!-- Numéro de ticket -->
+            <div style="margin-bottom:2rem;">
+                <p style="font-size:0.85rem;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin-bottom:0.75rem;">
+                    Votre numéro de ticket
+                </p>
+                <div style="display:inline-block;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);color:white;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:2rem;font-weight:700;padding:1.25rem 2.5rem;border-radius:16px;letter-spacing:3px;box-shadow:0 10px 40px rgba(30,41,59,0.25);">
+                    {code}
+                </div>
+            </div>
+            
+            <!-- QR Code -->
+            <div style="background:white;padding:1.5rem;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.08);margin-bottom:1.5rem;">
+                <img src="{qr_url(f'{url}?ticket={code}')}" style="width:140px;height:140px;"/>
+                <p style="font-size:0.8rem;color:#94a3b8;margin-top:0.75rem;">Scannez pour suivre votre réparation</p>
+            </div>
+            
+            <!-- Infos -->
+            <div style="background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border:1px solid #fed7aa;border-radius:16px;padding:1.25rem 2rem;margin-bottom:2rem;max-width:400px;">
+                <p style="color:#9a3412;font-size:0.9rem;margin:0;">
+                    📱 <strong>Conservez ce numéro</strong> pour suivre l'avancement de votre réparation et être notifié quand votre appareil sera prêt.
+                </p>
+            </div>
+            
+            <!-- Compte à rebours -->
+            <div style="display:flex;align-items:center;gap:0.5rem;color:#94a3b8;font-size:0.9rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Retour automatique dans <strong style="color:#1e293b;">{remaining}s</strong>
+            </div>
         </div>
+        
+        <style>
+        @keyframes successPop {{
+            0% {{ transform: scale(0); opacity: 0; }}
+            50% {{ transform: scale(1.15); }}
+            100% {{ transform: scale(1); opacity: 1; }}
+        }}
+        </style>
         """, unsafe_allow_html=True)
         
-        # QR Code
-        st.markdown(f"""
-        <div style="text-align:center; margin:1.5rem 0;">
-            <img src="{qr_url(f'{url}?ticket={code}')}" style="margin:0.5rem 0;"/>
-            <p style="color:#6b7280; font-size:0.85rem;">{url}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Bouton prochain client
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("👤 PROCHAIN CLIENT", type="primary", use_container_width=True, key="next_client"):
+                reset_client()
+                st.rerun()
         
+        # Expander pour voir le ticket
         if t:
-            with st.expander("Voir le ticket"):
+            with st.expander("📄 Voir le ticket de dépôt"):
                 st.components.v1.html(ticket_client_html(t), height=500, scrolling=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # GROS BOUTON PROCHAIN CLIENT
-        if st.button("PROCHAIN CLIENT", type="primary", use_container_width=True, key="next_client"):
-            reset_client()
-            st.rerun()
-        
-        # Afficher compte a rebours
-        st.markdown(f"""
-        <p style="text-align:center; color:#6b7280; margin-top:1rem; font-size:1rem;">
-            Retour automatique dans <strong>{remaining}</strong> secondes...
-        </p>
-        """, unsafe_allow_html=True)
-        
-        # Forcer un rerun toutes les secondes pour mettre a jour le compteur
+        # Forcer un rerun pour le compteur
         time.sleep(1)
         st.rerun()
         
         return
     
-    # Header Klikphone
-    st.markdown("""
-    <div class="klik-header">
-        <span class="klik-title">Klikphone</span>
+    # === INTERFACE CLIENT PREMIUM ===
+    
+    # Header avec logo
+    st.markdown(f"""
+    <div class="client-hero">
+        <div class="client-logo-container">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="Klikphone">
+        </div>
+        <div class="client-brand">KLIKPHONE</div>
+        <p class="client-tagline">Spécialiste Apple & Multimarque<br>Réparation express de vos appareils</p>
+        <div class="client-contact">
+            <span class="client-contact-item">📍 79 Place Saint Léger, Chambéry</span>
+            <span class="client-contact-item">📞 04 79 60 89 22</span>
+        </div>
     </div>
-    <p class="klik-subtitle">Une minute pour redonner vie à votre appareil.<br>Decrivez simplement le souci rencontre, on s'occupe du reste !</p>
     """, unsafe_allow_html=True)
     
-    # Progress
+    # Progress bar élégante
     step = st.session_state.step
-    st.progress(step / 6)
-    étapes = ["", "Type d'appareil", "Marque", "Modèle", "Problème", "Sécurité", "Coordonnees"]
-    st.markdown(f"<p style='text-align:center; color:#6b7280; margin-bottom:1.5rem;'>Étape {step}/6 : {étapes[step]}</p>", unsafe_allow_html=True)
+    progress_percent = (step / 6) * 100
+    
+    # Étapes avec icônes
+    step_icons = ["📱", "🏷️", "📋", "🔧", "🔐", "👤"]
+    step_names = ["Appareil", "Marque", "Modèle", "Problème", "Sécurité", "Contact"]
+    
+    steps_html = ""
+    for i in range(1, 7):
+        if i < step:
+            dot_class = "completed"
+            icon = "✓"
+        elif i == step:
+            dot_class = "current"
+            icon = step_icons[i-1]
+        else:
+            dot_class = "pending"
+            icon = str(i)
+        
+        label_class = "active" if i == step else ""
+        steps_html += f'''
+        <div class="progress-step">
+            <div class="progress-step-dot {dot_class}">{icon}</div>
+            <span class="progress-step-label {label_class}">{step_names[i-1]}</span>
+        </div>
+        '''
+    
+    st.markdown(f"""
+    <div class="progress-container">
+        <div class="progress-bar-wrapper">
+            <div class="progress-bar-fill" style="width: {progress_percent}%;"></div>
+        </div>
+        <div class="progress-steps">
+            {steps_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     if step == 1: client_step1()
     elif step == 2: client_step2()
@@ -2491,115 +3084,208 @@ def ui_client():
     elif step == 6: client_step6()
 
 def client_step1():
-    st.markdown("<p class='section-title'>Quel type d'appareil deposez-vous ?</p>", unsafe_allow_html=True)
+    """Étape 1: Choix du type d'appareil"""
+    st.markdown("""
+    <div class="step-title">
+        <h2>Quel appareil déposez-vous ?</h2>
+        <p>Sélectionnez le type d'appareil à réparer</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Catégories principales
+    # Grille d'appareils avec icônes
+    devices = [
+        {"name": "Smartphone", "icon": "📱", "cat": "Smartphone"},
+        {"name": "Tablette", "icon": "📟", "cat": "Tablette"},
+        {"name": "PC Portable", "icon": "💻", "cat": "PC Portable"},
+        {"name": "Console", "icon": "🎮", "cat": "Console"},
+    ]
+    
+    # Afficher la grille
     cols = st.columns(2)
-    for i, cat in enumerate(["Smartphone", "Tablette", "PC Portable", "Console"]):
+    for i, device in enumerate(devices):
         with cols[i % 2]:
-            if st.button(cat, key=f"cat_{cat}", use_container_width=True):
-                st.session_state.data["cat"] = cat
+            # Utiliser un conteneur pour le style
+            btn_key = f"device_{device['cat']}"
+            if st.button(f"{device['icon']}  {device['name']}", key=btn_key, use_container_width=True):
+                st.session_state.data["cat"] = device["cat"]
                 st.session_state.data["is_commande"] = False
                 st.session_state.step = 2
                 st.rerun()
     
-    st.markdown("---")
-    st.markdown("<p style='text-align:center; color:#666;'>ou</p>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align:center; margin:1.5rem 0; color:#94a3b8;">
+        <span style="display:inline-block; width:60px; height:1px; background:#e2e8f0; vertical-align:middle;"></span>
+        <span style="margin:0 1rem; font-size:0.85rem;">ou</span>
+        <span style="display:inline-block; width:60px; height:1px; background:#e2e8f0; vertical-align:middle;"></span>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Catégories spéciales
+    # Options spéciales
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📦 COMMANDE", key="cat_commande", use_container_width=True, type="secondary"):
+        if st.button("📦  Commander une pièce", key="cat_commande", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Commande"
             st.session_state.data["is_commande"] = True
             st.session_state.step = 2
             st.rerun()
     with col2:
-        if st.button("❓ AUTRE", key="cat_autre", use_container_width=True, type="secondary"):
+        if st.button("❓  Autre appareil", key="cat_autre", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Autre"
             st.session_state.data["is_commande"] = False
-            st.session_state.step = 4  # Sauter directement au problème
+            st.session_state.step = 4
             st.rerun()
 
 def client_step2():
+    """Étape 2: Choix de la marque"""
     cat = st.session_state.data.get("cat", "")
     
     # Si c'est une commande, demander directement les infos
     if cat == "Commande":
-        st.markdown("<p class='section-title'>Que souhaitez-vous commander ?</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="step-title">
+            <h2>📦 Que souhaitez-vous commander ?</h2>
+            <p>Décrivez la pièce ou l'accessoire souhaité</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if st.button("Retour", key="back2"): st.session_state.step = 1; st.rerun()
+        # Bouton retour
+        if st.button("← Retour", key="back2", type="secondary"):
+            st.session_state.step = 1
+            st.rerun()
         
-        commande_detail = st.text_area("Décrivez votre commande", 
-                                       placeholder="Ex: Écran iPhone 12 Pro, Coque Samsung S21...",
-                                       height=150, key="commande_detail")
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        commande_detail = st.text_area(
+            "Description de votre commande", 
+            placeholder="Ex: Écran iPhone 12 Pro noir, Coque Samsung Galaxy S21, Chargeur MacBook Pro...",
+            height=150, 
+            key="commande_detail"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.button("Continuer", type="primary", use_container_width=True):
+        if st.button("Continuer →", type="primary", use_container_width=True):
             if commande_detail:
                 st.session_state.data["marque"] = "Commande"
                 st.session_state.data["modèle"] = "Commande"
                 st.session_state.data["modele_autre"] = commande_detail
                 st.session_state.data["panne"] = "Commande"
                 st.session_state.data["panne_detail"] = commande_detail
-                st.session_state.step = 5  # Sauter à sécurité puis coordonnées
+                st.session_state.step = 5
                 st.rerun()
             else:
-                st.warning("Veuillez décrire votre commande")
+                st.warning("⚠️ Veuillez décrire votre commande")
         return
     
-    st.markdown(f"<p class='section-title'>Quelle est la marque ?</p>", unsafe_allow_html=True)
+    # Titre avec l'appareil choisi
+    device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮"}
+    icon = device_icons.get(cat, "📱")
     
-    if st.button("Retour", key="back2"): st.session_state.step = 1; st.rerun()
+    st.markdown(f"""
+    <div class="step-title">
+        <h2>{icon} Quelle est la marque ?</h2>
+        <p>Sélectionnez la marque de votre {cat.lower()}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Bouton retour
+    if st.button("← Retour", key="back2", type="secondary"):
+        st.session_state.step = 1
+        st.rerun()
+    
+    # Logos des marques
+    brand_icons = {
+        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "🔶", "Huawei": "🔴",
+        "OnePlus": "🔵", "Google": "🔍", "Oppo": "🟢", "Sony": "🎮",
+        "Microsoft": "🪟", "Nintendo": "🔴", "HP": "💻", "Dell": "🖥️",
+        "Lenovo": "💼", "Asus": "🎯", "Acer": "🌐", "MSI": "🐉",
+        "Autre": "❓"
+    }
     
     marques = get_marques(cat)
+    
+    # Grille de marques (3 colonnes)
     cols = st.columns(3)
     for i, m in enumerate(marques):
         with cols[i % 3]:
-            if st.button(m, key=f"m_{m}", use_container_width=True):
+            icon = brand_icons.get(m, "📱")
+            if st.button(f"{icon}  {m}", key=f"brand_{m}", use_container_width=True):
                 st.session_state.data["marque"] = m
                 st.session_state.step = 3
                 st.rerun()
 
 def client_step3():
+    """Étape 3: Choix du modèle"""
     cat = st.session_state.data.get("cat", "")
     marque = st.session_state.data.get("marque", "")
-    st.markdown(f"<p class='section-title'>Quel est le modèle ?</p>", unsafe_allow_html=True)
     
-    if st.button("Retour", key="back3"): st.session_state.step = 2; st.rerun()
+    # Icône de la marque
+    brand_icons = {
+        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "🔶", "Huawei": "🔴",
+        "OnePlus": "🔵", "Google": "🔍", "Sony": "🎮", "Nintendo": "🔴",
+        "Microsoft": "🪟", "Autre": "❓"
+    }
+    icon = brand_icons.get(marque, "📱")
+    
+    st.markdown(f"""
+    <div class="step-title">
+        <h2>{icon} Quel modèle exactement ?</h2>
+        <p>Sélectionnez votre modèle {marque}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Bouton retour
+    if st.button("← Retour", key="back3", type="secondary"):
+        st.session_state.step = 2
+        st.rerun()
     
     # Si "Autre" marque, demander directement le modèle
     if marque == "Autre":
-        st.markdown("**Precisez la marque et le modèle :**")
-        modele_autre = st.text_input("Ex: Huawei P30 Pro", key="input_modele_autre", label_visibility="collapsed")
-        if st.button("Continuer", type="primary", use_container_width=True):
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        st.markdown("**Précisez la marque et le modèle :**")
+        modele_autre = st.text_input(
+            "Modèle", 
+            placeholder="Ex: Huawei P30 Pro, OnePlus 9...",
+            key="input_modele_autre", 
+            label_visibility="collapsed"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.button("Continuer →", type="primary", use_container_width=True):
             if modele_autre:
                 st.session_state.data["modèle"] = "Autre"
                 st.session_state.data["modele_autre"] = modele_autre
                 st.session_state.step = 4
                 st.rerun()
             else:
-                st.warning("Veuillez préciser le modèle")
+                st.warning("⚠️ Veuillez préciser le modèle")
     else:
-        # Récupérer les modèles et mettre "Autre" en dernier
+        # Récupérer les modèles
         modeles_db = get_modeles(cat, marque)
         modeles_list = [m for m in modeles_db if m != "Autre"]
         modeles_list.append("Autre")
-        # Ajouter placeholder en premier
-        modeles_final = ["-- Choisir le modèle --"] + modeles_list
         
-        mod = st.selectbox("Modèle", modeles_final, key="select_modele", label_visibility="collapsed")
+        # Liste déroulante stylée
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        mod = st.selectbox(
+            "Sélectionnez votre modèle",
+            ["-- Choisir le modèle --"] + modeles_list,
+            key="select_modele"
+        )
         
-        # Si "Autre" est sélectionné, afficher champ texte
+        # Si "Autre" est sélectionné
         modele_autre = ""
         if mod == "Autre":
-            st.markdown("**Précisez le modèle :**")
-            modele_autre = st.text_input("Ex: iPhone 14 Pro Max", key="input_autre", label_visibility="collapsed")
+            modele_autre = st.text_input(
+                "Précisez le modèle",
+                placeholder="Ex: iPhone 14 Pro Max",
+                key="input_autre"
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.button("Continuer", type="primary", use_container_width=True):
+        if st.button("Continuer →", type="primary", use_container_width=True):
             if mod == "-- Choisir le modèle --":
-                st.warning("Veuillez sélectionner un modèle")
+                st.warning("⚠️ Veuillez sélectionner un modèle")
             elif mod == "Autre" and not modele_autre:
-                st.warning("Veuillez préciser le modèle")
+                st.warning("⚠️ Veuillez préciser le modèle")
             else:
                 st.session_state.data["modèle"] = mod
                 st.session_state.data["modele_autre"] = modele_autre
@@ -2607,18 +3293,35 @@ def client_step3():
                 st.rerun()
 
 def client_step4():
+    """Étape 4: Description du problème"""
     cat = st.session_state.data.get("cat", "")
     
     # Si catégorie "Autre", demander d'abord l'appareil
     if cat == "Autre":
-        st.markdown("<p class='section-title'>Décrivez votre appareil et le problème</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="step-title">
+            <h2>❓ Décrivez votre appareil</h2>
+            <p>Quel appareil et quel problème ?</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if st.button("Retour", key="back4"): st.session_state.step = 1; st.rerun()
+        if st.button("← Retour", key="back4", type="secondary"):
+            st.session_state.step = 1
+            st.rerun()
         
-        appareil = st.text_input("Votre appareil", placeholder="Ex: Montre connectée Garmin, Drone DJI...")
-        probleme = st.text_area("Décrivez le problème", placeholder="Décrivez le problème rencontré...", height=100)
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        appareil = st.text_input(
+            "Votre appareil",
+            placeholder="Ex: Montre connectée Garmin, Drone DJI, Enceinte Bose..."
+        )
+        probleme = st.text_area(
+            "Décrivez le problème",
+            placeholder="Décrivez précisément le problème rencontré...",
+            height=120
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.button("Continuer", type="primary", use_container_width=True):
+        if st.button("Continuer →", type="primary", use_container_width=True):
             if appareil and probleme:
                 st.session_state.data["marque"] = "Autre"
                 st.session_state.data["modèle"] = "Autre"
@@ -2628,52 +3331,149 @@ def client_step4():
                 st.session_state.step = 5
                 st.rerun()
             else:
-                st.warning("Veuillez remplir tous les champs")
+                st.warning("⚠️ Veuillez remplir tous les champs")
         return
     
-    st.markdown("<p class='section-title'>Quel est le problème rencontre ?</p>", unsafe_allow_html=True)
+    # Récupérer les infos de l'appareil
+    marque = st.session_state.data.get("marque", "")
+    modele = st.session_state.data.get("modèle", "")
+    modele_autre = st.session_state.data.get("modele_autre", "")
+    appareil_txt = modele_autre if modele_autre else f"{marque} {modele}"
     
-    if st.button("Retour", key="back4"): st.session_state.step = 3; st.rerun()
+    st.markdown(f"""
+    <div class="step-title">
+        <h2>🔧 Quel est le problème ?</h2>
+        <p>Sélectionnez le problème rencontré sur votre {appareil_txt}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    cols = st.columns(3)
-    for i, p in enumerate(PANNES):
-        with cols[i % 3]:
-            if st.button(p, key=f"p_{p}", use_container_width=True):
-                st.session_state.data["panne"] = p
-                if p == "Autre" or p == "Diagnostic":
-                    st.session_state.data["show_detail"] = True
-                    st.rerun()
-                else:
-                    st.session_state.step = 5
-                    st.rerun()
+    if st.button("← Retour", key="back4", type="secondary"):
+        st.session_state.step = 3
+        st.rerun()
     
+    # Icônes pour chaque panne
+    panne_icons = {
+        "Écran casse": "📱💔",
+        "Batterie": "🔋",
+        "Connecteur de charge": "🔌",
+        "Camera avant": "🤳",
+        "Camera arriere": "📸",
+        "Bouton volume": "🔊",
+        "Bouton power": "⏻",
+        "Haut-parleur (je n'entends pas les gens ou la musique)": "🔈",
+        "Microphone (les gens ne m'entendent pas)": "🎤",
+        "Vitre arriere": "🪟",
+        "Désoxydation": "💧",
+        "Problème logiciel": "⚙️",
+        "Diagnostic": "🔍",
+        "Autre": "❓"
+    }
+    
+    # Afficher les pannes en liste
+    for p in PANNES:
+        icon = panne_icons.get(p, "🔧")
+        # Raccourcir le texte pour l'affichage
+        display_text = p.split("(")[0].strip() if "(" in p else p
+        
+        if st.button(f"{icon}  {display_text}", key=f"panne_{p}", use_container_width=True):
+            st.session_state.data["panne"] = p
+            if p == "Autre" or p == "Diagnostic":
+                st.session_state.data["show_detail"] = True
+                st.rerun()
+            else:
+                st.session_state.step = 5
+                st.rerun()
+    
+    # Afficher zone de détail si nécessaire
     if st.session_state.data.get("show_detail"):
-        detail = st.text_area("Decrivez le problème rencontre")
-        if st.button("Continuer", type="primary"):
+        st.markdown("---")
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        detail = st.text_area(
+            "Décrivez le problème en détail",
+            placeholder="Expliquez précisément ce qui ne fonctionne pas...",
+            height=100
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.button("Continuer →", type="primary", use_container_width=True):
             st.session_state.data["panne_detail"] = detail
             st.session_state.step = 5
             st.rerun()
 
 def client_step5():
-    st.markdown("<p class='section-title'>Code de deverrouillage</p>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#6b7280;'>Pour permettre au technicien de tester l'appareil</p>", unsafe_allow_html=True)
+    """Étape 5: Code de déverrouillage"""
+    st.markdown("""
+    <div class="step-title">
+        <h2>🔐 Code de déverrouillage</h2>
+        <p>Pour permettre au technicien de tester votre appareil</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.button("Retour", key="back5"): st.session_state.step = 4; st.rerun()
+    if st.button("← Retour", key="back5", type="secondary"):
+        st.session_state.step = 4
+        st.rerun()
     
-    choix = st.radio("Type de verrouillage", ["Code PIN", "Schéma", "Aucun"], horizontal=True, label_visibility="collapsed")
+    st.markdown("""
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:1rem;margin-bottom:1.5rem;">
+        <p style="margin:0;color:#92400e;font-size:0.9rem;">
+            🔒 <strong>Confidentialité garantie</strong><br>
+            Votre code ne sera utilisé que pour tester l'appareil après réparation.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if choix == "Code PIN":
-        pin = st.text_input("Entrez votre code", type="password", placeholder="••••")
-        if st.button("Continuer", type="primary"):
+    # Options de sécurité
+    st.markdown("**Comment votre appareil est-il verrouillé ?**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        pin_btn = st.button("🔢\n\nCode PIN", key="sec_pin", use_container_width=True)
+    with col2:
+        schema_btn = st.button("⬡\n\nSchéma", key="sec_schema", use_container_width=True)
+    with col3:
+        none_btn = st.button("🔓\n\nAucun", key="sec_none", use_container_width=True)
+    
+    # Gestion du choix
+    if "security_choice" not in st.session_state:
+        st.session_state.security_choice = None
+    
+    if pin_btn:
+        st.session_state.security_choice = "pin"
+        st.rerun()
+    elif schema_btn:
+        st.session_state.security_choice = "schema"
+        st.rerun()
+    elif none_btn:
+        st.session_state.step = 6
+        st.rerun()
+    
+    # Afficher l'interface selon le choix
+    if st.session_state.security_choice == "pin":
+        st.markdown("---")
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        pin = st.text_input(
+            "Entrez votre code PIN",
+            type="password",
+            placeholder="••••••",
+            max_chars=10
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.button("Continuer →", type="primary", use_container_width=True):
             st.session_state.data["pin"] = pin
             st.session_state.step = 6
             st.rerun()
     
-    elif choix == "Schéma":
-        st.markdown("Cliquez sur les points dans l'ordre :")
-        if "pattern" not in st.session_state: st.session_state.pattern = []
+    elif st.session_state.security_choice == "schema":
+        st.markdown("---")
+        st.markdown("**Cliquez sur les points dans l'ordre de votre schéma :**")
         
-        cols = st.columns([1,2,1])
+        if "pattern" not in st.session_state:
+            st.session_state.pattern = []
+        
+        # Grille 3x3 pour le schéma
+        cols = st.columns([1, 2, 1])
         with cols[1]:
             for row in range(3):
                 row_cols = st.columns(3)
@@ -2689,90 +3489,102 @@ def client_step5():
                                 st.rerun()
         
         if st.session_state.pattern:
-            st.markdown(f"**Séquence:** {'-'.join(map(str, st.session_state.pattern))}")
+            st.markdown(f"""
+            <div style="text-align:center;margin:1rem 0;padding:0.75rem;background:#f1f5f9;border-radius:8px;">
+                <strong>Séquence :</strong> {' → '.join(map(str, st.session_state.pattern))}
+            </div>
+            """, unsafe_allow_html=True)
+            
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("Effacer", use_container_width=True):
+                if st.button("🗑️ Effacer", use_container_width=True, type="secondary"):
                     st.session_state.pattern = []
                     st.rerun()
             with c2:
-                if st.button("Valider", type="primary", use_container_width=True):
+                if st.button("Valider →", type="primary", use_container_width=True):
                     st.session_state.data["pattern"] = "-".join(map(str, st.session_state.pattern))
                     st.session_state.step = 6
                     st.rerun()
-    
-    else:
-        if st.button("Continuer sans code", type="primary"):
-            st.session_state.step = 6
-            st.rerun()
 
 def client_step6():
-    st.markdown("<p class='section-title'>Vos coordonnees</p>", unsafe_allow_html=True)
+    """Étape 6: Coordonnées du client"""
+    st.markdown("""
+    <div class="step-title">
+        <h2>👤 Vos coordonnées</h2>
+        <p>Pour vous contacter quand votre appareil sera prêt</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.button("Retour", key="back6"): st.session_state.step = 5; st.rerun()
+    if st.button("← Retour", key="back6", type="secondary"):
+        st.session_state.step = 5
+        st.rerun()
+    
+    st.markdown('<div class="form-card">', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        prenom = st.text_input("Prénom *")
+        prenom = st.text_input("Prénom *", placeholder="Jean")
         telephone = st.text_input("Téléphone *", placeholder="06 12 34 56 78")
     with col2:
-        nom = st.text_input("Nom *")
-        email = st.text_input("Email")
+        nom = st.text_input("Nom *", placeholder="Dupont")
+        email = st.text_input("Email", placeholder="jean.dupont@email.com")
     
-    # Société (facultatif)
-    societe = st.text_input("Société (facultatif)", placeholder="Nom de l'entreprise si professionnel")
+    societe = st.text_input(
+        "Société (facultatif)",
+        placeholder="Nom de l'entreprise si professionnel"
+    )
     
-    notes = st.text_area("Remarques", placeholder="Accessoires laisses, precisions sur le problème...")
+    notes = st.text_area(
+        "Remarques",
+        placeholder="Accessoires laissés, précisions sur le problème, disponibilités...",
+        height=80
+    )
     
     # Option commande de pièce
-    commande_piece = st.checkbox("⚙️ Pièce à commander pour cette réparation", help="Cochez si une pièce doit être commandée")
+    commande_piece = st.checkbox(
+        "⚙️ Une pièce doit être commandée pour cette réparation",
+        help="Cochez si une pièce spécifique doit être commandée"
+    )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # CGV avec lien pour lire
-    col_check, col_link = st.columns([4, 1])
-    with col_check:
-        consent = st.checkbox("J'accepte les conditions générales de depot et de réparation")
-    with col_link:
-        if st.button("Lire les CGV", key="read_cgv"):
-            st.session_state.show_cgv = True
+    # CGV
+    st.markdown("""
+    <div class="cgv-box">
+        <strong>CONDITIONS GÉNÉRALES DE DÉPÔT ET DE RÉPARATION</strong><br><br>
+        • Klikphone ne consulte pas et n'accède pas aux données présentes dans votre appareil.<br>
+        • Une perte de données reste possible — pensez à sauvegarder avant dépôt.<br>
+        • Un diagnostic est effectué avant toute réparation.<br>
+        • Les délais de réparation sont donnés à titre indicatif.<br>
+        • Garantie de 3 mois sur les réparations (hors casse, oxydation, mauvaise utilisation).<br>
+        • L'appareil doit être récupéré dans un délai de 30 jours après notification.
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Afficher les CGV si demande
-    if st.session_state.get("show_cgv"):
-        cgv_html = """<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin: 1rem 0; max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
-<h4 style="margin-top:0;">CONDITIONS GENERALES DE DEPOT ET DE REPARATION - KLIKPHONE</h4>
-<p><b>1. OBJET</b><br>Les presentes conditions générales regissent les relations entre la societe Klikphone et ses clients pour tout depot d'appareil en vue d'une réparation.</p>
-<p><b>2. DEPOT DE L'APPAREIL</b><br>- Le client s'engage a fournir des informations exactes concernant son appareil et le problème rencontre.<br>- Le client doit imperativement sauvegarder ses donnees avant le depot. Klikphone ne saurait etre tenu responsable de toute perte de donnees.<br>- Le client doit fournir les codes d'acces (PIN, schéma) necessaires au diagnostic et a la réparation.</p>
-<p><b>3. DIAGNOSTIC ET DEVIS</b><br>- Un diagnostic est effectue avant toute réparation.<br>- Un devis est communique au client pour validation avant intervention.<br>- Le diagnostic est gratuit si la réparation est effectuee. En cas de refus du devis, des frais de diagnostic peuvent s'appliquer.</p>
-<p><b>4. REPARATION</b><br>- Les délais de réparation sont donnes a titre indicatif et dependent de la disponibilité des pièces.<br>- Klikphone utilise des pièces de qualite pour ses réparations.<br>- Une garantie de 3 mois est appliquee sur les réparations effectuees (hors casse, oxydation, mauvaise utilisation).</p>
-<p><b>5. RESPONSABILITE</b><br>- Klikphone ne consulte pas et n'accede pas aux donnees presentes dans l'appareil du client.<br>- Klikphone decline toute responsabilite en cas de perte de donnees.<br>- Klikphone decline toute responsabilite en cas de panne apparaissant apres réparation liee a une cause exterieure (oxydation, choc, dysfonctionnement FaceID/TouchID lie au changement d'écran, etc.).</p>
-<p><b>6. RETRAIT DE L'APPAREIL</b><br>- L'appareil doit etre retire dans un délai de 30 jours apres notification de fin de réparation.<br>- Passe ce délai, des frais de garde peuvent s'appliquer.<br>- Tout appareil non récupére dans un délai de 6 mois sera considere comme abandonne.</p>
-<p><b>7. PAIEMENT</b><br>- Le paiement s'effectue au retrait de l'appareil.<br>- Un acompte peut etre demande pour certaines réparations.</p>
-<p style="margin-bottom:0;"><b>KLIKPHONE - 79 Place Saint Léger, 73000 Chambéry - 04 79 60 89 22</b></p>
-</div>"""
-        st.markdown(cgv_html, unsafe_allow_html=True)
-        if st.button("Fermer les CGV", key="close_cgv"):
-            st.session_state.show_cgv = False
-            st.rerun()
+    consent = st.checkbox("✅ J'accepte les conditions générales de dépôt et de réparation")
     
-    if st.button("ENVOYER LA DEMANDE", type="primary", use_container_width=True):
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Bouton d'envoi stylé
+    if st.button("🚀 ENVOYER MA DEMANDE", type="primary", use_container_width=True):
         if not nom or not prenom or not telephone:
-            st.error("Le nom, prénom et téléphone sont obligatoires")
+            st.error("❌ Le nom, prénom et téléphone sont obligatoires")
         elif not consent:
-            st.error("Veuillez accepter les conditions générales")
+            st.error("❌ Veuillez accepter les conditions générales")
         else:
             d = st.session_state.data
             cid = get_or_create_client(nom, telephone, prenom, email, societe)
-            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modele",""),
+            code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
                                d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
                                d.get("pin",""), d.get("pattern",""), notes, "", 1 if commande_piece else 0)
             
             # Si commande pièce cochée, créer une entrée dans commandes_pieces
             if commande_piece:
-                # Récupérer le ticket pour avoir l'ID
                 t = get_ticket(code=code)
                 if t:
-                    modele_txt = f"{d.get('marque','')} {d.get('modele','')}"
+                    modele_txt = f"{d.get('marque','')} {d.get('modèle','')}"
                     if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
                     panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
                     ajouter_commande_piece(t['id'], f"Pièce pour {panne_txt} - {modele_txt}", "A définir", "", 0, "Commande créée depuis totem client")
