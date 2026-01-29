@@ -804,59 +804,6 @@ hr {
         display: none !important;
     }
 }
-/* === LAYOUT: ALIGNEMENT COLONNES & TABLES === */
-div[data-testid="stHorizontalBlock"] { gap: var(--sp-4) !important; align-items: stretch !important; }
-div[data-testid="column"] { padding-top: 0 !important; }
-
-/* Header de "table" (utilisé dans Accueil / Tech) */
-.table-head-cell{
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: var(--r-md);
-    padding: 10px 12px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--neutral-700);
-    line-height: 1.1;
-}
-.table-cell{
-    padding: 8px 4px;
-    line-height: 1.2;
-    display: flex;
-    align-items: center;
-    min-height: 34px;
-}
-.table-muted{ color: var(--neutral-500); }
-.table-center{ justify-content: center; text-align: center; }
-.row-divider{
-    height: 1px;
-    background: var(--neutral-200);
-    margin: 6px 0;
-    border-radius: 999px;
-}
-.section-divider{
-    height: 1px;
-    background: var(--neutral-200);
-    margin: 12px 0 16px 0;
-    border-radius: 999px;
-}
-
-/* Chips plus propres (techniciens) */
-.chip{
-    color: white;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    line-height: 1.1;
-    box-shadow: var(--shadow-xs);
-}
-
-/* Unifier l'alignement des inputs dans les barres de filtre */
-div[data-testid="stTextInput"] input,
-div[data-testid="stSelectbox"] > div { min-height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 # =============================================================================
@@ -2641,26 +2588,23 @@ def staff_liste_demandes():
     if st.session_state.get("edit_id"):
         staff_traiter_demande(st.session_state.edit_id)
         return
-
+    
     # Appliquer filtre KPI si défini
     filtre_kpi = st.session_state.get("filtre_kpi", None)
     if filtre_kpi:
-        st.info(f"🔍 Filtre actif: **{filtre_kpi}**")
+        st.info(f"🔍 Filtre actif: **{filtre_kpi}** - [Voir tous](javascript:void(0))")
         if st.button("❌ Effacer le filtre", key="clear_kpi_filter"):
             st.session_state.filtre_kpi = None
             st.rerun()
-
-    # === FILTER BAR (aligné) ===
-    col1, col2, col3, col4, col5 = st.columns([2.2, 1.6, 1.6, 1.6, 1.6])
+    
+    # === FILTER BAR ===
+    col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
     with col1:
         # Si filtre KPI actif, pré-sélectionner le statut
         default_idx = 0
         if filtre_kpi and filtre_kpi in STATUTS:
             default_idx = STATUTS.index(filtre_kpi) + 1
-        f_statut = st.selectbox(
-            "Statut", ["Tous"] + STATUTS, index=default_idx,
-            key="f_statut", label_visibility="collapsed"
-        )
+        f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, index=default_idx, key="f_statut", label_visibility="collapsed")
     with col2:
         f_code = st.text_input("N° Ticket", key="f_code", placeholder="🔍 KP-...", label_visibility="collapsed")
     with col3:
@@ -2672,47 +2616,49 @@ def staff_liste_demandes():
         membres = get_membres_equipe()
         tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
         f_tech = st.selectbox("Tech", tech_options, key="f_tech", label_visibility="collapsed")
-
+    
     # Recherche avec les filtres
     statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (f_statut if f_statut != "Tous" else None)
-
+    
     tickets = chercher_tickets(
         statut=statut_filtre,
-        code=f_code.strip() if f_code and f_code.strip() else None,
-        tel=f_tel.strip() if f_tel and f_tel.strip() else None,
+        code=f_code.strip() if f_code and f_code.strip() else None, 
+        tel=f_tel.strip() if f_tel and f_tel.strip() else None, 
         nom=f_nom.strip() if f_nom and f_nom.strip() else None
     )
-
+    
     # Filtrer par technicien si sélectionné
     if f_tech != "👥 Tous":
         tickets = [t for t in tickets if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
-
+    
     # Pagination
     ITEMS_PER_PAGE = 8
     total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
-
+    
     if "accueil_page" not in st.session_state:
         st.session_state.accueil_page = 1
-
+    
     current_page = st.session_state.accueil_page
     start_idx = (current_page - 1) * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     tickets_page = tickets[start_idx:end_idx]
-
+    
     # Header avec compteur
     st.markdown(f"**{len(tickets)} ticket(s)** • Page {current_page}/{total_pages}")
-
-    # En-tête aligné (mêmes ratios que les lignes)
-    col_ratio = [1.1, 2.2, 2.2, 1.6, 2.0, 1.0, 0.9]
-    h1, h2, h3, h4, h5, h6, h7 = st.columns(col_ratio)
-    with h1: st.markdown("<div class='table-head-cell'>Ticket</div>", unsafe_allow_html=True)
-    with h2: st.markdown("<div class='table-head-cell'>Client</div>", unsafe_allow_html=True)
-    with h3: st.markdown("<div class='table-head-cell'>Appareil</div>", unsafe_allow_html=True)
-    with h4: st.markdown("<div class='table-head-cell'>Technicien</div>", unsafe_allow_html=True)
-    with h5: st.markdown("<div class='table-head-cell'>Statut</div>", unsafe_allow_html=True)
-    with h6: st.markdown("<div class='table-head-cell table-center'>Contact</div>", unsafe_allow_html=True)
-    with h7: st.markdown("<div class='table-head-cell table-center'>Action</div>", unsafe_allow_html=True)
-
+    
+    # Table header amélioré
+    st.markdown("""
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 80px 70px;gap:8px;padding:10px;background:#f1f5f9;border-radius:8px;font-weight:600;font-size:0.8rem;margin-bottom:8px;">
+        <div>Ticket</div>
+        <div>Client</div>
+        <div>Appareil</div>
+        <div>Technicien</div>
+        <div>Statut</div>
+        <div>Contact</div>
+        <div>Action</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Liste des tickets
     if not tickets_page:
         st.info("📭 Aucun ticket trouvé. Modifiez vos filtres ou créez un nouveau ticket.")
@@ -2720,13 +2666,12 @@ def staff_liste_demandes():
         for t in tickets_page:
             status_class = get_status_class(t.get('statut', ''))
             modele = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'):
-                modele = t['modele_autre']
-            modele = modele[:30] + "..." if len(modele) > 30 else modele
-
-            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()
-            client_nom = client_nom[:26] + "..." if len(client_nom) > 26 else client_nom
-
+            if t.get('modele_autre'): modele = t['modele_autre']
+            modele = modele[:22] + "..." if len(modele) > 22 else modele
+            
+            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}"
+            client_nom = client_nom[:18] + "..." if len(client_nom) > 18 else client_nom
+            
             # Technicien assigné avec couleur
             tech = t.get('technicien_assigne', '')
             tech_display = "—"
@@ -2737,45 +2682,39 @@ def staff_liste_demandes():
                         tech_display = m['nom']
                         tech_color = m['couleur']
                         break
-
+            
             # Indicateurs de contact
             wa = "✅" if t.get('msg_whatsapp') else "⚪"
             sms = "✅" if t.get('msg_sms') else "⚪"
             email = "✅" if t.get('msg_email') else "⚪"
             contact_icons = f"{wa}{sms}{email}"
-
-            c1, c2, c3, c4, c5, c6, c7 = st.columns(col_ratio, vertical_alignment="center")
-            with c1:
-                st.markdown(f"<div class='table-cell'><strong>{t['ticket_code']}</strong></div>", unsafe_allow_html=True)
-            with c2:
-                st.markdown(f"<div class='table-cell'>{client_nom}</div>", unsafe_allow_html=True)
-            with c3:
-                st.markdown(f"<div class='table-cell table-muted'>{modele}</div>", unsafe_allow_html=True)
-            with c4:
+            
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1.3, 1.3, 1.2, 1.5, 1, 0.8])
+            with col1:
+                st.markdown(f"**{t['ticket_code']}**")
+            with col2:
+                st.write(client_nom)
+            with col3:
+                st.caption(modele)
+            with col4:
                 if tech_display != "—":
-                    st.markdown(
-                        f"<div class='table-cell'><span class='chip' style='background:{tech_color};'>{tech_display}</span></div>",
-                        unsafe_allow_html=True
-                    )
+                    st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.75rem;'>{tech_display}</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<div class='table-cell table-muted'>Non assigné</div>", unsafe_allow_html=True)
-            with c5:
-                st.markdown(
-                    f"<div class='table-cell'><span class='badge {status_class}' style='font-size:0.75rem;'>{t.get('statut','')[:22]}</span></div>",
-                    unsafe_allow_html=True
-                )
-            with c6:
-                st.markdown(f"<div class='table-cell table-center'>{contact_icons}</div>", unsafe_allow_html=True)
-            with c7:
+                    st.caption("Non assigné")
+            with col5:
+                st.markdown(f"<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:18]}</span>", unsafe_allow_html=True)
+            with col6:
+                st.caption(contact_icons)
+            with col7:
                 if st.button("📂", key=f"process_{t['id']}", use_container_width=True):
                     st.session_state.edit_id = t['id']
                     st.rerun()
-
-            st.markdown("<div class='row-divider'></div>", unsafe_allow_html=True)
-
+            
+            st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
+    
     # Navigation pagination
     if total_pages > 1:
-        st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
         col_prev, col_pages, col_next = st.columns([1, 3, 1])
         with col_prev:
             if current_page > 1:
@@ -2783,6 +2722,7 @@ def staff_liste_demandes():
                     st.session_state.accueil_page = current_page - 1
                     st.rerun()
         with col_pages:
+            # Indicateurs de pages
             pages_html = " ".join([
                 f"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:{'var(--brand-500)' if i+1 == current_page else 'var(--neutral-300)'};margin:0 3px;'></span>"
                 for i in range(min(total_pages, 10))
@@ -2793,7 +2733,6 @@ def staff_liste_demandes():
                 if st.button("Suivant →", key="accueil_next", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page + 1
                     st.rerun()
-
 
 def staff_traiter_demande(tid):
     t = get_ticket_full(tid=tid)
@@ -4234,7 +4173,7 @@ def staff_config():
 # INTERFACE TECHNICIEN
 # =============================================================================
 def ui_tech():
-    col1, col2, col3 = st.columns([5, 1, 1], vertical_alignment="center")
+    col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
     with col2:
@@ -4246,153 +4185,145 @@ def ui_tech():
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
-
+    
     # Si un ticket est sélectionné, afficher directement le detail
     if st.session_state.get("tech_selected"):
         tech_detail_ticket(st.session_state.tech_selected)
         return
-
-    # Filtres améliorés (alignés)
-    col_f1, col_f2, col_f3, col_f4 = st.columns([1.6, 1.9, 1.4, 2.1])
+    
+    # Filtres améliorés
+    col_f1, col_f2, col_f3, col_f4 = st.columns([1.5, 1.5, 1.5, 1.5])
     with col_f1:
         filtre_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
     with col_f2:
+        # Filtre par technicien
         membres = get_membres_equipe()
         tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
         filtre_tech = st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
     with col_f3:
         tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
     with col_f4:
-        recherche = st.text_input("Recherche", placeholder="Ticket, nom, téléphone…", key="tech_recherche")
-
-    st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
-
+        recherche = st.text_input("Recherche", placeholder="Ticket, nom...", key="tech_recherche")
+    
+    st.markdown("---")
+    
     # Récupérer les tickets
     if filtre_statut == "Tous":
         tickets = chercher_tickets()
     else:
         tickets = chercher_tickets(statut=filtre_statut)
-
+    
     # Filtrer par technicien
     if filtre_tech == "🔴 Non assignés":
         tickets = [t for t in tickets if not t.get('technicien_assigne')]
     elif filtre_tech not in ["👥 Tous"]:
         tickets = [t for t in tickets if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
-
+    
     # Filtrer par recherche
     if recherche:
         recherche_lower = recherche.lower()
-        tickets = [t for t in tickets if
+        tickets = [t for t in tickets if 
                    recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
                    recherche_lower in t.get('client_prenom', '').lower() or
                    recherche_lower in t.get('marque', '').lower() or
                    recherche_lower in t.get('modele', '').lower() or
                    recherche_lower in t.get('client_tel', '').lower()]
-
+    
     # Trier
     if "Ancien" in tri:
         tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
     elif "Statut" in tri:
         ordre_statut = {s: i for i, s in enumerate(STATUTS)}
         tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
-
+    
     # Pagination
     ITEMS_PER_PAGE = 6
     total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
-
+    
     if "tech_page" not in st.session_state:
         st.session_state.tech_page = 1
-
+    
     current_page = st.session_state.tech_page
     start_idx = (current_page - 1) * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     tickets_page = tickets[start_idx:end_idx]
-
+    
     st.markdown(f"**{len(tickets)} réparation(s)** • Page {current_page}/{total_pages}")
-
-    # En-tête aligné (mêmes ratios que les lignes)
-    col_ratio = [1.1, 2.4, 2.4, 1.8, 2.0, 0.9]
-    h1, h2, h3, h4, h5, h6 = st.columns(col_ratio)
-    with h1: st.markdown("<div class='table-head-cell'>Ticket</div>", unsafe_allow_html=True)
-    with h2: st.markdown("<div class='table-head-cell'>Client</div>", unsafe_allow_html=True)
-    with h3: st.markdown("<div class='table-head-cell'>Appareil</div>", unsafe_allow_html=True)
-    with h4: st.markdown("<div class='table-head-cell'>Technicien</div>", unsafe_allow_html=True)
-    with h5: st.markdown("<div class='table-head-cell'>Statut</div>", unsafe_allow_html=True)
-    with h6: st.markdown("<div class='table-head-cell table-center'>Action</div>", unsafe_allow_html=True)
-
-    if not tickets_page:
-        st.info("📭 Aucun ticket à afficher.")
-    else:
-        for t in tickets_page:
-            status_class = get_status_class(t.get('statut', ''))
-
-            modele = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'):
-                modele = t['modele_autre']
-            modele = modele[:30] + "..." if len(modele) > 30 else modele
-
-            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()
-            client_nom = client_nom[:26] + "..." if len(client_nom) > 26 else client_nom
-
-            tech = t.get('technicien_assigne', '')
-            tech_display = "—"
-            tech_color = "#9CA3AF"
-            if tech:
-                for m in get_membres_equipe():
-                    if m['nom'] in tech:
-                        tech_display = m['nom']
-                        tech_color = m['couleur']
-                        break
-
-            c1, c2, c3, c4, c5, c6 = st.columns(col_ratio, vertical_alignment="center")
-            with c1:
-                st.markdown(f"<div class='table-cell'><strong>{t.get('ticket_code','')}</strong></div>", unsafe_allow_html=True)
-            with c2:
-                st.markdown(f"<div class='table-cell'>{client_nom}</div>", unsafe_allow_html=True)
-            with c3:
-                st.markdown(f"<div class='table-cell table-muted'>{modele}</div>", unsafe_allow_html=True)
-            with c4:
-                if tech_display != "—":
-                    st.markdown(
-                        f"<div class='table-cell'><span class='chip' style='background:{tech_color};'>{tech_display}</span></div>",
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown("<div class='table-cell table-muted'>Non assigné</div>", unsafe_allow_html=True)
-            with c5:
-                st.markdown(
-                    f"<div class='table-cell'><span class='badge {status_class}' style='font-size:0.75rem;'>{t.get('statut','')[:22]}</span></div>",
-                    unsafe_allow_html=True
-                )
-            with c6:
-                if st.button("➡️", key=f"tech_open_{t['id']}", use_container_width=True):
-                    st.session_state.tech_selected = t['id']
-                    st.rerun()
-
-            st.markdown("<div class='row-divider'></div>", unsafe_allow_html=True)
-
-    # Pagination
+    
+    # En-tete du tableau amélioré
+    st.markdown("""
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 70px;gap:8px;padding:10px;background:#1e293b;color:white;border-radius:8px;margin-bottom:8px;font-weight:600;font-size:0.8rem;">
+        <div>Ticket</div>
+        <div>Client</div>
+        <div>Appareil</div>
+        <div>Assigné</div>
+        <div>Statut</div>
+        <div>Action</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Affichage en liste avec boutons
+    for t in tickets_page:
+        tid = t['id']
+        status_class = get_status_class(t.get('statut', ''))
+        
+        # Modèle
+        modele = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+        modele = modele[:20] + "..." if len(modele) > 20 else modele
+        
+        # Technicien avec couleur
+        tech = t.get('technicien_assigne', '')
+        tech_display = "—"
+        tech_color = "#9CA3AF"
+        if tech:
+            for m in get_membres_equipe():
+                if m['nom'] in tech:
+                    tech_display = m['nom']
+                    tech_color = m['couleur']
+                    break
+        
+        # Indicateur accord client
+        accord_icon = ""
+        if t.get('statut') == "En attente d'accord client":
+            accord_icon = "⚠️"
+        
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1.3, 1.3, 1.1, 1.5, 0.8])
+        with col1:
+            st.markdown(f"**{t['ticket_code']}**")
+        with col2:
+            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')[:10]}")
+        with col3:
+            st.caption(modele)
+        with col4:
+            if tech_display != "—":
+                st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;'>{tech_display}</span>", unsafe_allow_html=True)
+            else:
+                st.caption("Non assigné")
+        with col5:
+            st.markdown(f"{accord_icon}<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:16]}</span>", unsafe_allow_html=True)
+        with col6:
+            if st.button("📂", key=f"tech_open_{tid}", use_container_width=True):
+                st.session_state.tech_selected = tid
+                st.rerun()
+        
+        st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
+    
+    # Navigation pagination
     if total_pages > 1:
-        st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
         col_prev, col_pages, col_next = st.columns([1, 3, 1])
         with col_prev:
             if current_page > 1:
-                if st.button("← Précédent", key="tech_prev", type="secondary", use_container_width=True):
+                if st.button("◀ Préc", key="tech_prev"):
                     st.session_state.tech_page = current_page - 1
                     st.rerun()
         with col_pages:
-            pages_html = " ".join([
-                f"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:{'var(--brand-500)' if i+1 == current_page else 'var(--neutral-300)'};margin:0 3px;'></span>"
-                for i in range(min(total_pages, 10))
-            ])
-            st.markdown(f"<div style='text-align:center;padding:8px 0;'>{pages_html}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
         with col_next:
             if current_page < total_pages:
-                if st.button("Suivant →", key="tech_next", type="secondary", use_container_width=True):
+                if st.button("Suiv ▶", key="tech_next"):
                     st.session_state.tech_page = current_page + 1
                     st.rerun()
-
 
 def tech_detail_ticket(tid):
     t = get_ticket_full(tid=tid)
