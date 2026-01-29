@@ -2759,7 +2759,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Version IMPRESSION - 80mm x 200mm optimisé imprimante thermique
+    # Version IMPRESSION - 80mm x 200mm STRICT
     return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -2780,52 +2780,56 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
         .ticket {{
             background: #fff;
             width: 80mm;
-            min-height: 180mm;
             max-width: 80mm;
-            padding: 4mm;
+            height: 200mm;
+            max-height: 200mm;
+            overflow: hidden;
+            padding: 3mm;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 11px;
-            line-height: 1.4;
+            border-radius: 2px;
+            font-size: 9px;
+            line-height: 1.3;
             color: #000;
         }}
         .logo-center {{
             text-align: center;
-            margin-bottom: 3mm;
+            margin-bottom: 2mm;
         }}
         .logo-center img {{
-            width: 18mm;
-            height: 18mm;
+            width: 12mm;
+            height: 12mm;
+            display: block;
+            margin: 0 auto;
         }}
         h1 {{
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 900;
-            margin-bottom: 2mm;
+            margin-bottom: 1mm;
             color: #000;
         }}
         .contact {{
             text-align: center;
-            font-size: 10px;
-            margin-bottom: 3mm;
+            font-size: 8px;
+            margin-bottom: 2mm;
             color: #000;
         }}
         .contact .phone {{
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 800;
         }}
         h2 {{
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 800;
             border-bottom: 1px solid #000;
-            padding-bottom: 1mm;
-            margin: 3mm 0 2mm 0;
+            padding-bottom: 0.5mm;
+            margin: 2mm 0 1mm 0;
             text-align: center;
             color: #000;
         }}
         .info-line {{
-            font-size: 10px;
-            margin: 1.5mm 0;
+            font-size: 8px;
+            margin: 0.8mm 0;
             color: #000;
         }}
         .info-line strong {{
@@ -2833,69 +2837,61 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
         }}
         .qr-box {{
             text-align: center;
-            padding: 4mm 0;
-            margin: 3mm 0;
+            padding: 2mm 0;
+            margin: 2mm 0;
             background: #f5f5f5;
-            border-radius: 2mm;
+            border-radius: 1mm;
         }}
         .qr-box img {{
-            width: 35mm;
-            height: 35mm;
+            width: 28mm;
+            height: 28mm;
+            display: block;
+            margin: 0 auto;
         }}
         .qr-box p {{
-            font-size: 9px;
-            margin-top: 2mm;
+            font-size: 7px;
+            margin-top: 1mm;
             font-weight: 600;
             color: #000;
+            text-align: center;
         }}
         .disclaimer {{
-            font-size: 7px;
+            font-size: 6px;
             font-style: italic;
             border-top: 1px dashed #999;
-            padding-top: 2mm;
-            margin-top: 3mm;
-            line-height: 1.3;
+            padding-top: 1.5mm;
+            margin-top: 2mm;
+            line-height: 1.2;
             color: #333;
         }}
         .footer {{
             text-align: center;
             font-weight: 700;
-            font-size: 11px;
-            margin-top: 3mm;
-            padding-top: 2mm;
+            font-size: 9px;
+            margin-top: 2mm;
+            padding-top: 1.5mm;
             border-top: 1px solid #000;
             color: #000;
         }}
         .print-btn {{
             display: block;
             width: 100%;
-            margin-top: 4mm;
+            margin-top: 2mm;
             background: #000;
             color: #fff;
-            padding: 3mm;
+            padding: 2mm;
             border: none;
-            border-radius: 2mm;
-            font-size: 11px;
+            border-radius: 1mm;
+            font-size: 9px;
             font-weight: 700;
             cursor: pointer;
         }}
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            body {{
-                background: #fff;
-                padding: 0;
-                margin: 0;
-            }}
-            .ticket {{
-                border: none;
-                border-radius: 0;
-                padding: 3mm;
-                min-height: auto;
-            }}
-            .print-btn {{
-                display: none !important;
-            }}
+            body {{ background: #fff; padding: 0; margin: 0; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            .print-btn {{ display: none !important; }}
         }}
     </style>
 </head>
@@ -2907,23 +2903,21 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     <h1>Ticket de Réparation Client</h1>
     <div class="contact">
         <p class="phone">04 79 60 89 22</p>
-        <p>79 Place Saint Léger, 73000 Chambéry</p>
-        <p>www.klikphone.com</p>
+        <p>79 Pl. Saint Léger, 73000 Chambéry</p>
     </div>
 
-    <h2>Informations Client</h2>
+    <h2>Client</h2>
     <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
 
-    <h2>Détails de la Demande</h2>
-    <div class="info-line"><strong>N° Commande:</strong> {t['ticket_code']}</div>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
+    <h2>Demande</h2>
+    <div class="info-line"><strong>N°:</strong> {t['ticket_code']}</div>
+    <div class="info-line"><strong>Appareil:</strong> {t.get('marque','')} {modele_txt}</div>
     <div class="info-line"><strong>Motif:</strong> {panne}</div>
-    <div class="info-line"><strong>Date dépôt:</strong> {fmt_date(t.get('date_depot',''))}</div>
+    <div class="info-line"><strong>Date:</strong> {fmt_date(t.get('date_depot',''))}</div>
 
     <h2>Montant</h2>
-    <div class="info-line"><strong>Estimation:</strong> {(t.get('devis_estime') or 0):.2f} €</div>
-    <div class="info-line"><strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
+    <div class="info-line"><strong>Devis:</strong> {(t.get('devis_estime') or 0):.2f} € | <strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
 
     <div class="qr-box">
         <img src="{qr_url}" alt="QR Code">
@@ -2931,26 +2925,25 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     </div>
 
     <div class="disclaimer">
-        • Klikphone ne consulte pas vos données personnelles<br>
-        • Pensez à sauvegarder vos données avant dépôt<br>
-        • Klikphone décline toute responsabilité en cas de dysfonctionnement post-réparation
+        • Klikphone ne consulte pas vos données • Sauvegardez vos données avant dépôt • Aucune responsabilité post-réparation
     </div>
 
     <div class="footer">Merci de votre confiance !</div>
 
-    <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LE TICKET</button>
+    <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
 
 def ticket_staff_html(t):
-    """Ticket staff - 80mm x 200mm avec logo + gros QR code"""
+    """Ticket staff - 80mm x 200mm STRICT avec logo + gros QR code"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele = t.get("modele", "")
     if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
     
     notes = t.get('notes_internes') or 'N/A'
+    if len(notes) > 60: notes = notes[:60] + "..."
     
     # URL de suivi pour QR code
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
@@ -2978,75 +2971,82 @@ def ticket_staff_html(t):
         .ticket {{
             background: #fff;
             width: 80mm;
-            min-height: 180mm;
             max-width: 80mm;
-            padding: 4mm;
+            height: 200mm;
+            max-height: 200mm;
+            overflow: hidden;
+            padding: 3mm;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 11px;
-            line-height: 1.4;
+            border-radius: 2px;
+            font-size: 9px;
+            line-height: 1.3;
             color: #000;
         }}
         .logo-center {{
             text-align: center;
-            margin-bottom: 2mm;
+            margin-bottom: 1mm;
         }}
         .logo-center img {{
-            width: 18mm;
-            height: 18mm;
+            width: 12mm;
+            height: 12mm;
+            display: block;
+            margin: 0 auto;
         }}
         h1 {{
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 900;
-            margin-bottom: 2mm;
+            margin-bottom: 1mm;
             color: #000;
         }}
         .qr-box {{
             text-align: center;
-            padding: 4mm 0;
-            margin: 2mm 0;
+            padding: 2mm 0;
+            margin: 1mm 0;
             background: #f5f5f5;
-            border-radius: 2mm;
+            border-radius: 1mm;
         }}
         .qr-box img {{
-            width: 40mm;
-            height: 40mm;
+            width: 32mm;
+            height: 32mm;
+            display: block;
+            margin: 0 auto;
         }}
         .qr-box p {{
-            font-size: 9px;
-            margin-top: 2mm;
+            font-size: 7px;
+            margin-top: 1mm;
             font-weight: 600;
             color: #000;
+            text-align: center;
         }}
         .ticket-num {{
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 900;
-            padding: 2mm;
+            padding: 1.5mm;
             border: 2px solid #000;
-            margin: 3mm 0;
+            margin: 2mm 0;
             color: #000;
         }}
         .status {{
             text-align: center;
             font-weight: 700;
-            font-size: 11px;
-            margin-bottom: 3mm;
+            font-size: 9px;
+            margin-bottom: 2mm;
             color: #000;
         }}
         h2 {{
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 800;
             border-bottom: 1px solid #000;
-            padding-bottom: 1mm;
-            margin: 3mm 0 2mm 0;
+            padding-bottom: 0.5mm;
+            margin: 2mm 0 1mm 0;
             text-align: center;
             color: #000;
         }}
         .info-line {{
-            font-size: 10px;
-            margin: 1.5mm 0;
+            font-size: 8px;
+            margin: 0.8mm 0;
             color: #000;
         }}
         .info-line strong {{
@@ -3054,59 +3054,48 @@ def ticket_staff_html(t):
         }}
         .security-box {{
             border: 2px solid #000;
-            padding: 2mm;
-            margin: 3mm 0;
+            padding: 1.5mm;
+            margin: 2mm 0;
             text-align: center;
             background: #f9f9f9;
         }}
         .security-box .title {{
             font-weight: 800;
-            font-size: 10px;
+            font-size: 8px;
             margin-bottom: 1mm;
         }}
         .security-box .codes {{
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 900;
         }}
         .footer {{
             text-align: center;
             font-weight: 700;
-            font-size: 10px;
-            margin-top: 3mm;
-            padding-top: 2mm;
+            font-size: 8px;
+            margin-top: 2mm;
+            padding-top: 1.5mm;
             border-top: 1px solid #000;
             color: #000;
         }}
         .print-btn {{
             display: block;
             width: 100%;
-            margin-top: 4mm;
+            margin-top: 2mm;
             background: #000;
             color: #fff;
-            padding: 3mm;
+            padding: 2mm;
             border: none;
-            border-radius: 2mm;
-            font-size: 11px;
+            border-radius: 1mm;
+            font-size: 9px;
             font-weight: 700;
             cursor: pointer;
         }}
         .print-btn:hover {{ background: #333; }}
 
         @media print {{
-            body {{
-                background: #fff;
-                padding: 0;
-                margin: 0;
-            }}
-            .ticket {{
-                border: none;
-                border-radius: 0;
-                padding: 3mm;
-                min-height: auto;
-            }}
-            .print-btn {{
-                display: none !important;
-            }}
+            body {{ background: #fff; padding: 0; margin: 0; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            .print-btn {{ display: none !important; }}
         }}
     </style>
 </head>
@@ -3115,7 +3104,7 @@ def ticket_staff_html(t):
     <div class="logo-center">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
     </div>
-    <h1>Ticket Staff - Interne</h1>
+    <h1>Ticket Staff</h1>
 
     <div class="qr-box">
         <img src="{qr_url}" alt="QR Code">
@@ -3127,29 +3116,26 @@ def ticket_staff_html(t):
 
     <h2>Client</h2>
     <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
 
     <h2>Appareil</h2>
     <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele}</div>
     <div class="info-line"><strong>Panne:</strong> {panne}</div>
 
     <div class="security-box">
-        <div class="title">🔐 CODES SÉCURITÉ</div>
-        <div class="codes">PIN: {t.get('pin') or '----'}</div>
-        <div class="codes">Schéma: {t.get('pattern') or '----'}</div>
+        <div class="title">🔐 CODES</div>
+        <div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
     </div>
 
     <h2>Tarifs</h2>
-    <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))}</div>
-    <div class="info-line"><strong>Acompte:</strong> {fmt_prix(t.get('acompte'))}</div>
-    <div class="info-line"><strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
+    <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))} | <strong>Acompte:</strong> {fmt_prix(t.get('acompte'))} | <strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
 
     <h2>Notes</h2>
     <div class="info-line">{notes}</div>
 
     <div class="footer">Dépôt: {fmt_date(t.get('date_depot',''))}</div>
 
-    <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LE TICKET</button>
+    <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
@@ -3443,7 +3429,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </html>"""
 
 def ticket_combined_html(t):
-    """Génère les deux tickets - IDENTIQUES aux tickets individuels"""
+    """Génère les deux tickets - 80mm x 200mm STRICT chacun"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
@@ -3457,6 +3443,7 @@ def ticket_combined_html(t):
     
     # Notes
     notes = t.get('notes_internes') or 'N/A'
+    if len(notes) > 60: notes = notes[:60] + "..."
     
     return f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3482,10 +3469,10 @@ def ticket_combined_html(t):
             margin: 0 auto 1rem auto;
             background-color: #000;
             color: white;
-            padding: 3mm;
-            border-radius: 2mm;
+            padding: 2mm;
+            border-radius: 1mm;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             border: none;
             text-align: center;
@@ -3495,55 +3482,57 @@ def ticket_combined_html(t):
         .ticket {{
             background: #fff;
             width: 80mm;
-            min-height: 180mm;
             max-width: 80mm;
-            margin: 0 auto 1.5rem auto;
-            padding: 4mm;
+            height: 200mm;
+            max-height: 200mm;
+            overflow: hidden;
+            margin: 0 auto 1rem auto;
+            padding: 3mm;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 11px;
-            line-height: 1.4;
+            border-radius: 2px;
+            font-size: 9px;
+            line-height: 1.3;
             color: #000;
         }}
         .logo-center {{
             text-align: center;
-            margin-bottom: 3mm;
+            margin-bottom: 1mm;
         }}
         .logo-center img {{
-            width: 18mm;
-            height: 18mm;
+            width: 12mm;
+            height: 12mm;
             display: block;
             margin: 0 auto;
         }}
         h1 {{
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 900;
-            margin-bottom: 2mm;
+            margin-bottom: 1mm;
             color: #000;
         }}
         .contact {{
             text-align: center;
-            font-size: 10px;
-            margin-bottom: 3mm;
+            font-size: 8px;
+            margin-bottom: 2mm;
             color: #000;
         }}
         .contact .phone {{
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 800;
         }}
         h2 {{
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 800;
             border-bottom: 1px solid #000;
-            padding-bottom: 1mm;
-            margin: 3mm 0 2mm 0;
+            padding-bottom: 0.5mm;
+            margin: 2mm 0 1mm 0;
             text-align: center;
             color: #000;
         }}
         .info-line {{
-            font-size: 10px;
-            margin: 1.5mm 0;
+            font-size: 8px;
+            margin: 0.8mm 0;
             color: #000;
         }}
         .info-line strong {{
@@ -3551,109 +3540,100 @@ def ticket_combined_html(t):
         }}
         .qr-box {{
             text-align: center;
-            padding: 4mm 0;
-            margin: 3mm 0;
+            padding: 2mm 0;
+            margin: 2mm 0;
             background: #f5f5f5;
-            border-radius: 2mm;
+            border-radius: 1mm;
         }}
         .qr-box img {{
-            width: 35mm;
-            height: 35mm;
+            width: 28mm;
+            height: 28mm;
             display: block;
             margin: 0 auto;
         }}
         .qr-box.big img {{
-            width: 40mm;
-            height: 40mm;
+            width: 32mm;
+            height: 32mm;
         }}
         .qr-box p {{
-            font-size: 9px;
-            margin-top: 2mm;
+            font-size: 7px;
+            margin-top: 1mm;
             font-weight: 600;
             color: #000;
             text-align: center;
         }}
         .ticket-num {{
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 900;
-            padding: 2mm;
+            padding: 1.5mm;
             border: 2px solid #000;
-            margin: 3mm 0;
+            margin: 2mm 0;
             color: #000;
         }}
         .status {{
             text-align: center;
             font-weight: 700;
-            font-size: 11px;
-            margin-bottom: 3mm;
+            font-size: 9px;
+            margin-bottom: 2mm;
             color: #000;
         }}
         .security-box {{
             border: 2px solid #000;
-            padding: 2mm;
-            margin: 3mm 0;
+            padding: 1.5mm;
+            margin: 2mm 0;
             text-align: center;
             background: #f9f9f9;
         }}
         .security-box .title {{
             font-weight: 800;
-            font-size: 10px;
+            font-size: 8px;
             margin-bottom: 1mm;
         }}
         .security-box .codes {{
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 900;
         }}
         .disclaimer {{
-            font-size: 7px;
+            font-size: 6px;
             font-style: italic;
             border-top: 1px dashed #999;
-            padding-top: 2mm;
-            margin-top: 3mm;
-            line-height: 1.3;
+            padding-top: 1.5mm;
+            margin-top: 2mm;
+            line-height: 1.2;
             color: #333;
         }}
         .footer {{
             text-align: center;
             font-weight: 700;
-            font-size: 11px;
-            margin-top: 3mm;
-            padding-top: 2mm;
+            font-size: 9px;
+            margin-top: 2mm;
+            padding-top: 1.5mm;
             border-top: 1px solid #000;
             color: #000;
         }}
         .separator {{
             text-align: center;
-            padding: 5mm 0;
+            padding: 3mm 0;
             color: #999;
-            font-size: 10px;
+            font-size: 9px;
             width: 80mm;
         }}
 
         @media print {{
-            body {{
-                background: #fff;
-                padding: 0;
-                margin: 0;
-            }}
-            .print-btn {{
-                display: none !important;
-            }}
-            .separator {{
-                display: none !important;
-            }}
+            body {{ background: #fff; padding: 0; margin: 0; }}
+            .print-btn {{ display: none !important; }}
+            .separator {{ display: none !important; }}
             .ticket {{
                 border: none;
                 border-radius: 0;
-                padding: 3mm;
+                padding: 2mm;
                 margin: 0;
-                min-height: auto;
+                height: auto;
+                max-height: none;
                 page-break-after: always;
             }}
-            .ticket:last-child {{
-                page-break-after: avoid;
-            }}
+            .ticket:last-child {{ page-break-after: avoid; }}
         }}
     </style>
 </head>
@@ -3661,7 +3641,7 @@ def ticket_combined_html(t):
 
 <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LES 2 TICKETS</button>
 
-<!-- ========== TICKET CLIENT - IDENTIQUE AU TICKET INDIVIDUEL ========== -->
+<!-- ========== TICKET CLIENT ========== -->
 <div class="ticket">
     <div class="logo-center">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
@@ -3669,23 +3649,21 @@ def ticket_combined_html(t):
     <h1>Ticket de Réparation Client</h1>
     <div class="contact">
         <p class="phone">04 79 60 89 22</p>
-        <p>79 Place Saint Léger, 73000 Chambéry</p>
-        <p>www.klikphone.com</p>
+        <p>79 Pl. Saint Léger, 73000 Chambéry</p>
     </div>
 
-    <h2>Informations Client</h2>
+    <h2>Client</h2>
     <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
 
-    <h2>Détails de la Demande</h2>
-    <div class="info-line"><strong>N° Commande:</strong> {t['ticket_code']}</div>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
+    <h2>Demande</h2>
+    <div class="info-line"><strong>N°:</strong> {t['ticket_code']}</div>
+    <div class="info-line"><strong>Appareil:</strong> {t.get('marque','')} {modele_txt}</div>
     <div class="info-line"><strong>Motif:</strong> {panne}</div>
-    <div class="info-line"><strong>Date dépôt:</strong> {fmt_date(t.get('date_depot',''))}</div>
+    <div class="info-line"><strong>Date:</strong> {fmt_date(t.get('date_depot',''))}</div>
 
     <h2>Montant</h2>
-    <div class="info-line"><strong>Estimation:</strong> {(t.get('devis_estime') or 0):.2f} €</div>
-    <div class="info-line"><strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
+    <div class="info-line"><strong>Devis:</strong> {(t.get('devis_estime') or 0):.2f} € | <strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
 
     <div class="qr-box">
         <img src="{qr_url_val}" alt="QR Code">
@@ -3693,9 +3671,7 @@ def ticket_combined_html(t):
     </div>
 
     <div class="disclaimer">
-        • Klikphone ne consulte pas vos données personnelles<br>
-        • Pensez à sauvegarder vos données avant dépôt<br>
-        • Klikphone décline toute responsabilité en cas de dysfonctionnement post-réparation
+        • Klikphone ne consulte pas vos données • Sauvegardez vos données avant dépôt • Aucune responsabilité post-réparation
     </div>
 
     <div class="footer">Merci de votre confiance !</div>
@@ -3703,12 +3679,12 @@ def ticket_combined_html(t):
 
 <div class="separator">✂️ ─────────── Découper ici ─────────── ✂️</div>
 
-<!-- ========== TICKET STAFF - IDENTIQUE AU TICKET INDIVIDUEL ========== -->
+<!-- ========== TICKET STAFF ========== -->
 <div class="ticket">
     <div class="logo-center">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
     </div>
-    <h1>Ticket Staff - Interne</h1>
+    <h1>Ticket Staff</h1>
 
     <div class="qr-box big">
         <img src="{qr_url_val}" alt="QR Code">
@@ -3720,22 +3696,19 @@ def ticket_combined_html(t):
 
     <h2>Client</h2>
     <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
 
     <h2>Appareil</h2>
     <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
     <div class="info-line"><strong>Panne:</strong> {panne}</div>
 
     <div class="security-box">
-        <div class="title">🔐 CODES SÉCURITÉ</div>
-        <div class="codes">PIN: {t.get('pin') or '----'}</div>
-        <div class="codes">Schéma: {t.get('pattern') or '----'}</div>
+        <div class="title">🔐 CODES</div>
+        <div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
     </div>
 
     <h2>Tarifs</h2>
-    <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))}</div>
-    <div class="info-line"><strong>Acompte:</strong> {fmt_prix(t.get('acompte'))}</div>
-    <div class="info-line"><strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
+    <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))} | <strong>Acompte:</strong> {fmt_prix(t.get('acompte'))} | <strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
 
     <h2>Notes</h2>
     <div class="info-line">{notes}</div>
