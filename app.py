@@ -2261,6 +2261,18 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, 
         conn.commit()
     conn.close()
 
+def supprimer_client(client_id):
+    """Supprime un client et tous ses tickets associés"""
+    conn = get_db()
+    c = conn.cursor()
+    # Supprimer d'abord les tickets du client
+    c.execute("DELETE FROM tickets WHERE client_id=?", (client_id,))
+    # Puis supprimer le client
+    c.execute("DELETE FROM clients WHERE id=?", (client_id,))
+    conn.commit()
+    conn.close()
+    return True
+
 def search_clients(query):
     """Recherche des clients par nom, prénom, téléphone ou société"""
     conn = get_db()
@@ -5854,10 +5866,10 @@ Cordialement,
         st.warning("Aucun moyen de contact disponible")
 
 def staff_gestion_clients():
-    """Gestion des clients - Liste, modification, export"""
+    """Gestion des clients - Liste, modification, export, suppression"""
     
     # Header avec export
-    col_title, col_export = st.columns([4, 1])
+    col_title, col_export, col_export2 = st.columns([3, 1, 1])
     with col_title:
         st.markdown("""<div class="detail-card-header">👥 Gestion des Clients</div>""", unsafe_allow_html=True)
     with col_export:
@@ -5872,8 +5884,68 @@ def staff_gestion_clients():
                 type="primary",
                 use_container_width=True
             )
+    with col_export2:
+        # Export simplifié (nom, prénom, téléphone)
+        try:
+            import pandas as pd
+            from io import BytesIO
+            conn = get_db()
+            c = conn.cursor()
+            c.execute("SELECT nom, prenom, telephone FROM clients ORDER BY nom, prenom")
+            clients_simple = [dict(row) for row in c.fetchall()]
+            conn.close()
+            
+            if clients_simple:
+                df = pd.DataFrame(clients_simple)
+                output = BytesIO()
+                df.to_excel(output, index=False, sheet_name='Clients')
+                st.download_button(
+                    label="📋 Simple",
+                    data=output.getvalue(),
+                    file_name="clients_contacts.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_clients_simple",
+                    use_container_width=True
+                )
+        except:
+            pass
     
     st.markdown("---")
+    
+    # Mode suppression client (avec PIN)
+    if st.session_state.get("delete_client_id"):
+        client_id = st.session_state.delete_client_id
+        client = get_client_by_id(client_id)
+        
+        if client:
+            st.markdown(f"""
+            <div style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+                <h3 style="color:#dc2626;margin:0 0 1rem 0;">⚠️ Supprimer le client</h3>
+                <p><strong>{client.get('nom', '')} {client.get('prenom', '')}</strong></p>
+                <p>📞 {client.get('telephone', '')}</p>
+                <p style="color:#dc2626;font-size:0.9rem;">Cette action supprimera également tous les tickets associés à ce client !</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            pin_delete = st.text_input("🔐 Entrez le code PIN pour confirmer", type="password", key="pin_delete_client")
+            
+            col_del1, col_del2 = st.columns(2)
+            with col_del1:
+                if st.button("🗑️ Confirmer la suppression", type="primary", use_container_width=True):
+                    if pin_delete == "2626":
+                        supprimer_client(client_id)
+                        st.success("✅ Client supprimé avec succès!")
+                        st.session_state.delete_client_id = None
+                        st.rerun()
+                    else:
+                        st.error("❌ Code PIN incorrect!")
+            with col_del2:
+                if st.button("❌ Annuler", use_container_width=True):
+                    st.session_state.delete_client_id = None
+                    st.rerun()
+            
+            st.markdown("---")
+            return
     
     # Mode édition client
     if st.session_state.get("edit_client_id"):
@@ -5923,7 +5995,7 @@ def staff_gestion_clients():
     
     st.markdown(f"**{len(clients)} client(s)**")
     
-    # Table header
+    # Table header - ajout colonne suppression
     st.markdown("""
     <div class="table-header">
         <div style="flex:1;">Nom</div>
@@ -5931,8 +6003,8 @@ def staff_gestion_clients():
         <div style="flex:0.8;">Société</div>
         <div style="flex:1;">Téléphone</div>
         <div style="flex:1.2;">Email</div>
-        <div style="min-width:60px;">Tickets</div>
-        <div style="min-width:60px;">Action</div>
+        <div style="min-width:50px;">Tickets</div>
+        <div style="min-width:90px;">Actions</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -5949,7 +6021,7 @@ def staff_gestion_clients():
     clients_page = clients[start_idx:end_idx]
     
     for client in clients_page:
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 0.8, 1, 1.2, 0.4, 0.5])
+        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 0.8, 1, 1.2, 0.3, 0.3, 0.3])
         with col1:
             st.markdown(f"**{client.get('nom', '')}**")
         with col2:
@@ -5967,6 +6039,10 @@ def staff_gestion_clients():
         with col7:
             if st.button("✏️", key=f"edit_client_{client['id']}", help="Modifier"):
                 st.session_state.edit_client_id = client['id']
+                st.rerun()
+        with col8:
+            if st.button("🗑️", key=f"del_client_{client['id']}", help="Supprimer"):
+                st.session_state.delete_client_id = client['id']
                 st.rerun()
         
         st.markdown("<div style='height:1px;background:var(--neutral-100);margin:4px 0;'></div>", unsafe_allow_html=True)
