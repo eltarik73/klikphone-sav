@@ -4787,23 +4787,68 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
 {nom_boutique}
 📞 {get_param('TEL_BOUTIQUE')}"""
         
-        col_wa, col_sms = st.columns(2)
-        with col_wa:
-            if tel_client:
-                wa_url = wa_link(tel_client, msg_devis)
-                if st.button("📱 WhatsApp Devis", key=f"wa_devis_{tid}", use_container_width=True, type="primary"):
+        # Boutons WhatsApp et SMS avec liens HTML (fonctionnent vraiment!)
+        if tel_client:
+            wa_url = wa_link(tel_client, msg_devis)
+            sms_url = sms_link(tel_client, msg_devis)
+            
+            st.markdown(f"""
+            <div style="display:flex;gap:12px;margin-bottom:16px;">
+                <a href="{wa_url}" target="_blank" style="
+                    flex:1;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:8px;
+                    padding:14px 20px;
+                    background:linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+                    color:white;
+                    text-decoration:none;
+                    border-radius:12px;
+                    font-weight:600;
+                    font-size:0.95rem;
+                    box-shadow:0 4px 15px rgba(37,211,102,0.3);
+                    transition:all 0.2s ease;
+                " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(37,211,102,0.4)'" 
+                   onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(37,211,102,0.3)'">
+                    📱 WhatsApp Devis
+                </a>
+                <a href="{sms_url}" style="
+                    flex:1;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:8px;
+                    padding:14px 20px;
+                    background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    color:white;
+                    text-decoration:none;
+                    border-radius:12px;
+                    font-weight:600;
+                    font-size:0.95rem;
+                    box-shadow:0 4px 15px rgba(59,130,246,0.3);
+                    transition:all 0.2s ease;
+                " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(59,130,246,0.4)'" 
+                   onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(59,130,246,0.3)'">
+                    💬 SMS Devis
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Boutons pour marquer comme envoyé
+            col_mark_wa, col_mark_sms = st.columns(2)
+            with col_mark_wa:
+                if st.button("✓ Marquer WhatsApp envoyé", key=f"mark_wa_{tid}", use_container_width=True):
                     update_ticket(tid, msg_whatsapp=1)
                     ajouter_note(tid, "[WHATSAPP] Devis envoyé")
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={wa_url}">', unsafe_allow_html=True)
                     st.rerun()
-        with col_sms:
-            if tel_client:
-                sms_url = sms_link(tel_client, msg_devis)
-                if st.button("💬 SMS", key=f"sms_devis_{tid}", use_container_width=True):
+            with col_mark_sms:
+                if st.button("✓ Marquer SMS envoyé", key=f"mark_sms_{tid}", use_container_width=True):
                     update_ticket(tid, msg_sms=1)
                     ajouter_note(tid, "[SMS] Message envoyé")
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={sms_url}">', unsafe_allow_html=True)
                     st.rerun()
+        else:
+            st.warning("⚠️ Pas de numéro de téléphone pour ce client")
         
         # Boutons envoi par email
         st.markdown("##### 📧 Envoyer par email")
@@ -6223,11 +6268,28 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
         with col_wa:
             if tel:
                 wa_url = wa_link(tel, msg_devis_tech)
-                if st.button("📱 WhatsApp", key=f"tech_wa_devis_{tid}", type="primary", use_container_width=True):
+                st.markdown(f"""
+                <a href="{wa_url}" target="_blank" style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:8px;
+                    padding:12px 16px;
+                    background:linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+                    color:white;
+                    text-decoration:none;
+                    border-radius:10px;
+                    font-weight:600;
+                    font-size:0.9rem;
+                    box-shadow:0 4px 12px rgba(37,211,102,0.3);
+                ">📱 WhatsApp</a>
+                """, unsafe_allow_html=True)
+                if st.button("✓ Marquer envoyé", key=f"tech_wa_mark_{tid}", use_container_width=True):
                     update_ticket(tid, msg_whatsapp=1)
                     ajouter_note(tid, "[TECH-WHATSAPP] Devis envoyé au client")
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={wa_url}">', unsafe_allow_html=True)
                     st.rerun()
+            else:
+                st.button("📱 WhatsApp", disabled=True, use_container_width=True, help="Pas de téléphone")
         
         with col_email_tech:
             if email and get_param("SMTP_HOST"):
