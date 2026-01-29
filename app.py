@@ -4469,7 +4469,118 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_ticket_{tid}"] = "facture"
                 st.rerun()
         with col_t5:
-            pass  # Espace réservé
+            # Bouton envoi devis par email
+            email_client = t.get('client_email', '')
+            if email_client and get_param("SMTP_HOST"):
+                if st.button("📧 Email Devis", use_container_width=True, key=f"email_devis_{tid}"):
+                    st.session_state[f"send_devis_email_{tid}"] = True
+                    st.rerun()
+            else:
+                st.button("📧", disabled=True, use_container_width=True, help="Email client ou SMTP non configuré")
+        
+        # === AFFICHAGE DU TICKET ICI (juste après les boutons) ===
+        ticket_type = st.session_state.get(f"show_ticket_{tid}")
+        if ticket_type:
+            st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
+            
+            # En-tête avec bouton fermer
+            col_header, col_close = st.columns([4, 1])
+            with col_header:
+                if ticket_type == "client":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #fb923c;">
+                        <strong>🎫 TICKET CLIENT</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "staff":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #6b7280;">
+                        <strong>📋 TICKET STAFF</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "both":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
+                        <strong>🖨️ TICKETS CLIENT + STAFF</strong> (saut de page auto)
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "devis":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                        <strong>📝 DEVIS</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif ticket_type == "facture":
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 10px 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
+                        <strong>🧾 RÉCAPITULATIF</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with col_close:
+                if st.button("✕ Fermer", key=f"close_ticket_{tid}", type="secondary", use_container_width=True):
+                    del st.session_state[f"show_ticket_{tid}"]
+                    st.rerun()
+            
+            # Affichage du ticket selon le type
+            if ticket_type == "client":
+                st.components.v1.html(ticket_client_html(t), height=650, scrolling=True)
+            elif ticket_type == "staff":
+                st.components.v1.html(ticket_staff_html(t), height=700, scrolling=True)
+            elif ticket_type == "both":
+                st.components.v1.html(ticket_combined_html(t), height=800, scrolling=True)
+            elif ticket_type == "devis":
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=700, scrolling=True)
+            elif ticket_type == "facture":
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=700, scrolling=True)
+        
+        # Dialogue envoi devis par email
+        if st.session_state.get(f"send_devis_email_{tid}"):
+            st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:10px;padding:1rem;">
+                <strong>📧 Envoyer le devis par email</strong>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            email_dest = t.get('client_email', '')
+            devis_val = t.get('devis_estime') or 0
+            modele_court = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+            panne_txt = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
+            
+            msg_devis_email = f"""Bonjour {t.get('client_prenom', '')},
+
+Suite au diagnostic de votre {modele_court}, voici notre devis:
+
+🔧 Réparation: {panne_txt}
+💰 Montant: {devis_val:.2f} € TTC
+
+Merci de nous confirmer votre accord pour procéder à la réparation.
+
+Cordialement,
+{get_param('NOM_BOUTIQUE') or 'Klikphone'}
+📞 {get_param('TEL_BOUTIQUE') or '04 79 60 89 22'}
+📍 {get_param('ADRESSE_BOUTIQUE') or '79 Place Saint Léger, Chambéry'}"""
+            
+            msg_email_edit = st.text_area("Message", value=msg_devis_email, height=200, key=f"msg_devis_email_{tid}")
+            
+            col_send, col_cancel = st.columns(2)
+            with col_send:
+                if st.button("📤 Envoyer", key=f"do_send_devis_{tid}", type="primary", use_container_width=True):
+                    sujet = f"Devis réparation {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                    success, result = envoyer_email(email_dest, sujet, msg_email_edit)
+                    if success:
+                        st.success(f"✅ Devis envoyé à {email_dest}!")
+                        ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_dest}")
+                        update_ticket(tid, msg_email=1)
+                        del st.session_state[f"send_devis_email_{tid}"]
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erreur: {result}")
+            with col_cancel:
+                if st.button("Annuler", key=f"cancel_devis_email_{tid}", use_container_width=True):
+                    del st.session_state[f"send_devis_email_{tid}"]
+                    st.rerun()
         
         # === SECTION CONTACT CLIENT ===
         st.markdown("---")
@@ -4807,62 +4918,6 @@ Cordialement,
     
     if not tel and not email:
         st.warning("Aucun moyen de contact disponible")
-    
-    # Affichage ticket dans dialogue à gauche
-    ticket_type = st.session_state.get(f"show_ticket_{tid}")
-    if ticket_type:
-        st.markdown("---")
-        
-        # En-tête avec bouton fermer
-        col_header, col_close = st.columns([4, 1])
-        with col_header:
-            if ticket_type == "client":
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #fb923c;">
-                    <strong>🎫 TICKET CLIENT</strong> - Cliquez sur "IMPRIMER" dans le ticket
-                </div>
-                """, unsafe_allow_html=True)
-            elif ticket_type == "staff":
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #6b7280;">
-                    <strong>📋 TICKET STAFF</strong> - Cliquez sur "IMPRIMER" dans le ticket
-                </div>
-                """, unsafe_allow_html=True)
-            elif ticket_type == "both":
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
-                    <strong>🖨️ TICKETS CLIENT + STAFF</strong> - Imprime les 2 tickets avec saut de page automatique
-                </div>
-                """, unsafe_allow_html=True)
-            elif ticket_type == "devis":
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
-                    <strong>📝 DEVIS</strong> - Cliquez sur "IMPRIMER" dans le document
-                </div>
-                """, unsafe_allow_html=True)
-            elif ticket_type == "facture":
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(21,128,61,0.1)); padding: 12px 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
-                    <strong>🧾 RÉCAPITULATIF</strong> - Ce ticket ne fait pas office de facture
-                </div>
-                """, unsafe_allow_html=True)
-        
-        with col_close:
-            if st.button("✕ Fermer", key=f"close_ticket_{tid}", type="secondary", use_container_width=True):
-                del st.session_state[f"show_ticket_{tid}"]
-                st.rerun()
-        
-        # Affichage du ticket selon le type
-        if ticket_type == "client":
-            st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
-        elif ticket_type == "staff":
-            st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
-        elif ticket_type == "both":
-            st.components.v1.html(ticket_combined_html(t), height=900, scrolling=True)
-        elif ticket_type == "devis":
-            st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=800, scrolling=True)
-        elif ticket_type == "facture":
-            st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
 
 def staff_gestion_clients():
     """Gestion des clients - Liste, modification, export"""
@@ -5983,10 +6038,11 @@ def tech_detail_ticket(tid):
             st.success("✅ Devis mis à jour!")
             st.rerun()
         
-        # === ENVOYER DEVIS PAR WHATSAPP ===
+        # === ENVOYER DEVIS PAR WHATSAPP OU EMAIL ===
         st.markdown("##### 📱 Envoyer le devis au client")
         
         tel = t.get('client_tel', '')
+        email = t.get('client_email', '')
         nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
         modele_court = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
         
@@ -6002,18 +6058,33 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
 {nom_boutique}
 📞 {get_param('TEL_BOUTIQUE')}"""
         
-        col_wa, col_attente = st.columns(2)
+        col_wa, col_email_tech, col_attente = st.columns(3)
         with col_wa:
             if tel:
                 wa_url = wa_link(tel, msg_devis_tech)
-                if st.button("📱 WhatsApp Devis", key=f"tech_wa_devis_{tid}", type="primary", use_container_width=True):
+                if st.button("📱 WhatsApp", key=f"tech_wa_devis_{tid}", type="primary", use_container_width=True):
                     update_ticket(tid, msg_whatsapp=1)
                     ajouter_note(tid, "[TECH-WHATSAPP] Devis envoyé au client")
                     st.markdown(f'<meta http-equiv="refresh" content="0;url={wa_url}">', unsafe_allow_html=True)
                     st.rerun()
         
+        with col_email_tech:
+            if email and get_param("SMTP_HOST"):
+                if st.button("📧 Email", key=f"tech_email_devis_{tid}", type="secondary", use_container_width=True):
+                    sujet = f"Devis réparation {t.get('ticket_code','')} - {nom_boutique}"
+                    success, result = envoyer_email(email, sujet, msg_devis_tech)
+                    if success:
+                        st.success(f"✅ Devis envoyé à {email}!")
+                        ajouter_note(tid, f"[TECH-EMAIL] Devis envoyé à {email}")
+                        update_ticket(tid, msg_email=1)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erreur: {result}")
+            else:
+                st.button("📧 Email", disabled=True, use_container_width=True, help="Email ou SMTP non configuré")
+        
         with col_attente:
-            if st.button("⏳ Demander accord", key=f"tech_demande_accord_{tid}", type="secondary", use_container_width=True):
+            if st.button("⏳ Accord", key=f"tech_demande_accord_{tid}", use_container_width=True):
                 changer_statut(tid, "En attente d'accord client")
                 ajouter_note(tid, "[TECH] Demande d'accord client envoyée")
                 st.success("✅ Statut mis à 'En attente d'accord client'")
