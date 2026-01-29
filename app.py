@@ -3021,59 +3021,35 @@ def ui_client():
         return
     
     # === INTERFACE CLIENT PREMIUM ===
+    step = st.session_state.step
     
     # Header avec logo
     st.markdown(f"""
-    <div class="client-hero">
-        <div class="client-logo-container">
-            <img src="data:image/png;base64,{LOGO_B64}" alt="Klikphone">
+    <div style="text-align:center;padding:2rem 1rem 1.5rem;background:linear-gradient(180deg,#ffffff 0%,rgba(249,115,22,0.03) 100%);">
+        <div style="width:80px;height:80px;margin:0 auto 1rem;background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border-radius:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(249,115,22,0.15);">
+            <img src="data:image/png;base64,{LOGO_B64}" style="width:50px;height:50px;" alt="Klikphone">
         </div>
-        <div class="client-brand">KLIKPHONE</div>
-        <p class="client-tagline">Spécialiste Apple & Multimarque<br>Réparation express de vos appareils</p>
-        <div class="client-contact">
-            <span class="client-contact-item">📍 79 Place Saint Léger, Chambéry</span>
-            <span class="client-contact-item">📞 04 79 60 89 22</span>
-        </div>
+        <h1 style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.25rem;letter-spacing:-1px;">
+            KLIKPHONE
+        </h1>
+        <p style="color:#64748b;font-size:0.95rem;margin-bottom:0.5rem;">
+            Spécialiste Apple & Multimarque
+        </p>
+        <p style="color:#94a3b8;font-size:0.8rem;">
+            📍 79 Place Saint Léger, Chambéry • 📞 04 79 60 89 22
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Progress bar élégante
-    step = st.session_state.step
-    progress_percent = (step / 6) * 100
+    # Barre de progression native Streamlit (plus fiable)
+    st.progress(step / 6)
     
-    # Étapes avec icônes
-    step_icons = ["📱", "🏷️", "📋", "🔧", "🔐", "👤"]
-    step_names = ["Appareil", "Marque", "Modèle", "Problème", "Sécurité", "Contact"]
-    
-    steps_html = ""
-    for i in range(1, 7):
-        if i < step:
-            dot_class = "completed"
-            icon = "✓"
-        elif i == step:
-            dot_class = "current"
-            icon = step_icons[i-1]
-        else:
-            dot_class = "pending"
-            icon = str(i)
-        
-        label_class = "active" if i == step else ""
-        steps_html += f'''
-        <div class="progress-step">
-            <div class="progress-step-dot {dot_class}">{icon}</div>
-            <span class="progress-step-label {label_class}">{step_names[i-1]}</span>
-        </div>
-        '''
-    
+    # Indicateur d'étape
+    step_names = ["", "Type d'appareil", "Marque", "Modèle", "Problème", "Sécurité", "Coordonnées"]
     st.markdown(f"""
-    <div class="progress-container">
-        <div class="progress-bar-wrapper">
-            <div class="progress-bar-fill" style="width: {progress_percent}%;"></div>
-        </div>
-        <div class="progress-steps">
-            {steps_html}
-        </div>
-    </div>
+    <p style="text-align:center;color:#64748b;font-size:0.9rem;margin-bottom:1.5rem;">
+        Étape <strong style="color:#f97316;">{step}</strong>/6 : {step_names[step]}
+    </p>
     """, unsafe_allow_html=True)
     
     if step == 1: client_step1()
@@ -3086,50 +3062,70 @@ def ui_client():
 def client_step1():
     """Étape 1: Choix du type d'appareil"""
     st.markdown("""
-    <div class="step-title">
-        <h2>Quel appareil déposez-vous ?</h2>
-        <p>Sélectionnez le type d'appareil à réparer</p>
+    <div style="text-align:center;margin-bottom:1.5rem;">
+        <h2 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem;">
+            Quel appareil déposez-vous ?
+        </h2>
+        <p style="font-size:0.95rem;color:#64748b;">
+            Sélectionnez le type d'appareil à réparer
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Grille d'appareils avec icônes
-    devices = [
-        {"name": "Smartphone", "icon": "📱", "cat": "Smartphone"},
-        {"name": "Tablette", "icon": "📟", "cat": "Tablette"},
-        {"name": "PC Portable", "icon": "💻", "cat": "PC Portable"},
-        {"name": "Console", "icon": "🎮", "cat": "Console"},
-    ]
+    # Grille 2x2 pour les appareils principaux avec emojis
+    col1, col2 = st.columns(2)
     
-    # Afficher la grille
-    cols = st.columns(2)
-    for i, device in enumerate(devices):
-        with cols[i % 2]:
-            # Utiliser un conteneur pour le style
-            btn_key = f"device_{device['cat']}"
-            if st.button(f"{device['icon']}  {device['name']}", key=btn_key, use_container_width=True):
-                st.session_state.data["cat"] = device["cat"]
-                st.session_state.data["is_commande"] = False
-                st.session_state.step = 2
-                st.rerun()
+    with col1:
+        if st.button("📱  Smartphone", key="cat_smartphone", use_container_width=True, type="primary"):
+            st.session_state.data["cat"] = "Smartphone"
+            st.session_state.data["is_commande"] = False
+            st.session_state.step = 2
+            st.rerun()
     
+    with col2:
+        if st.button("📟  Tablette", key="cat_tablette", use_container_width=True, type="primary"):
+            st.session_state.data["cat"] = "Tablette"
+            st.session_state.data["is_commande"] = False
+            st.session_state.step = 2
+            st.rerun()
+    
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        if st.button("💻  PC Portable", key="cat_pc", use_container_width=True, type="primary"):
+            st.session_state.data["cat"] = "PC Portable"
+            st.session_state.data["is_commande"] = False
+            st.session_state.step = 2
+            st.rerun()
+    
+    with col4:
+        if st.button("🎮  Console", key="cat_console", use_container_width=True, type="primary"):
+            st.session_state.data["cat"] = "Console"
+            st.session_state.data["is_commande"] = False
+            st.session_state.step = 2
+            st.rerun()
+    
+    # Séparateur
     st.markdown("""
-    <div style="text-align:center; margin:1.5rem 0; color:#94a3b8;">
-        <span style="display:inline-block; width:60px; height:1px; background:#e2e8f0; vertical-align:middle;"></span>
-        <span style="margin:0 1rem; font-size:0.85rem;">ou</span>
-        <span style="display:inline-block; width:60px; height:1px; background:#e2e8f0; vertical-align:middle;"></span>
+    <div style="display:flex;align-items:center;justify-content:center;margin:1.5rem 0;gap:1rem;">
+        <div style="height:1px;width:80px;background:linear-gradient(90deg,transparent,#e2e8f0);"></div>
+        <span style="color:#94a3b8;font-size:0.9rem;font-weight:500;">ou</span>
+        <div style="height:1px;width:80px;background:linear-gradient(90deg,#e2e8f0,transparent);"></div>
     </div>
     """, unsafe_allow_html=True)
     
     # Options spéciales
-    col1, col2 = st.columns(2)
-    with col1:
+    col5, col6 = st.columns(2)
+    
+    with col5:
         if st.button("📦  Commander une pièce", key="cat_commande", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Commande"
             st.session_state.data["is_commande"] = True
             st.session_state.step = 2
             st.rerun()
-    with col2:
-        if st.button("❓  Autre appareil", key="cat_autre", use_container_width=True, type="secondary"):
+    
+    with col6:
+        if st.button("🔧  Autre appareil", key="cat_autre", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Autre"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 4
