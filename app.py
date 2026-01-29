@@ -2110,31 +2110,57 @@ def init_db():
     conn.close()
 
 def get_param(k):
+    """Récupère un paramètre (avec cache)"""
+    cache_key = f"_cache_param_{k}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    
     conn = get_db()
     r = conn.cursor().execute("SELECT valeur FROM params WHERE cle=?", (k,)).fetchone()
     conn.close()
-    return r["valeur"] if r else ""
+    result = r["valeur"] if r else ""
+    st.session_state[cache_key] = result
+    return result
 
 def set_param(k, v):
     conn = get_db()
     conn.cursor().execute("INSERT OR REPLACE INTO params (cle, valeur) VALUES (?, ?)", (k, v))
     conn.commit()
     conn.close()
+    # Invalider le cache
+    cache_key = f"_cache_param_{k}"
+    if cache_key in st.session_state:
+        del st.session_state[cache_key]
 
 def get_marques(cat):
+    """Récupère les marques pour une catégorie (avec cache)"""
+    # Cache en session pour éviter les requêtes répétées
+    cache_key = f"_cache_marques_{cat}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    
     conn = get_db()
     r = [row["marque"] for row in conn.cursor().execute(
         "SELECT marque FROM catalog_marques WHERE categorie=? ORDER BY marque", (cat,)).fetchall()]
     conn.close()
-    return r if r else ["Autre"]
+    result = r if r else MARQUES.get(cat, ["Autre"])
+    st.session_state[cache_key] = result
+    return result
 
 def get_modeles(cat, marque):
+    """Récupère les modèles pour une catégorie/marque (avec cache)"""
+    cache_key = f"_cache_modeles_{cat}_{marque}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    
     conn = get_db()
     r = [row["modele"] for row in conn.cursor().execute(
         "SELECT modele FROM catalog_modeles WHERE categorie=? AND marque=? ORDER BY modele", 
         (cat, marque)).fetchall()]
     conn.close()
-    return r if r else ["Autre"]
+    result = r if r else MODELES.get((cat, marque), ["Autre"])
+    st.session_state[cache_key] = result
+    return result
 
 def ajouter_marque(cat, marque):
     try:
@@ -7467,20 +7493,20 @@ def ui_auth(mode):
     with col2:
         pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input")
         
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("← Retour", use_container_width=True):
-                st.session_state.mode = None
+        st.write("")  # Espace
+        
+        if st.button("✅ Valider", type="primary", use_container_width=True):
+            # PIN unique 2626 pour accueil et technicien
+            if pin == "2626":
+                st.session_state.mode = target
+                st.session_state.auth = True
                 st.rerun()
-        with col_b:
-            if st.button("Valider", type="primary", use_container_width=True):
-                # PIN unique 2626 pour accueil et technicien
-                if pin == "2626":
-                    st.session_state.mode = target
-                    st.session_state.auth = True
-                    st.rerun()
-                else:
-                    st.error("Code PIN incorrect")
+            else:
+                st.error("Code PIN incorrect")
+        
+        if st.button("← Retour", use_container_width=True):
+            st.session_state.mode = None
+            st.rerun()
 
 # =============================================================================
 # MAIN
