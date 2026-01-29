@@ -2739,9 +2739,9 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 3mm; }}
-.ticket {{ width: 100%; }}
+html, body {{ margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 8px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 .bold {{ font-weight: bold; }}
 .header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 4px; }}
 .header h1 {{ font-size: 16px; font-weight: 900; }}
@@ -2819,9 +2819,9 @@ def ticket_staff_html(t):
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 3mm; }}
-.ticket {{ width: 100%; }}
+html, body {{ margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 8px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 .header {{ text-align: center; font-weight: bold; font-size: 12px; padding: 4px; border: 2px solid #000; margin-bottom: 6px; }}
 .ticket-num {{ text-align: center; font-size: 14px; font-weight: bold; padding: 4px; border: 1px solid #000; margin-bottom: 4px; }}
 .status {{ text-align: center; padding: 3px; border: 1px dashed #000; font-weight: bold; font-size: 9px; margin-bottom: 6px; }}
@@ -2832,22 +2832,8 @@ body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2
 .security-box .codes {{ font-size: 12px; font-weight: bold; }}
 .tarif-box {{ border: 1px solid #000; padding: 4px; margin: 5px 0; font-size: 10px; }}
 .notes-box {{ border: 1px dashed #000; padding: 4px; margin: 5px 0; font-size: 8px; }}
-.footer {{ text-align: center;
-    font-size: 9px;
-    padding-top: 5px;
-    border-top: 2px solid #000;
-    margin-top: 5px;
-}}
-.print-btn {{
-    display: block;
-    width: 100%;
-    padding: 8px;
-    margin-top: 8px;
-    background: #000;
-    color: #fff;
-    border: none;
-    font-size: 11px;
-    font-weight: bold;
+.footer {{ text-align: center; font-size: 9px; padding-top: 5px; border-top: 2px solid #000; margin-top: 5px; }}
+.print-btn {{ display: block; width: 100%; padding: 8px; margin-top: 8px; background: #000; color: #fff; border: none; font-size: 11px; font-weight: bold;
     cursor: pointer;
 }}
 @media print {{ .print-btn {{ display: none !important; }} }}
@@ -3019,9 +3005,9 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 3mm; }}
-.ticket {{ width: 100%; }}
+html, body {{ margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 8px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 .bold {{ font-weight: bold; }}
 .header {{ text-align: center; border: 2px solid #000; padding: 6px; margin-bottom: 6px; }}
 .header h1 {{ font-size: 18px; font-weight: 900; }}
@@ -3111,9 +3097,9 @@ def ticket_combined_html(t):
     .page-break {{ page-break-after: always; break-after: page; height: 1px; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 3mm; }}
-.ticket {{ width: 100%; margin-bottom: 8px; }}
+html, body {{ margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 8px; }}
+.ticket {{ width: 100%; max-width: 300px; margin-bottom: 8px; }}
 .bold {{ font-weight: bold; }}
 .header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 4px; }}
 .header h1 {{ font-size: 14px; font-weight: 900; }}
@@ -3305,7 +3291,7 @@ def ui_client():
                 st.rerun()
             
             if st.session_state.show_ticket_depot:
-                st.components.v1.html(ticket_client_html(t), height=500, scrolling=True)
+                st.components.v1.html(ticket_client_html(t), height=480, scrolling=False)
         
         # Forcer un rerun pour le compteur
         time.sleep(1)
@@ -4540,15 +4526,15 @@ def staff_traiter_demande(tid):
             
             # Affichage du ticket selon le type
             if ticket_type == "client":
-                st.components.v1.html(ticket_client_html(t), height=650, scrolling=True)
+                st.components.v1.html(ticket_client_html(t), height=450, scrolling=False)
             elif ticket_type == "staff":
-                st.components.v1.html(ticket_staff_html(t), height=700, scrolling=True)
+                st.components.v1.html(ticket_staff_html(t), height=400, scrolling=False)
             elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=800, scrolling=True)
+                st.components.v1.html(ticket_combined_html(t), height=750, scrolling=True)
             elif ticket_type == "devis":
-                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=700, scrolling=True)
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=420, scrolling=False)
             elif ticket_type == "facture":
-                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=700, scrolling=True)
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=420, scrolling=False)
     
     # === COLONNE DROITE: Actions ===
     with col2:
