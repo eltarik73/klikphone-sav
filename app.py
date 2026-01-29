@@ -2759,198 +2759,405 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Version IMPRESSION THERMIQUE - LISIBLE avec LOGO et QR GRAND
+    # Version IMPRESSION - Style EXACT du fichier fourni avec QR code
     return f"""<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<style>
-@media print {{
-    @page {{ size: 80mm auto; margin: 0; }}
-    html, body {{ width: 80mm; margin: 0; padding: 0; }}
-    .print-btn {{ display: none !important; }}
-}}
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; color: #000; padding: 12px; }}
-.ticket {{ width: 100%; max-width: 300px; }}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket de Réparation Client - Klikphone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {{
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }}
+        .ticket-container {{
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            box-sizing: border-box;
+        }}
+        h1 {{
+            color: #1f2937;
+            font-size: 1.6rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.4rem;
+        }}
+        h2 {{
+            color: #1f2937;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-bottom: 1px solid #000;
+            padding-bottom: 0.6rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.6rem;
+            text-align: center;
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+            margin-bottom: 0.8rem;
+        }}
+        .info-item {{
+            font-size: 0.85rem;
+            color: #4b5563;
+        }}
+        .info-item strong {{
+            color: #1f2937;
+            font-weight: normal;
+            display: inline;
+            margin-right: 0.2rem;
+        }}
+        .disclaimer {{
+            font-size: 0.65rem;
+            font-style: italic;
+            color: #6b7280;
+            margin-top: 1.2rem;
+            padding-top: 0.6rem;
+            border-top: 1px dashed #d1d5db;
+            line-height: 1.2;
+        }}
+        .disclaimer p {{
+            margin-bottom: 0.2rem;
+        }}
+        .contact-info {{
+            text-align: center;
+            font-size: 0.8rem;
+            color: #4b5563;
+            margin-bottom: 0.8rem;
+        }}
+        .contact-info p {{
+            margin: 0.1rem 0;
+        }}
+        .closing-message {{
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1.5rem;
+        }}
+        .qr-section {{
+            text-align: center;
+            padding: 1rem 0;
+            margin: 1rem 0;
+        }}
+        .qr-section img {{
+            width: 120px;
+            height: 120px;
+        }}
+        .qr-section p {{
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }}
+        .print-button-container {{
+            text-align: center;
+            margin-top: 1.5rem;
+        }}
+        .print-button {{
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }}
+        .print-button:hover {{
+            background-color: #4338ca;
+        }}
 
-.header {{ text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 10px; }}
-.header img {{ width: 50px; height: 50px; margin-bottom: 5px; }}
-.header h1 {{ font-size: 22px; font-weight: 900; margin: 5px 0; color: #000; }}
-.header p {{ font-size: 11px; margin: 3px 0; color: #000; }}
-
-.ticket-num {{ text-align: center; font-size: 20px; font-weight: bold; padding: 8px; border: 3px solid #000; margin-bottom: 10px; color: #000; }}
-
-.date {{ text-align: center; font-size: 12px; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; color: #000; }}
-
-.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 5px; color: #000; }}
-.section-content {{ font-size: 14px; margin: 4px 0; color: #000; }}
-
-.qr-section {{ text-align: center; padding: 15px 0; }}
-.qr-section img {{ width: 120px; height: 120px; }}
-.qr-section p {{ font-size: 10px; margin-top: 8px; color: #000; }}
-
-.conditions {{ font-size: 9px; line-height: 1.4; border-top: 1px dashed #000; padding-top: 8px; color: #000; }}
-
-.footer {{ text-align: center; font-weight: bold; font-size: 14px; padding-top: 10px; border-top: 3px solid #000; margin-top: 8px; color: #000; }}
-
-.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
-.print-btn:hover {{ background: #333; }}
-</style>
+        @media print {{
+            body {{
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                display: block;
+                min-height: auto;
+                width: 80mm;
+                max-width: 80mm;
+                font-family: 'monospace', sans-serif;
+                color: #000;
+            }}
+            .ticket-container {{
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                padding: 0.1rem;
+                max-width: 100%;
+                width: 100%;
+            }}
+            h1 {{ font-size: 0.85rem; margin-bottom: 0.05rem; color: #000; }}
+            h2 {{ font-size: 0.75rem; border-bottom: 1px solid #000; padding-bottom: 0.15rem; margin-top: 0.4rem; margin-bottom: 0.1rem; color: #000; text-align: center; }}
+            .info-grid {{ display: block; gap: 0; margin-top: 0.1rem; margin-bottom: 0.15rem; }}
+            .info-item {{ font-size: 0.65rem; color: #000; margin-bottom: 0.05rem; line-height: 1.05; }}
+            .info-item strong {{ display: inline; margin-right: 0.05rem; font-weight: normal; }}
+            .contact-info {{ font-size: 0.6rem; margin-bottom: 0.15rem; color: #000; }}
+            .contact-info p {{ margin: 0; }}
+            .disclaimer {{ font-size: 0.55rem; font-style: italic; margin-top: 0.5rem; padding-top: 0.25rem; border-top: 1px dashed #000; color: #000; line-height: 1.05; }}
+            .disclaimer p {{ margin-bottom: 0.05rem; }}
+            .closing-message {{ font-size: 0.7rem; margin-top: 0.6rem; color: #000; }}
+            .qr-section img {{ width: 80px; height: 80px; }}
+            .print-button-container {{ display: none; }}
+            img {{ max-width: 30px; height: auto; }}
+        }}
+    </style>
 </head>
 <body>
-<div class="ticket">
+    <div class="ticket-container">
+        <div class="flex justify-center mb-2">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="Logo Klikphone" class="h-16 w-16 object-contain">
+        </div>
+        <h1 class="text-gray-900">Ticket de Réparation Client</h1>
+        <div class="contact-info">
+            <p>www.klikphone.com</p>
+            <p>04 79 60 89 22</p>
+            <p>contact@klikphone.com</p>
+            <p>79 Place Saint Léger, 73000 Chambéry</p>
+        </div>
+        <p class="text-center text-gray-600 text-sm mb-3">Merci de conserver ce ticket. Il contient les informations clés de votre demande.</p>
 
-<div class="header">
-<img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-<h1>KLIKPHONE</h1>
-<p><strong>Spécialiste Apple</strong></p>
-<p>79 Place Saint Léger, 73000 Chambéry</p>
-<p style="font-size:13px;font-weight:bold;">Tél: 04 79 60 89 22</p>
-</div>
+        <h2 class="text-gray-800">Informations Client</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
+            <div class="info-item"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+        </div>
 
-<div class="ticket-num">N° {t['ticket_code']}</div>
+        <h2 class="text-gray-800">Détails de la Demande</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Numéro Commande:</strong> {t['ticket_code']}</div>
+            <div class="info-item"><strong>Modèle Téléphone:</strong> {t.get('marque','')} {modele_txt}</div>
+            <div class="info-item"><strong>Motif du Dépôt:</strong> {panne}</div>
+            <div class="info-item"><strong>Date du Dépôt:</strong> {fmt_date(t.get('date_depot',''))}</div>
+        </div>
 
-<div class="date">Déposé le {fmt_date(t.get('date_depot',''))}</div>
+        <h2 class="text-gray-800">Montant de la Réparation</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Estimation:</strong> {(t.get('devis_estime') or 0):.2f} €</div>
+            <div class="info-item"><strong>Acompte versé:</strong> {(t.get('acompte') or 0):.2f} €</div>
+        </div>
 
-<div class="section">
-<div class="section-title">👤 CLIENT</div>
-<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
-</div>
+        <div class="qr-section">
+            <img src="{qr_url}" alt="QR Code Suivi">
+            <p>Scannez pour suivre votre réparation en ligne</p>
+        </div>
 
-<div class="section">
-<div class="section-title">📱 APPAREIL</div>
-<div class="section-content"><strong>{t.get('marque','')} {modele_txt}</strong></div>
-</div>
+        <div class="disclaimer">
+            <p>À aucun moment Klikphone ne consulte ou n'entre en possession des données présentes dans votre appareil.</p>
+            <p>La perte de données pendant le service est toujours une possibilité. Nous vous demandons donc de bien vouloir veiller à la sauvegarde de vos données. Nous ne pourrons être tenus responsables d'une éventuelle perte de données sur votre matériel.</p>
+            <p>Un choc, une oxydation ou une mauvaise utilisation peut entraîner des dommages même après une réparation. Klikphone ne peut être tenu responsable d'un dysfonctionnement intervenant après la réparation (Réseau, Face ID...) même si ce dernier fonctionnait avant la réparation.</p>
+        </div>
 
-<div class="section">
-<div class="section-title">🔧 RÉPARATION</div>
-<div class="section-content"><strong>{panne}</strong></div>
-</div>
+        <p class="closing-message">Merci de votre confiance !</p>
 
-{tarif_section}
-
-<div class="qr-section">
-<img src="{qr_url}" alt="QR Code">
-<p>Scannez pour suivre votre réparation</p>
-</div>
-
-<div class="conditions">
-• Klikphone ne consulte pas vos données personnelles<br>
-• Pensez à sauvegarder vos données<br>
-• Klikphone décline toute responsabilité en cas de perte de données
-</div>
-
-<div class="footer">Merci de votre confiance !</div>
-
-<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LE TICKET</button>
-</div>
+        <div class="print-button-container">
+            <button class="print-button" onclick="window.print()">Imprimer ce Ticket</button>
+        </div>
+    </div>
 </body>
 </html>"""
 
 def ticket_staff_html(t):
-    """Ticket staff optimisé pour imprimante thermique 80mm"""
+    """Ticket staff - Style EXACT du fichier fourni"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele = t.get("modele", "")
     if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
     
-    # Notes (tronquer si trop long)
-    notes = t.get('notes_internes') or '-'
-    if len(notes) > 80:
-        notes = notes[:80] + "..."
+    notes = t.get('notes_internes') or 'N/A'
     
     return f"""<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<style>
-@media print {{
-    @page {{ size: 80mm auto; margin: 0; }}
-    html, body {{ width: 80mm; margin: 0; padding: 0; }}
-    .print-btn {{ display: none !important; }}
-}}
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: #000; padding: 12px; }}
-.ticket {{ width: 100%; max-width: 300px; }}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket de Réparation Interne - Klikphone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {{
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }}
+        .ticket-container {{
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            box-sizing: border-box;
+        }}
+        h1 {{
+            color: #1f2937;
+            font-size: 1.6rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.4rem;
+        }}
+        h2 {{
+            color: #1f2937;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-bottom: 1px solid #000;
+            padding-bottom: 0.6rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.6rem;
+            text-align: center;
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+            margin-bottom: 0.8rem;
+        }}
+        .info-item {{
+            font-size: 0.85rem;
+            color: #4b5563;
+        }}
+        .info-item strong {{
+            color: #1f2937;
+            font-weight: normal;
+            display: inline;
+            margin-right: 0.2rem;
+        }}
+        .contact-info {{
+            text-align: center;
+            font-size: 0.8rem;
+            color: #4b5563;
+            margin-bottom: 0.8rem;
+        }}
+        .contact-info p {{
+            margin: 0.1rem 0;
+        }}
+        .closing-message {{
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1.5rem;
+        }}
+        .print-button-container {{
+            text-align: center;
+            margin-top: 1.5rem;
+        }}
+        .print-button {{
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }}
+        .print-button:hover {{
+            background-color: #4338ca;
+        }}
 
-.header {{ text-align: center; border: 3px solid #000; padding: 8px; margin-bottom: 10px; }}
-.header img {{ width: 40px; height: 40px; }}
-.header h1 {{ font-size: 16px; font-weight: 900; margin: 5px 0; }}
-
-.ticket-num {{ text-align: center; font-size: 18px; font-weight: bold; padding: 8px; border: 3px solid #000; margin-bottom: 8px; }}
-
-.status {{ text-align: center; padding: 6px; border: 2px dashed #000; font-weight: bold; font-size: 13px; margin-bottom: 10px; }}
-
-.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 4px; }}
-.section-content {{ font-size: 13px; margin: 3px 0; }}
-
-.security-box {{ border: 3px solid #000; padding: 10px; margin: 10px 0; text-align: center; background: #f5f5f5; }}
-.security-box .title {{ font-weight: bold; font-size: 12px; margin-bottom: 5px; }}
-.security-box .codes {{ font-size: 16px; font-weight: bold; }}
-
-.tarif-box {{ border: 2px solid #000; padding: 8px; margin: 8px 0; font-size: 13px; }}
-
-.notes-box {{ border: 2px dashed #000; padding: 8px; margin: 8px 0; font-size: 11px; }}
-
-.footer {{ text-align: center; font-size: 12px; padding-top: 8px; border-top: 3px solid #000; margin-top: 8px; }}
-
-.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
-</style>
+        @media print {{
+            body {{
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                display: block;
+                min-height: auto;
+                width: 80mm;
+                max-width: 80mm;
+                font-family: 'monospace', sans-serif;
+                color: #000;
+            }}
+            .ticket-container {{
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                padding: 0.1rem;
+                max-width: 100%;
+                width: 100%;
+            }}
+            h1 {{ font-size: 0.85rem; margin-bottom: 0.05rem; color: #000; }}
+            h2 {{ font-size: 0.75rem; border-bottom: 1px solid #000; padding-bottom: 0.15rem; margin-top: 0.4rem; margin-bottom: 0.1rem; color: #000; text-align: center; }}
+            .info-grid {{ display: block; gap: 0; margin-top: 0.1rem; margin-bottom: 0.15rem; }}
+            .info-item {{ font-size: 0.65rem; color: #000; margin-bottom: 0.05rem; line-height: 1.05; }}
+            .info-item strong {{ display: inline; margin-right: 0.05rem; font-weight: normal; }}
+            .contact-info {{ font-size: 0.6rem; margin-bottom: 0.15rem; color: #000; }}
+            .contact-info p {{ margin: 0; }}
+            .closing-message {{ font-size: 0.7rem; margin-top: 0.6rem; color: #000; }}
+            .print-button-container {{ display: none; }}
+            img {{ max-width: 30px; height: auto; }}
+        }}
+    </style>
 </head>
 <body>
-<div class="ticket">
+    <div class="ticket-container">
+        <div class="flex justify-center mb-2">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="Logo Klikphone" class="h-16 w-16 object-contain">
+        </div>
+        <h1 class="text-gray-900">Ticket de Réparation Interne</h1>
+        <div class="contact-info">
+            <p>www.klikphone.com</p>
+            <p>04 79 60 89 22</p>
+            <p>contact@klikphone.com</p>
+            <p>79 Place Saint Léger, 73000 Chambéry</p>
+        </div>
+        <p class="text-center text-gray-600 text-sm mb-3">Merci de conserver ce ticket pour le suivi interne.</p>
 
-<div class="header">
-<img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-<h1>★ TICKET STAFF ★</h1>
-</div>
+        <h2 class="text-gray-800">Informations Client</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Nom:</strong> {t.get('client_nom','')}</div>
+            <div class="info-item"><strong>Prénom:</strong> {t.get('client_prenom','')}</div>
+            <div class="info-item"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+        </div>
 
-<div class="ticket-num">{t['ticket_code']}</div>
+        <h2 class="text-gray-800">Détails de la Demande Client</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Numéro Commande:</strong> {t['ticket_code']}</div>
+            <div class="info-item"><strong>Modèle Téléphone:</strong> {t.get('marque','')} {modele}</div>
+            <div class="info-item"><strong>Motif du Dépôt:</strong> {panne}</div>
+            <div class="info-item"><strong>Date du Dépôt:</strong> {fmt_date(t.get('date_depot',''))}</div>
+            <div class="info-item"><strong>Code PIN:</strong> {t.get('pin') or 'N/A'}</div>
+            <div class="info-item"><strong>Schéma:</strong> {t.get('pattern') or 'N/A'}</div>
+        </div>
 
-<div class="status">STATUT: {t.get('statut','')}</div>
+        <h2 class="text-gray-800">Détails de Traitement Atelier</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Statut Réparation:</strong> {t.get('statut','')}</div>
+            <div class="info-item"><strong>Devis Estimé:</strong> {fmt_prix(t.get('devis_estime'))}</div>
+            <div class="info-item"><strong>Acompte:</strong> {fmt_prix(t.get('acompte'))}</div>
+            <div class="info-item"><strong>Tarif Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
+            <div class="info-item"><strong>Commentaire Interne:</strong> {notes}</div>
+        </div>
 
-<div class="section">
-<div class="section-title">👤 CLIENT</div>
-<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
-</div>
+        <p class="closing-message">Ticket interne pour le suivi de la réparation.</p>
 
-<div class="section">
-<div class="section-title">📱 APPAREIL</div>
-<div class="section-content"><strong>{t.get('marque','')} {modele}</strong></div>
-</div>
-
-<div class="security-box">
-<div class="title">🔐 CODES SÉCURITÉ</div>
-<div class="codes">PIN: {t.get('pin') or '----'}</div>
-<div class="codes">Schéma: {t.get('pattern') or '----'}</div>
-</div>
-
-<div class="section">
-<div class="section-title">🔧 PANNE</div>
-<div class="section-content"><strong>{panne}</strong></div>
-</div>
-
-<div class="tarif-box">
-<div>Devis: <strong>{fmt_prix(t.get('devis_estime'))}</strong></div>
-<div>Acompte: <strong>{fmt_prix(t.get('acompte'))}</strong></div>
-<div style="margin-top:5px;border-top:1px solid #000;padding-top:5px;">Final: <strong>{fmt_prix(t.get('tarif_final'))}</strong></div>
-</div>
-
-<div class="notes-box">
-<strong>NOTES:</strong> {notes}
-</div>
-
-<div class="footer">Dépôt: {fmt_date(t.get('date_depot',''))}</div>
-
-<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
-</div>
+        <div class="print-button-container">
+            <button class="print-button" onclick="window.print()">Imprimer ce Ticket</button>
+        </div>
+    </div>
 </body>
 </html>"""
 
@@ -3060,93 +3267,217 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # VERSION IMPRESSION THERMIQUE - LISIBLE avec LOGO
-    rep_supp_line = f"<div class='section-content'>+ {rep_supp}: <strong>{prix_supp:.2f}€</strong></div>" if rep_supp else ""
+    # VERSION IMPRESSION - Style EXACT du fichier fourni
+    rep_supp_line = f'<div class="info-item"><strong>Réparation supplémentaire:</strong> {rep_supp} - {prix_supp:.2f} €</div>' if rep_supp else ""
     
     return f"""<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<style>
-@media print {{
-    @page {{ size: 80mm auto; margin: 0; }}
-    html, body {{ width: 80mm; margin: 0; padding: 0; }}
-    .print-btn {{ display: none !important; }}
-}}
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: #000; padding: 12px; }}
-.ticket {{ width: 100%; max-width: 300px; }}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{doc_title} - Klikphone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {{
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }}
+        .ticket-container {{
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            box-sizing: border-box;
+        }}
+        h1 {{
+            color: #1f2937;
+            font-size: 1.6rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.4rem;
+        }}
+        h2 {{
+            color: #1f2937;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-bottom: 1px solid #000;
+            padding-bottom: 0.6rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.6rem;
+            text-align: center;
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+            margin-bottom: 0.8rem;
+        }}
+        .info-item {{
+            font-size: 0.85rem;
+            color: #4b5563;
+        }}
+        .info-item strong {{
+            color: #1f2937;
+            font-weight: normal;
+            display: inline;
+            margin-right: 0.2rem;
+        }}
+        .total-box {{
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            text-align: center;
+        }}
+        .total-box .amount {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }}
+        .contact-info {{
+            text-align: center;
+            font-size: 0.8rem;
+            color: #4b5563;
+            margin-bottom: 0.8rem;
+        }}
+        .contact-info p {{
+            margin: 0.1rem 0;
+        }}
+        .disclaimer {{
+            font-size: 0.65rem;
+            font-style: italic;
+            color: #6b7280;
+            margin-top: 1.2rem;
+            padding-top: 0.6rem;
+            border-top: 1px dashed #d1d5db;
+            line-height: 1.2;
+            text-align: center;
+        }}
+        .closing-message {{
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1.5rem;
+        }}
+        .print-button-container {{
+            text-align: center;
+            margin-top: 1.5rem;
+        }}
+        .print-button {{
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }}
+        .print-button:hover {{
+            background-color: #4338ca;
+        }}
 
-.header {{ text-align: center; border: 3px solid #000; padding: 10px; margin-bottom: 10px; }}
-.header img {{ width: 40px; height: 40px; }}
-.header h1 {{ font-size: 20px; font-weight: 900; margin: 5px 0; }}
-.header p {{ font-size: 10px; }}
-
-.doc-info {{ text-align: center; font-size: 13px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px dashed #000; }}
-.doc-info .num {{ font-size: 16px; font-weight: bold; margin-bottom: 4px; }}
-
-.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 4px; }}
-.section-content {{ font-size: 13px; margin: 3px 0; }}
-
-.totals {{ padding: 10px 0; }}
-.total-line {{ display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }}
-.total-main {{ font-size: 16px; font-weight: bold; border-top: 3px solid #000; padding-top: 8px; margin-top: 5px; }}
-
-.total-reste {{ font-size: 18px; font-weight: bold; border: 3px solid #000; padding: 10px; margin-top: 10px; text-align: center; }}
-
-.footer {{ text-align: center; font-size: 10px; padding-top: 10px; border-top: 3px solid #000; margin-top: 8px; }}
-
-.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
-</style>
+        @media print {{
+            body {{
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                display: block;
+                min-height: auto;
+                width: 80mm;
+                max-width: 80mm;
+                font-family: 'monospace', sans-serif;
+                color: #000;
+            }}
+            .ticket-container {{
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                padding: 0.1rem;
+                max-width: 100%;
+                width: 100%;
+            }}
+            h1 {{ font-size: 0.85rem; margin-bottom: 0.05rem; color: #000; }}
+            h2 {{ font-size: 0.75rem; border-bottom: 1px solid #000; padding-bottom: 0.15rem; margin-top: 0.4rem; margin-bottom: 0.1rem; color: #000; text-align: center; }}
+            .info-grid {{ display: block; gap: 0; margin-top: 0.1rem; margin-bottom: 0.15rem; }}
+            .info-item {{ font-size: 0.65rem; color: #000; margin-bottom: 0.05rem; line-height: 1.05; }}
+            .info-item strong {{ display: inline; margin-right: 0.05rem; font-weight: normal; }}
+            .contact-info {{ font-size: 0.6rem; margin-bottom: 0.15rem; color: #000; }}
+            .contact-info p {{ margin: 0; }}
+            .total-box {{ background-color: #fff; border: 1px solid #000; padding: 0.3rem; }}
+            .total-box .amount {{ font-size: 0.9rem; }}
+            .disclaimer {{ font-size: 0.55rem; }}
+            .closing-message {{ font-size: 0.7rem; margin-top: 0.6rem; color: #000; }}
+            .print-button-container {{ display: none; }}
+            img {{ max-width: 30px; height: auto; }}
+        }}
+    </style>
 </head>
 <body>
-<div class="ticket">
+    <div class="ticket-container">
+        <div class="flex justify-center mb-2">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="Logo Klikphone" class="h-16 w-16 object-contain">
+        </div>
+        <h1 class="text-gray-900">{doc_title}</h1>
+        <div class="contact-info">
+            <p>www.klikphone.com</p>
+            <p>04 79 60 89 22</p>
+            <p>contact@klikphone.com</p>
+            <p>79 Place Saint Léger, 73000 Chambéry</p>
+        </div>
+        <p class="text-center text-gray-600 text-sm mb-3">{doc_num} - {date_doc}</p>
 
-<div class="header">
-<img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-<h1>{doc_title}</h1>
-<p>KLIKPHONE - 79 Pl. Saint Léger</p>
-<p style="font-weight:bold;">Tél: 04 79 60 89 22</p>
-</div>
+        <h2 class="text-gray-800">Informations Client</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
+            <div class="info-item"><strong>Téléphone:</strong> {t.get('client_tel','')}</div>
+        </div>
 
-<div class="doc-info">
-<div class="num">{doc_num}</div>
-<div>Date: {date_doc}</div>
-</div>
+        <h2 class="text-gray-800">Appareil</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Modèle:</strong> {t.get('marque','')} {modele_txt}</div>
+        </div>
 
-<div class="section">
-<div class="section-title">👤 CLIENT</div>
-<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
-</div>
+        <h2 class="text-gray-800">Prestations</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Réparation:</strong> {panne} - {devis_val:.2f} €</div>
+            {rep_supp_line}
+        </div>
 
-<div class="section">
-<div class="section-title">📱 APPAREIL</div>
-<div class="section-content"><strong>{t.get('marque','')} {modele_txt}</strong></div>
-</div>
+        <h2 class="text-gray-800">Récapitulatif</h2>
+        <div class="info-grid">
+            <div class="info-item"><strong>Total TTC:</strong> {total_ttc:.2f} €</div>
+            <div class="info-item"><strong>dont TVA (20%):</strong> {tva:.2f} €</div>
+            <div class="info-item"><strong>Acompte versé:</strong> {acompte_val:.2f} €</div>
+        </div>
 
-<div class="section">
-<div class="section-title">🔧 PRESTATION</div>
-<div class="section-content">{panne}: <strong>{devis_val:.2f}€</strong></div>
-{rep_supp_line}
-</div>
+        <div class="total-box">
+            <p>Reste à payer</p>
+            <p class="amount">{reste:.2f} €</p>
+        </div>
 
-<div class="totals">
-<div class="total-line total-main"><span>TOTAL TTC</span><span>{total_ttc:.2f} €</span></div>
-<div class="total-line" style="font-size:10px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
-<div class="total-line"><span>Acompte versé</span><span>- {acompte_val:.2f} €</span></div>
-</div>
+        <div class="disclaimer">
+            {"Ce devis est valable 30 jours. Les prix sont susceptibles de modification après diagnostic." if not is_facture else "Merci pour votre confiance ! Ce ticket ne fait pas office de facture."}
+        </div>
 
-<div class="total-reste">RESTE À PAYER: {reste:.2f} €</div>
+        <p class="closing-message">{"" if not is_facture else "Merci de votre confiance !"}</p>
 
-<div class="footer">
-{"Devis valable 30 jours" if not is_facture else "Merci ! Ce ticket ne fait pas office de facture."}
-</div>
-
-<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
-</div>
+        <div class="print-button-container">
+            <button class="print-button" onclick="window.print()">Imprimer ce Ticket</button>
+        </div>
+    </div>
 </body>
 </html>"""
 
@@ -3378,7 +3709,7 @@ def ui_client():
                 st.rerun()
             
             if st.session_state.show_ticket_depot:
-                st.components.v1.html(ticket_client_html(t), height=650, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=850, scrolling=True)
         
         # Forcer un rerun pour le compteur
         time.sleep(1)
@@ -4613,15 +4944,15 @@ def staff_traiter_demande(tid):
             
             # Affichage du ticket selon le type
             if ticket_type == "client":
-                st.components.v1.html(ticket_client_html(t), height=650, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=850, scrolling=True)
             elif ticket_type == "staff":
-                st.components.v1.html(ticket_staff_html(t), height=620, scrolling=False)
+                st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
             elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=950, scrolling=True)
+                st.components.v1.html(ticket_combined_html(t), height=1000, scrolling=True)
             elif ticket_type == "devis":
-                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=620, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=800, scrolling=True)
             elif ticket_type == "facture":
-                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=620, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=800, scrolling=True)
     
     # === COLONNE DROITE: Actions ===
     with col2:
