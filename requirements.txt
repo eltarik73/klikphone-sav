@@ -2,3 +2,4 @@ streamlit>=1.28.0
 qrcode[pil]
 Pillow
 openpyxl
+psycopg2-binary
