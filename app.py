@@ -2700,7 +2700,7 @@ def ticket_client_html(t, for_email=False):
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
     ticket_code = t.get('ticket_code', '')
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={urllib.parse.quote(url_suivi_ticket)}"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(url_suivi_ticket)}"
     
     # Version EMAIL (colorée)
     if for_email:
@@ -2759,44 +2759,45 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Version IMPRESSION THERMIQUE - COMPACT 80x200mm avec LOGO
+    # Version IMPRESSION THERMIQUE - LISIBLE avec LOGO et QR GRAND
     return f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{ size: 80mm 200mm !important; margin: 0 !important; }}
-    html, body {{ width: 80mm !important; max-height: 200mm !important; margin: 0 !important; padding: 0 !important; }}
+    @page {{ size: 80mm auto; margin: 0; }}
+    html, body {{ width: 80mm; margin: 0; padding: 0; }}
     .print-btn {{ display: none !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #000; padding: 8px; max-width: 80mm; }}
-.ticket {{ width: 100%; }}
+body {{ font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; color: #000; padding: 12px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 
-.header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }}
-.header img {{ width: 40px; height: 40px; margin-bottom: 4px; }}
-.header h1 {{ font-size: 18px; font-weight: 900; margin: 4px 0; }}
-.header p {{ font-size: 9px; margin: 2px 0; }}
+.header {{ text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 10px; }}
+.header img {{ width: 50px; height: 50px; margin-bottom: 5px; }}
+.header h1 {{ font-size: 22px; font-weight: 900; margin: 5px 0; color: #000; }}
+.header p {{ font-size: 11px; margin: 3px 0; color: #000; }}
 
-.ticket-num {{ text-align: center; font-size: 16px; font-weight: bold; padding: 6px; border: 2px solid #000; margin-bottom: 8px; }}
+.ticket-num {{ text-align: center; font-size: 20px; font-weight: bold; padding: 8px; border: 3px solid #000; margin-bottom: 10px; color: #000; }}
 
-.date {{ text-align: center; font-size: 10px; margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 6px; }}
+.date {{ text-align: center; font-size: 12px; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; color: #000; }}
 
-.section {{ padding: 6px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 4px; }}
-.section-content {{ font-size: 12px; margin: 3px 0; }}
+.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
+.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 5px; color: #000; }}
+.section-content {{ font-size: 14px; margin: 4px 0; color: #000; }}
 
-.qr-section {{ text-align: center; padding: 8px 0; }}
-.qr-section img {{ width: 60px; height: 60px; }}
-.qr-section p {{ font-size: 8px; margin-top: 4px; }}
+.qr-section {{ text-align: center; padding: 15px 0; }}
+.qr-section img {{ width: 120px; height: 120px; }}
+.qr-section p {{ font-size: 10px; margin-top: 8px; color: #000; }}
 
-.conditions {{ font-size: 8px; line-height: 1.3; border-top: 1px dashed #000; padding-top: 6px; }}
+.conditions {{ font-size: 9px; line-height: 1.4; border-top: 1px dashed #000; padding-top: 8px; color: #000; }}
 
-.footer {{ text-align: center; font-weight: bold; font-size: 11px; padding-top: 8px; border-top: 2px solid #000; margin-top: 6px; }}
+.footer {{ text-align: center; font-weight: bold; font-size: 14px; padding-top: 10px; border-top: 3px solid #000; margin-top: 8px; color: #000; }}
 
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 10px; background: #000; color: #fff; border: none; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
+.print-btn:hover {{ background: #333; }}
 </style>
 </head>
 <body>
@@ -2805,9 +2806,9 @@ body {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4
 <div class="header">
 <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
 <h1>KLIKPHONE</h1>
-<p>Spécialiste Apple</p>
+<p><strong>Spécialiste Apple</strong></p>
 <p>79 Place Saint Léger, 73000 Chambéry</p>
-<p>Tél: 04 79 60 89 22</p>
+<p style="font-size:13px;font-weight:bold;">Tél: 04 79 60 89 22</p>
 </div>
 
 <div class="ticket-num">N° {t['ticket_code']}</div>
@@ -2817,7 +2818,7 @@ body {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4
 <div class="section">
 <div class="section-title">👤 CLIENT</div>
 <div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: {t.get('client_tel','')}</div>
+<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
 </div>
 
 <div class="section">
@@ -2833,7 +2834,7 @@ body {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4
 {tarif_section}
 
 <div class="qr-section">
-<img src="{qr_url}" alt="QR">
+<img src="{qr_url}" alt="QR Code">
 <p>Scannez pour suivre votre réparation</p>
 </div>
 
@@ -2845,13 +2846,13 @@ body {{ font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4
 
 <div class="footer">Merci de votre confiance !</div>
 
-<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
+<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER LE TICKET</button>
 </div>
 </body>
 </html>"""
 
 def ticket_staff_html(t):
-    """Ticket staff optimisé pour imprimante thermique 80x200mm"""
+    """Ticket staff optimisé pour imprimante thermique 80mm"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele = t.get("modele", "")
@@ -2859,8 +2860,8 @@ def ticket_staff_html(t):
     
     # Notes (tronquer si trop long)
     notes = t.get('notes_internes') or '-'
-    if len(notes) > 100:
-        notes = notes[:100] + "..."
+    if len(notes) > 80:
+        notes = notes[:80] + "..."
     
     return f"""<!DOCTYPE html>
 <html>
@@ -2868,38 +2869,38 @@ def ticket_staff_html(t):
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{ size: 80mm 200mm !important; margin: 0 !important; }}
-    html, body {{ width: 80mm !important; max-height: 200mm !important; margin: 0 !important; padding: 0 !important; }}
+    @page {{ size: 80mm auto; margin: 0; }}
+    html, body {{ width: 80mm; margin: 0; padding: 0; }}
     .print-btn {{ display: none !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; color: #000; padding: 8px; max-width: 80mm; }}
-.ticket {{ width: 100%; }}
+body {{ font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: #000; padding: 12px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 
-.header {{ text-align: center; border: 2px solid #000; padding: 6px; margin-bottom: 8px; }}
-.header img {{ width: 35px; height: 35px; }}
-.header h1 {{ font-size: 14px; font-weight: 900; margin: 4px 0; }}
+.header {{ text-align: center; border: 3px solid #000; padding: 8px; margin-bottom: 10px; }}
+.header img {{ width: 40px; height: 40px; }}
+.header h1 {{ font-size: 16px; font-weight: 900; margin: 5px 0; }}
 
-.ticket-num {{ text-align: center; font-size: 16px; font-weight: bold; padding: 6px; border: 2px solid #000; margin-bottom: 6px; }}
+.ticket-num {{ text-align: center; font-size: 18px; font-weight: bold; padding: 8px; border: 3px solid #000; margin-bottom: 8px; }}
 
-.status {{ text-align: center; padding: 5px; border: 1px dashed #000; font-weight: bold; font-size: 11px; margin-bottom: 8px; }}
+.status {{ text-align: center; padding: 6px; border: 2px dashed #000; font-weight: bold; font-size: 13px; margin-bottom: 10px; }}
 
-.section {{ padding: 5px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 3px; }}
-.section-content {{ font-size: 11px; margin: 2px 0; }}
+.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
+.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 4px; }}
+.section-content {{ font-size: 13px; margin: 3px 0; }}
 
-.security-box {{ border: 2px solid #000; padding: 6px; margin: 6px 0; text-align: center; background: #f5f5f5; }}
-.security-box .title {{ font-weight: bold; font-size: 10px; margin-bottom: 4px; }}
-.security-box .codes {{ font-size: 14px; font-weight: bold; }}
+.security-box {{ border: 3px solid #000; padding: 10px; margin: 10px 0; text-align: center; background: #f5f5f5; }}
+.security-box .title {{ font-weight: bold; font-size: 12px; margin-bottom: 5px; }}
+.security-box .codes {{ font-size: 16px; font-weight: bold; }}
 
-.tarif-box {{ border: 1px solid #000; padding: 5px; margin: 5px 0; font-size: 11px; }}
+.tarif-box {{ border: 2px solid #000; padding: 8px; margin: 8px 0; font-size: 13px; }}
 
-.notes-box {{ border: 1px dashed #000; padding: 5px; margin: 5px 0; font-size: 9px; }}
+.notes-box {{ border: 2px dashed #000; padding: 8px; margin: 8px 0; font-size: 11px; }}
 
-.footer {{ text-align: center; font-size: 10px; padding-top: 6px; border-top: 2px solid #000; margin-top: 6px; }}
+.footer {{ text-align: center; font-size: 12px; padding-top: 8px; border-top: 3px solid #000; margin-top: 8px; }}
 
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 10px; background: #000; color: #fff; border: none; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
 </style>
 </head>
 <body>
@@ -2907,7 +2908,7 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 
 <div class="header">
 <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-<h1>TICKET STAFF</h1>
+<h1>★ TICKET STAFF ★</h1>
 </div>
 
 <div class="ticket-num">{t['ticket_code']}</div>
@@ -2917,7 +2918,7 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 <div class="section">
 <div class="section-title">👤 CLIENT</div>
 <div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: {t.get('client_tel','')}</div>
+<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
 </div>
 
 <div class="section">
@@ -2927,7 +2928,8 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 
 <div class="security-box">
 <div class="title">🔐 CODES SÉCURITÉ</div>
-<div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
+<div class="codes">PIN: {t.get('pin') or '----'}</div>
+<div class="codes">Schéma: {t.get('pattern') or '----'}</div>
 </div>
 
 <div class="section">
@@ -2936,8 +2938,9 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 </div>
 
 <div class="tarif-box">
-<div>Devis: <strong>{fmt_prix(t.get('devis_estime'))}</strong> | Acompte: <strong>{fmt_prix(t.get('acompte'))}</strong></div>
-<div>Final: <strong>{fmt_prix(t.get('tarif_final'))}</strong></div>
+<div>Devis: <strong>{fmt_prix(t.get('devis_estime'))}</strong></div>
+<div>Acompte: <strong>{fmt_prix(t.get('acompte'))}</strong></div>
+<div style="margin-top:5px;border-top:1px solid #000;padding-top:5px;">Final: <strong>{fmt_prix(t.get('tarif_final'))}</strong></div>
 </div>
 
 <div class="notes-box">
@@ -3057,7 +3060,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # VERSION IMPRESSION THERMIQUE - COMPACT 80x200mm avec LOGO
+    # VERSION IMPRESSION THERMIQUE - LISIBLE avec LOGO
     rep_supp_line = f"<div class='section-content'>+ {rep_supp}: <strong>{prix_supp:.2f}€</strong></div>" if rep_supp else ""
     
     return f"""<!DOCTYPE html>
@@ -3066,36 +3069,36 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{ size: 80mm 200mm !important; margin: 0 !important; }}
-    html, body {{ width: 80mm !important; max-height: 200mm !important; margin: 0 !important; padding: 0 !important; }}
+    @page {{ size: 80mm auto; margin: 0; }}
+    html, body {{ width: 80mm; margin: 0; padding: 0; }}
     .print-btn {{ display: none !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ margin: 0; padding: 0; background: #fff; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; color: #000; padding: 8px; max-width: 80mm; }}
-.ticket {{ width: 100%; }}
+body {{ font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: #000; padding: 12px; }}
+.ticket {{ width: 100%; max-width: 300px; }}
 
-.header {{ text-align: center; border: 2px solid #000; padding: 8px; margin-bottom: 8px; }}
-.header img {{ width: 35px; height: 35px; }}
-.header h1 {{ font-size: 18px; font-weight: 900; margin: 4px 0; }}
-.header p {{ font-size: 9px; }}
+.header {{ text-align: center; border: 3px solid #000; padding: 10px; margin-bottom: 10px; }}
+.header img {{ width: 40px; height: 40px; }}
+.header h1 {{ font-size: 20px; font-weight: 900; margin: 5px 0; }}
+.header p {{ font-size: 10px; }}
 
-.doc-info {{ text-align: center; font-size: 11px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #000; }}
-.doc-info .num {{ font-size: 14px; font-weight: bold; margin-bottom: 3px; }}
+.doc-info {{ text-align: center; font-size: 13px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px dashed #000; }}
+.doc-info .num {{ font-size: 16px; font-weight: bold; margin-bottom: 4px; }}
 
-.section {{ padding: 6px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 3px; }}
-.section-content {{ font-size: 11px; margin: 2px 0; }}
+.section {{ padding: 8px 0; border-bottom: 1px dashed #000; }}
+.section-title {{ font-weight: bold; font-size: 12px; text-decoration: underline; margin-bottom: 4px; }}
+.section-content {{ font-size: 13px; margin: 3px 0; }}
 
-.totals {{ padding: 8px 0; }}
-.total-line {{ display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; }}
-.total-main {{ font-size: 14px; font-weight: bold; border-top: 2px solid #000; padding-top: 6px; margin-top: 4px; }}
+.totals {{ padding: 10px 0; }}
+.total-line {{ display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }}
+.total-main {{ font-size: 16px; font-weight: bold; border-top: 3px solid #000; padding-top: 8px; margin-top: 5px; }}
 
-.total-reste {{ font-size: 16px; font-weight: bold; border: 2px solid #000; padding: 8px; margin-top: 8px; text-align: center; }}
+.total-reste {{ font-size: 18px; font-weight: bold; border: 3px solid #000; padding: 10px; margin-top: 10px; text-align: center; }}
 
-.footer {{ text-align: center; font-size: 9px; padding-top: 8px; border-top: 2px solid #000; margin-top: 6px; }}
+.footer {{ text-align: center; font-size: 10px; padding-top: 10px; border-top: 3px solid #000; margin-top: 8px; }}
 
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 10px; background: #000; color: #fff; border: none; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+.print-btn {{ display: block; width: 100%; padding: 12px; margin-top: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
 </style>
 </head>
 <body>
@@ -3104,8 +3107,8 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 <div class="header">
 <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
 <h1>{doc_title}</h1>
-<p>KLIKPHONE - 79 Pl. Saint Léger, 73000 Chambéry</p>
-<p>Tél: 04 79 60 89 22</p>
+<p>KLIKPHONE - 79 Pl. Saint Léger</p>
+<p style="font-weight:bold;">Tél: 04 79 60 89 22</p>
 </div>
 
 <div class="doc-info">
@@ -3116,7 +3119,7 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 <div class="section">
 <div class="section-title">👤 CLIENT</div>
 <div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div class="section-content">Tél: {t.get('client_tel','')}</div>
+<div class="section-content">Tél: <strong>{t.get('client_tel','')}</strong></div>
 </div>
 
 <div class="section">
@@ -3132,14 +3135,14 @@ body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3
 
 <div class="totals">
 <div class="total-line total-main"><span>TOTAL TTC</span><span>{total_ttc:.2f} €</span></div>
-<div class="total-line" style="font-size:9px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
+<div class="total-line" style="font-size:10px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
 <div class="total-line"><span>Acompte versé</span><span>- {acompte_val:.2f} €</span></div>
 </div>
 
 <div class="total-reste">RESTE À PAYER: {reste:.2f} €</div>
 
 <div class="footer">
-{"Devis valable 30 jours - Prix susceptibles de modification" if not is_facture else "Merci ! Ce ticket ne fait pas office de facture."}
+{"Devis valable 30 jours" if not is_facture else "Merci ! Ce ticket ne fait pas office de facture."}
 </div>
 
 <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
@@ -3163,7 +3166,7 @@ def ticket_combined_html(t):
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
     ticket_code = t.get('ticket_code', '')
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
-    qr_url_val = f"https://api.qrserver.com/v1/create-qr-code/?size=60x60&data={urllib.parse.quote(url_suivi_ticket)}"
+    qr_url_val = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={urllib.parse.quote(url_suivi_ticket)}"
     
     # Notes
     notes = t.get('notes_internes') or '-'
@@ -3375,7 +3378,7 @@ def ui_client():
                 st.rerun()
             
             if st.session_state.show_ticket_depot:
-                st.components.v1.html(ticket_client_html(t), height=580, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=650, scrolling=False)
         
         # Forcer un rerun pour le compteur
         time.sleep(1)
@@ -4610,15 +4613,15 @@ def staff_traiter_demande(tid):
             
             # Affichage du ticket selon le type
             if ticket_type == "client":
-                st.components.v1.html(ticket_client_html(t), height=580, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=650, scrolling=False)
             elif ticket_type == "staff":
-                st.components.v1.html(ticket_staff_html(t), height=550, scrolling=False)
+                st.components.v1.html(ticket_staff_html(t), height=620, scrolling=False)
             elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=900, scrolling=True)
+                st.components.v1.html(ticket_combined_html(t), height=950, scrolling=True)
             elif ticket_type == "devis":
-                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=580, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=620, scrolling=False)
             elif ticket_type == "facture":
-                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=580, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=620, scrolling=False)
     
     # === COLONNE DROITE: Actions ===
     with col2:
@@ -5542,6 +5545,14 @@ def staff_attestation():
     
     st.markdown("---")
     
+    # Initialiser les valeurs si pas encore fait
+    if 'att_nom' not in st.session_state:
+        st.session_state.att_nom = ''
+    if 'att_prenom' not in st.session_state:
+        st.session_state.att_prenom = ''
+    if 'att_email' not in st.session_state:
+        st.session_state.att_email = ''
+    
     # Option pour sélectionner un client existant
     st.markdown("##### 👤 Informations client")
     
@@ -5561,28 +5572,24 @@ def staff_attestation():
                     idx = options.index(selected) - 1
                     client = clients_found[idx]
                     
-                    # Pré-remplir les champs
-                    st.session_state.att_nom_val = client['nom']
-                    st.session_state.att_prenom_val = client['prenom']
-                    st.session_state.att_email_val = client.get('email', '')
-                    st.success(f"✅ Client sélectionné: {client['nom']} {client['prenom']}")
+                    # Pré-remplir les champs directement dans session_state
+                    if st.button("✅ Utiliser ce client", key="att_use_client", type="primary"):
+                        st.session_state.att_nom = client['nom']
+                        st.session_state.att_prenom = client['prenom']
+                        st.session_state.att_email = client.get('email', '')
+                        st.success(f"✅ Client sélectionné: {client['nom']} {client['prenom']}")
+                        st.rerun()
             else:
                 st.info("Aucun client trouvé")
     
     # Champs client (modifiables)
     col1, col2 = st.columns(2)
     with col1:
-        att_nom = st.text_input("Nom du client *", 
-                                value=st.session_state.get('att_nom_val', ''),
-                                key="att_nom")
-        att_prenom = st.text_input("Prénom du client *", 
-                                   value=st.session_state.get('att_prenom_val', ''),
-                                   key="att_prenom")
+        att_nom = st.text_input("Nom du client *", key="att_nom")
+        att_prenom = st.text_input("Prénom du client *", key="att_prenom")
         att_adresse = st.text_input("Adresse du client", key="att_adresse", placeholder="73000 Chambéry")
     with col2:
-        att_email = st.text_input("Email du client", 
-                                  value=st.session_state.get('att_email_val', ''),
-                                  key="att_email", placeholder="client@email.com")
+        att_email = st.text_input("Email du client", key="att_email", placeholder="client@email.com")
         att_marque = st.selectbox("Marque *", ["Apple", "Samsung", "Xiaomi", "Huawei", "Autre"], key="att_marque")
         att_modele = st.text_input("Modèle *", key="att_modele", placeholder="iPhone 11 Pro")
     
