@@ -25,7 +25,7 @@ DB_PATH = "klikphone_sav.db"
 # Logo Klikphone en base64
 LOGO_B64 = "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"
 
-CATEGORIES = ["Smartphone", "Tablette", "PC Portable", "Console"]
+CATEGORIES = ["Smartphone", "Tablette", "PC Portable", "Console", "Commande", "Autre"]
 
 PANNES = ["Écran casse", "Batterie", "Connecteur de charge", 
           "Camera avant", "Camera arriere", 
@@ -34,8 +34,16 @@ PANNES = ["Écran casse", "Batterie", "Connecteur de charge",
           "Microphone (les gens ne m'entendent pas)", 
           "Vitre arriere", "Désoxydation", "Problème logiciel", "Diagnostic", "Autre"]
 
-STATUTS = ["En attente de diagnostic", "En cours de réparation", 
-           "Réparation terminée", "Rendu au client", "Clôturé"]
+STATUTS = ["En attente de diagnostic", "En attente de pièce", "En attente d'accord client",
+           "En cours de réparation", "Réparation terminée", "Rendu au client", "Clôturé"]
+
+# Membres équipe par défaut
+MEMBRES_EQUIPE_DEFAUT = [
+    {"nom": "Marina", "role": "Technicien Apple", "couleur": "#EC4899"},  # Rose
+    {"nom": "Jonathan", "role": "Technicien Multimarque", "couleur": "#22C55E"},  # Vert
+    {"nom": "Tarik", "role": "Manager", "couleur": "#8B5CF6"},  # Violet
+    {"nom": "Oualid", "role": "Accueil", "couleur": "#3B82F6"},  # Bleu
+]
 
 MARQUES = {
     "Smartphone": ["Apple", "Samsung", "Xiaomi", "Huawei", "OnePlus", "Google", "Oppo", "Autre"],
@@ -829,7 +837,15 @@ def init_db():
         reparation_supp TEXT, prix_supp REAL,
         devis_estime REAL, acompte REAL DEFAULT 0, tarif_final REAL,
         personne_charge TEXT,
+        technicien_assigne TEXT,
         commande_piece INTEGER DEFAULT 0,
+        date_recuperation TEXT,
+        client_contacte INTEGER DEFAULT 0,
+        client_accord INTEGER DEFAULT 0,
+        paye INTEGER DEFAULT 0,
+        msg_whatsapp INTEGER DEFAULT 0,
+        msg_sms INTEGER DEFAULT 0,
+        msg_email INTEGER DEFAULT 0,
         statut TEXT DEFAULT 'En attente de diagnostic',
         date_depot TEXT DEFAULT CURRENT_TIMESTAMP,
         date_maj TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -860,41 +876,46 @@ def init_db():
         date_creation TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (ticket_id) REFERENCES tickets(id))""")
     
-    # Migration: ajouter commentaire_client si n'existe pas
-    try:
-        c.execute("ALTER TABLE tickets ADD COLUMN commentaire_client TEXT")
-    except:
-        pass
+    # Table membres équipe
+    c.execute("""CREATE TABLE IF NOT EXISTS membres_equipe (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom TEXT,
+        role TEXT,
+        couleur TEXT,
+        actif INTEGER DEFAULT 1)""")
     
-    # Migration: ajouter imei si n'existe pas
-    try:
-        c.execute("ALTER TABLE tickets ADD COLUMN imei TEXT")
-    except:
-        pass
-    
-    # Migration: ajouter reparation_supp et prix_supp
-    try:
-        c.execute("ALTER TABLE tickets ADD COLUMN reparation_supp TEXT")
-    except:
-        pass
-    try:
-        c.execute("ALTER TABLE tickets ADD COLUMN prix_supp REAL")
-    except:
-        pass
-    
-    # Migration: ajouter societe dans clients
-    try:
-        c.execute("ALTER TABLE clients ADD COLUMN societe TEXT")
-    except:
-        pass
-    
-    # Migration: ajouter commande_piece dans tickets
-    try:
-        c.execute("ALTER TABLE tickets ADD COLUMN commande_piece INTEGER DEFAULT 0")
-    except:
-        pass
+    # Migrations diverses
+    migrations = [
+        "ALTER TABLE tickets ADD COLUMN commentaire_client TEXT",
+        "ALTER TABLE tickets ADD COLUMN imei TEXT",
+        "ALTER TABLE tickets ADD COLUMN reparation_supp TEXT",
+        "ALTER TABLE tickets ADD COLUMN prix_supp REAL",
+        "ALTER TABLE tickets ADD COLUMN commande_piece INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN technicien_assigne TEXT",
+        "ALTER TABLE tickets ADD COLUMN date_recuperation TEXT",
+        "ALTER TABLE tickets ADD COLUMN client_contacte INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN client_accord INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN paye INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN msg_whatsapp INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN msg_sms INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN msg_email INTEGER DEFAULT 0",
+        "ALTER TABLE clients ADD COLUMN societe TEXT",
+    ]
+    for sql in migrations:
+        try:
+            c.execute(sql)
+        except:
+            pass
     
     conn.commit()
+    
+    # Initialiser les membres équipe par défaut
+    c.execute("SELECT COUNT(*) FROM membres_equipe")
+    if c.fetchone()[0] == 0:
+        for m in MEMBRES_EQUIPE_DEFAUT:
+            c.execute("INSERT INTO membres_equipe (nom, role, couleur) VALUES (?, ?, ?)", 
+                     (m['nom'], m['role'], m['couleur']))
+        conn.commit()
     
     # Params défaut
     params = {
@@ -1099,6 +1120,48 @@ def delete_commande_piece(commande_id):
     conn = get_db()
     c = conn.cursor()
     c.execute("DELETE FROM commandes_pieces WHERE id=?", (commande_id,))
+    conn.commit()
+    conn.close()
+
+# Fonctions membres équipe
+def get_membres_equipe():
+    """Récupère tous les membres de l'équipe"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM membres_equipe WHERE actif=1 ORDER BY nom")
+    membres = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return membres
+
+def ajouter_membre_equipe(nom, role, couleur):
+    """Ajoute un membre à l'équipe"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("INSERT INTO membres_equipe (nom, role, couleur) VALUES (?, ?, ?)", (nom, role, couleur))
+    conn.commit()
+    conn.close()
+
+def update_membre_equipe(membre_id, nom=None, role=None, couleur=None, actif=None):
+    """Met à jour un membre de l'équipe"""
+    conn = get_db()
+    c = conn.cursor()
+    updates = []
+    params = []
+    if nom: updates.append("nom=?"); params.append(nom)
+    if role: updates.append("role=?"); params.append(role)
+    if couleur: updates.append("couleur=?"); params.append(couleur)
+    if actif is not None: updates.append("actif=?"); params.append(actif)
+    if updates:
+        params.append(membre_id)
+        c.execute(f"UPDATE membres_equipe SET {', '.join(updates)} WHERE id=?", params)
+        conn.commit()
+    conn.close()
+
+def supprimer_membre_equipe(membre_id):
+    """Désactive un membre de l'équipe"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("UPDATE membres_equipe SET actif=0 WHERE id=?", (membre_id,))
     conn.commit()
     conn.close()
 
@@ -2140,16 +2203,60 @@ def ui_client():
 def client_step1():
     st.markdown("<p class='section-title'>Quel type d'appareil deposez-vous ?</p>", unsafe_allow_html=True)
     
+    # Catégories principales
     cols = st.columns(2)
-    for i, cat in enumerate(CATEGORIES):
+    for i, cat in enumerate(["Smartphone", "Tablette", "PC Portable", "Console"]):
         with cols[i % 2]:
             if st.button(cat, key=f"cat_{cat}", use_container_width=True):
                 st.session_state.data["cat"] = cat
+                st.session_state.data["is_commande"] = False
                 st.session_state.step = 2
                 st.rerun()
+    
+    st.markdown("---")
+    st.markdown("<p style='text-align:center; color:#666;'>ou</p>", unsafe_allow_html=True)
+    
+    # Catégories spéciales
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📦 COMMANDE", key="cat_commande", use_container_width=True, type="secondary"):
+            st.session_state.data["cat"] = "Commande"
+            st.session_state.data["is_commande"] = True
+            st.session_state.step = 2
+            st.rerun()
+    with col2:
+        if st.button("❓ AUTRE", key="cat_autre", use_container_width=True, type="secondary"):
+            st.session_state.data["cat"] = "Autre"
+            st.session_state.data["is_commande"] = False
+            st.session_state.step = 4  # Sauter directement au problème
+            st.rerun()
 
 def client_step2():
     cat = st.session_state.data.get("cat", "")
+    
+    # Si c'est une commande, demander directement les infos
+    if cat == "Commande":
+        st.markdown("<p class='section-title'>Que souhaitez-vous commander ?</p>", unsafe_allow_html=True)
+        
+        if st.button("Retour", key="back2"): st.session_state.step = 1; st.rerun()
+        
+        commande_detail = st.text_area("Décrivez votre commande", 
+                                       placeholder="Ex: Écran iPhone 12 Pro, Coque Samsung S21...",
+                                       height=150, key="commande_detail")
+        
+        if st.button("Continuer", type="primary", use_container_width=True):
+            if commande_detail:
+                st.session_state.data["marque"] = "Commande"
+                st.session_state.data["modèle"] = "Commande"
+                st.session_state.data["modele_autre"] = commande_detail
+                st.session_state.data["panne"] = "Commande"
+                st.session_state.data["panne_detail"] = commande_detail
+                st.session_state.step = 5  # Sauter à sécurité puis coordonnées
+                st.rerun()
+            else:
+                st.warning("Veuillez décrire votre commande")
+        return
+    
     st.markdown(f"<p class='section-title'>Quelle est la marque ?</p>", unsafe_allow_html=True)
     
     if st.button("Retour", key="back2"): st.session_state.step = 1; st.rerun()
@@ -2210,6 +2317,30 @@ def client_step3():
                 st.rerun()
 
 def client_step4():
+    cat = st.session_state.data.get("cat", "")
+    
+    # Si catégorie "Autre", demander d'abord l'appareil
+    if cat == "Autre":
+        st.markdown("<p class='section-title'>Décrivez votre appareil et le problème</p>", unsafe_allow_html=True)
+        
+        if st.button("Retour", key="back4"): st.session_state.step = 1; st.rerun()
+        
+        appareil = st.text_input("Votre appareil", placeholder="Ex: Montre connectée Garmin, Drone DJI...")
+        probleme = st.text_area("Décrivez le problème", placeholder="Décrivez le problème rencontré...", height=100)
+        
+        if st.button("Continuer", type="primary", use_container_width=True):
+            if appareil and probleme:
+                st.session_state.data["marque"] = "Autre"
+                st.session_state.data["modèle"] = "Autre"
+                st.session_state.data["modele_autre"] = appareil
+                st.session_state.data["panne"] = "Autre"
+                st.session_state.data["panne_detail"] = probleme
+                st.session_state.step = 5
+                st.rerun()
+            else:
+                st.warning("Veuillez remplir tous les champs")
+        return
+    
     st.markdown("<p class='section-title'>Quel est le problème rencontre ?</p>", unsafe_allow_html=True)
     
     if st.button("Retour", key="back4"): st.session_state.step = 3; st.rerun()
@@ -2641,6 +2772,38 @@ def staff_traiter_demande(tid):
         </div>
         """, unsafe_allow_html=True)
         
+        # Bouton modifier client
+        if st.button("✏️ Modifier les infos client", key=f"edit_client_btn_{tid}", type="secondary", use_container_width=True):
+            st.session_state[f"show_edit_client_{tid}"] = True
+        
+        # Formulaire modification client
+        if st.session_state.get(f"show_edit_client_{tid}"):
+            with st.container():
+                st.markdown("**Modifier les informations client:**")
+                client_id = t.get('client_id')
+                client = get_client_by_id(client_id) if client_id else None
+                
+                if client:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_nom = st.text_input("Nom", value=client.get('nom', ''), key=f"edit_nom_{tid}")
+                        new_tel = st.text_input("Téléphone", value=client.get('telephone', ''), key=f"edit_tel_{tid}")
+                    with c2:
+                        new_prenom = st.text_input("Prénom", value=client.get('prenom', ''), key=f"edit_prenom_{tid}")
+                        new_email = st.text_input("Email", value=client.get('email', '') or '', key=f"edit_email_{tid}")
+                    
+                    col_save, col_cancel = st.columns(2)
+                    with col_save:
+                        if st.button("💾 Enregistrer client", key=f"save_client_{tid}", type="primary", use_container_width=True):
+                            update_client(client_id, nom=new_nom, prenom=new_prenom, telephone=new_tel, email=new_email)
+                            st.session_state[f"show_edit_client_{tid}"] = False
+                            st.success("✅ Client mis à jour!")
+                            st.rerun()
+                    with col_cancel:
+                        if st.button("❌ Annuler", key=f"cancel_client_{tid}", use_container_width=True):
+                            st.session_state[f"show_edit_client_{tid}"] = False
+                            st.rerun()
+        
         # Sécurité (si présent)
         if t.get('pin') or t.get('pattern'):
             st.markdown(f"""
@@ -2691,7 +2854,49 @@ def staff_traiter_demande(tid):
                                          placeholder="Ex: Remplacement connecteur...",
                                          key=f"panne_detail_{tid}")
         
+        # Technicien assigné
+        membres = get_membres_equipe()
+        membres_options = ["-- Non assigné --"] + [f"{m['nom']} ({m['role']})" for m in membres]
+        tech_actuel = t.get('technicien_assigne') or ""
+        tech_idx = 0
+        for i, opt in enumerate(membres_options):
+            if tech_actuel and tech_actuel in opt:
+                tech_idx = i
+                break
+        technicien = st.selectbox("👨‍🔧 Technicien assigné", membres_options, index=tech_idx, key=f"technicien_{tid}")
+        
+        # Afficher couleur du technicien
+        if technicien != "-- Non assigné --":
+            for m in membres:
+                if m['nom'] in technicien:
+                    st.markdown(f"<div style='width:20px;height:20px;background:{m['couleur']};border-radius:50%;display:inline-block;'></div>", unsafe_allow_html=True)
+                    break
+        
         personne = st.text_input("Personne en charge", value=t.get('personne_charge') or "", key=f"personne_{tid}")
+        
+        # Date de récupération
+        st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="detail-card-header">📅 Date récupération prévue</div>""", unsafe_allow_html=True)
+        
+        date_recup_actuelle = t.get('date_recuperation') or ""
+        col_date, col_btns = st.columns([2, 2])
+        with col_date:
+            date_recup = st.text_input("Date/Heure", value=date_recup_actuelle, placeholder="Ex: 30/01 à 18h", key=f"date_recup_{tid}")
+        with col_btns:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("24h", key=f"btn_24h_{tid}", use_container_width=True):
+                    from datetime import datetime, timedelta
+                    demain = datetime.now() + timedelta(days=1)
+                    st.session_state[f"date_recup_{tid}"] = demain.strftime("%d/%m à 18h")
+                    st.rerun()
+            with c2:
+                if st.button("48h", key=f"btn_48h_{tid}", use_container_width=True):
+                    from datetime import datetime, timedelta
+                    apres_demain = datetime.now() + timedelta(days=2)
+                    st.session_state[f"date_recup_{tid}"] = apres_demain.strftime("%d/%m à 18h")
+                    st.rerun()
+        
         comment = st.text_area("Commentaire interne", placeholder="Ajouter un commentaire...", height=60, key=f"comment_{tid}")
         
         # Tarifs avec design amélioré
@@ -2704,6 +2909,21 @@ def staff_traiter_demande(tid):
         with col_b:
             acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
         
+        # Bouton paiement reçu
+        paye = t.get('paye', 0)
+        total_ttc = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
+        reste = max(0, total_ttc - float(t.get('acompte') or 0))
+        
+        if paye:
+            st.success("✅ PAIEMENT REÇU - Solde: 0.00 €")
+        else:
+            if reste > 0:
+                st.warning(f"💳 Reste à payer: {reste:.2f} €")
+            if st.button("✅ MARQUER COMME PAYÉ", key=f"btn_paye_{tid}", type="primary", use_container_width=True):
+                update_ticket(tid, paye=1, acompte=total_ttc)
+                st.success("✅ Paiement enregistré!")
+                st.rerun()
+        
         # Statut
         st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
         statut_actuel = t.get('statut', STATUTS[0])
@@ -2714,9 +2934,10 @@ def staff_traiter_demande(tid):
         st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
+            tech_name = technicien if technicien != "-- Non assigné --" else ""
             if st.button("💾 ENREGISTRER", type="primary", use_container_width=True, key=f"save_{tid}"):
                 update_ticket(tid, panne=new_panne, panne_detail=panne_detail, personne_charge=personne, 
-                             devis_estime=devis, acompte=acompte)
+                             devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup)
                 if comment:
                     ajouter_note(tid, comment)
                 if new_statut != statut_actuel:
@@ -3157,7 +3378,7 @@ def staff_commandes_pieces():
     st.markdown("""<div class="detail-card-header">📦 Commandes de Pièces</div>""", unsafe_allow_html=True)
     
     # Onglets
-    sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🔴 À commander", "🟡 Commandées", "➕ Nouvelle commande"])
+    sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs(["🔴 À commander", "🟡 Commandées", "✅ Reçues", "➕ Nouvelle"])
     
     with sub_tab1:
         # Pièces à commander
@@ -3227,6 +3448,40 @@ def staff_commandes_pieces():
                     st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
     
     with sub_tab3:
+        # Commandes reçues (historique)
+        commandes = get_commandes_pieces(statut="Reçue")
+        
+        if not commandes:
+            st.info("Aucune commande reçue")
+        else:
+            st.markdown(f"**{len(commandes)} commande(s) reçue(s)**")
+            
+            # En-tête tableau
+            st.markdown("""
+            <div style="display:flex;background:#f1f5f9;padding:8px;border-radius:6px;margin-bottom:8px;font-weight:600;font-size:0.85rem;">
+                <div style="flex:2;">Description</div>
+                <div style="flex:1.5;">Ticket</div>
+                <div style="flex:1;">Fournisseur</div>
+                <div style="flex:1;">Prix</div>
+                <div style="flex:1;">Date réception</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for cmd in commandes:
+                ticket_info = f"{cmd.get('ticket_code', 'N/A')}"
+                date_recv = cmd.get('date_reception', '')[:10] if cmd.get('date_reception') else '—'
+                
+                st.markdown(f"""
+                <div style="display:flex;padding:8px;border-bottom:1px solid #eee;font-size:0.85rem;align-items:center;">
+                    <div style="flex:2;">{cmd['description']}</div>
+                    <div style="flex:1.5;">{ticket_info}</div>
+                    <div style="flex:1;">{cmd.get('fournisseur', '—')}</div>
+                    <div style="flex:1;">{cmd['prix']:.2f} € </div>
+                    <div style="flex:1;">{date_recv}</div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    with sub_tab4:
         # Ajouter une nouvelle commande
         st.markdown("##### Ajouter une commande de pièce")
         
@@ -3536,14 +3791,14 @@ def staff_nouvelle_demande():
             st.error("Nom, prénom et téléphone obligatoires")
         else:
             cid = get_or_create_client(nom, tel, prenom, email)
-            code = creer_ticket(cid, cat, marque, modèle, modele_autre, panne, panne_detail, pin, pattern, notes, imei)
+            code = creer_ticket(cid, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei, 0)
             t = get_ticket(code=code)
             if t and (devis or acompte):
                 update_ticket(t['id'], devis_estime=devis, acompte=acompte)
             st.success(f"Demande créée : {code}")
 
 def staff_config():
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Boutique", "Email", "Messages", "Catalogue", "Sécurité"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité"])
     
     with tab1:
         st.markdown("### Informations de la boutique")
@@ -3676,7 +3931,61 @@ def staff_config():
             st.info("Pour ajouter des pannes, modifiez la liste PANNES dans le code source.")
     
     with tab5:
-        st.markdown("### Codes PIN d'accès")
+        st.markdown("### 👥 Gestion de l'équipe")
+        st.markdown("Ajoutez et gérez les membres de l'équipe pour assigner les réparations.")
+        
+        # Liste des membres actuels
+        membres = get_membres_equipe()
+        
+        st.markdown("#### Membres actuels")
+        if membres:
+            for m in membres:
+                col1, col2, col3, col4 = st.columns([0.3, 1.5, 1.5, 0.8])
+                with col1:
+                    st.markdown(f"<div style='width:30px;height:30px;background:{m['couleur']};border-radius:50%;margin-top:5px;'></div>", unsafe_allow_html=True)
+                with col2:
+                    st.write(f"**{m['nom']}**")
+                with col3:
+                    st.write(m['role'])
+                with col4:
+                    if st.button("🗑️", key=f"del_membre_{m['id']}", help="Supprimer"):
+                        supprimer_membre_equipe(m['id'])
+                        st.rerun()
+        else:
+            st.info("Aucun membre dans l'équipe")
+        
+        st.markdown("---")
+        st.markdown("#### Ajouter un membre")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            new_nom = st.text_input("Nom *", key="new_membre_nom", placeholder="Ex: Marina")
+            new_role = st.selectbox("Rôle", ["Technicien Apple", "Technicien Multimarque", "Manager", "Accueil", "Autre"], key="new_membre_role")
+        with col2:
+            couleurs = {
+                "🔴 Rouge": "#EF4444",
+                "🟠 Orange": "#F97316",
+                "🟡 Jaune": "#EAB308",
+                "🟢 Vert": "#22C55E",
+                "🔵 Bleu": "#3B82F6",
+                "🟣 Violet": "#8B5CF6",
+                "💗 Rose": "#EC4899",
+                "⚫ Gris": "#6B7280"
+            }
+            new_couleur_nom = st.selectbox("Couleur", list(couleurs.keys()), key="new_membre_couleur")
+            new_couleur = couleurs[new_couleur_nom]
+            st.markdown(f"<div style='width:40px;height:40px;background:{new_couleur};border-radius:8px;margin-top:10px;'></div>", unsafe_allow_html=True)
+        
+        if st.button("➕ Ajouter le membre", type="primary"):
+            if new_nom:
+                ajouter_membre_equipe(new_nom, new_role, new_couleur)
+                st.success(f"✅ {new_nom} ajouté à l'équipe!")
+                st.rerun()
+            else:
+                st.error("Le nom est obligatoire")
+    
+    with tab6:
+        st.markdown("### 🔒 Codes PIN d'accès")
         pin_acc = st.text_input("PIN Accueil", type="password", value=get_param("PIN_ACCUEIL"))
         pin_tech = st.text_input("PIN Technicien", type="password", value=get_param("PIN_TECH"))
         if st.button("Enregistrer PIN", key="save_pin", type="primary"):
