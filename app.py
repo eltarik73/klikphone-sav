@@ -438,6 +438,296 @@ h1, h2, h3 {
     font-weight: 600;
 }
 
+/* === TICKET TABLE - MODERN DESIGN === */
+.ticket-table-container {
+    background: var(--neutral-0);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.ticket-table-header {
+    display: grid;
+    grid-template-columns: 100px 1.4fr 1.2fr 120px 160px 90px 60px;
+    gap: 12px;
+    padding: 14px 20px;
+    background: linear-gradient(180deg, var(--neutral-100) 0%, var(--neutral-50) 100%);
+    border-bottom: 1px solid var(--neutral-200);
+    align-items: center;
+}
+
+.ticket-table-header-cell {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ticket-table-row {
+    display: grid;
+    grid-template-columns: 100px 1.4fr 1.2fr 120px 160px 90px 60px;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--neutral-100);
+    align-items: center;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.ticket-table-row:hover {
+    background: linear-gradient(90deg, var(--brand-50) 0%, transparent 100%);
+}
+
+.ticket-table-row:last-child {
+    border-bottom: none;
+}
+
+/* Cellules du tableau */
+.tt-ticket {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tt-ticket-code {
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace !important;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--neutral-900);
+}
+
+.tt-ticket-date {
+    font-size: 11px;
+    color: var(--neutral-400);
+}
+
+.tt-client {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tt-client-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-100) 0%, var(--brand-200) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-600);
+    flex-shrink: 0;
+}
+
+.tt-client-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-client-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--neutral-900);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tt-client-tel {
+    font-size: 11px;
+    color: var(--neutral-400);
+    font-family: 'SF Mono', Monaco, monospace !important;
+}
+
+.tt-appareil {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tt-appareil-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-md);
+    background: var(--neutral-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.tt-appareil-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-appareil-marque {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--neutral-800);
+}
+
+.tt-appareil-modele {
+    font-size: 11px;
+    color: var(--neutral-400);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tt-tech {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tt-tech-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-full);
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+}
+
+.tt-tech-unassigned {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--neutral-400);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.tt-tech-unassigned-icon {
+    width: 28px;
+    height: 28px;
+    border: 2px dashed var(--neutral-300);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--neutral-300);
+}
+
+.tt-status {
+    display: flex;
+    align-items: center;
+}
+
+.tt-contact {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tt-contact-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s ease;
+}
+
+.tt-contact-icon.active {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.tt-contact-icon.inactive {
+    background: var(--neutral-100);
+    color: var(--neutral-300);
+}
+
+.tt-action {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tt-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r-md);
+    background: var(--neutral-100);
+    border: 1px solid var(--neutral-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--neutral-500);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tt-action-btn:hover {
+    background: var(--brand-500);
+    border-color: var(--brand-500);
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Empty state */
+.ticket-empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--neutral-400);
+}
+
+.ticket-empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.ticket-empty-state-text {
+    font-size: 14px;
+}
+
+/* Pagination */
+.ticket-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--neutral-50);
+    border-top: 1px solid var(--neutral-200);
+}
+
+.ticket-pagination-info {
+    font-size: 13px;
+    color: var(--neutral-500);
+}
+
+.ticket-pagination-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.ticket-pagination-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--neutral-300);
+    transition: all 0.15s ease;
+}
+
+.ticket-pagination-dot.active {
+    background: var(--brand-500);
+    transform: scale(1.2);
+}
+
 /* === TABLE HEADER === */
 .table-header {
     display: flex;
@@ -2643,91 +2933,213 @@ def staff_liste_demandes():
     end_idx = start_idx + ITEMS_PER_PAGE
     tickets_page = tickets[start_idx:end_idx]
     
-    # Header avec compteur
-    st.markdown(f"**{len(tickets)} ticket(s)** • Page {current_page}/{total_pages}")
+    # === NOUVEAU DESIGN TABLEAU v3 - Streamlit columns alignées ===
     
-    # Table header amélioré
+    # Fonction helper pour obtenir les initiales
+    def get_initials(nom, prenom):
+        n = nom[0].upper() if nom else ""
+        p = prenom[0].upper() if prenom else ""
+        return f"{n}{p}" if n or p else "?"
+    
+    # Fonction helper pour icône appareil
+    def get_device_icon(categorie):
+        icons = {
+            "Smartphone": "📱",
+            "Tablette": "📟",
+            "PC Portable": "💻",
+            "Console": "🎮",
+            "Commande": "📦"
+        }
+        return icons.get(categorie, "📱")
+
+    # Proportions des colonnes (utilisées partout pour l'alignement)
+    col_props = [1.1, 1.8, 1.6, 1.2, 1.8, 1, 0.6]
+    
+    # Container du tableau
+    st.markdown('<div style="background:white;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    
+    # Header du tableau avec st.columns
+    header_cols = st.columns(col_props)
+    headers = ["Ticket", "Client", "Appareil", "Technicien", "Statut", "Contact", ""]
+    
     st.markdown("""
-    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 80px 70px;gap:8px;padding:10px;background:#f1f5f9;border-radius:8px;font-weight:600;font-size:0.8rem;margin-bottom:8px;">
-        <div>Ticket</div>
-        <div>Client</div>
-        <div>Appareil</div>
-        <div>Technicien</div>
-        <div>Statut</div>
-        <div>Contact</div>
-        <div>Action</div>
-    </div>
+    <style>
+    .table-header-row {
+        background: linear-gradient(180deg, #f5f5f5 0%, #fafafa 100%) !important;
+        border-bottom: 1px solid #e5e5e5;
+        padding: 12px 0 !important;
+    }
+    .table-header-cell {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #737373 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    </style>
     """, unsafe_allow_html=True)
+    
+    for i, col in enumerate(header_cols):
+        with col:
+            st.markdown(f'<div class="table-header-cell">{headers[i]}</div>', unsafe_allow_html=True)
+    
+    st.markdown('<hr style="margin:0;border:none;border-top:1px solid #e5e5e5;">', unsafe_allow_html=True)
     
     # Liste des tickets
     if not tickets_page:
-        st.info("📭 Aucun ticket trouvé. Modifiez vos filtres ou créez un nouveau ticket.")
+        st.markdown("""
+        <div style="padding:60px 20px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">📭</div>
+            <div style="color:#a3a3a3;font-size:14px;">Aucun ticket trouvé.<br>Modifiez vos filtres ou créez un nouveau ticket.</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        for t in tickets_page:
+        for idx, t in enumerate(tickets_page):
             status_class = get_status_class(t.get('statut', ''))
-            modele = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'): modele = t['modele_autre']
-            modele = modele[:22] + "..." if len(modele) > 22 else modele
             
-            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}"
-            client_nom = client_nom[:18] + "..." if len(client_nom) > 18 else client_nom
+            # Données client
+            client_nom = t.get('client_nom', '')
+            client_prenom = t.get('client_prenom', '')
+            client_full = f"{client_nom} {client_prenom}".strip()
+            if len(client_full) > 18:
+                client_full = client_full[:16] + "..."
+            client_tel = t.get('client_tel', '')
+            initials = get_initials(client_nom, client_prenom)
             
-            # Technicien assigné avec couleur
+            # Données appareil
+            marque = t.get('marque', '')
+            modele = t.get('modele', '')
+            if t.get('modele_autre'): 
+                modele = t['modele_autre']
+            if len(modele) > 16:
+                modele = modele[:14] + "..."
+            categorie = t.get('categorie', 'Smartphone')
+            device_icon = get_device_icon(categorie)
+            
+            # Technicien
             tech = t.get('technicien_assigne', '')
-            tech_display = "—"
-            tech_color = "#9CA3AF"
+            tech_html = ""
             if tech:
+                tech_color = "#9CA3AF"
+                tech_name = tech
                 for m in get_membres_equipe():
                     if m['nom'] in tech:
-                        tech_display = m['nom']
+                        tech_name = m['nom']
                         tech_color = m['couleur']
                         break
+                tech_html = f'<span style="background:{tech_color};color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;">{tech_name}</span>'
+            else:
+                tech_html = '<span style="color:#a3a3a3;font-size:12px;font-style:italic;">Non assigné</span>'
             
-            # Indicateurs de contact
-            wa = "✅" if t.get('msg_whatsapp') else "⚪"
-            sms = "✅" if t.get('msg_sms') else "⚪"
-            email = "✅" if t.get('msg_email') else "⚪"
-            contact_icons = f"{wa}{sms}{email}"
+            # Statut
+            statut = t.get('statut', 'En attente')
             
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1.3, 1.3, 1.2, 1.5, 1, 0.8])
-            with col1:
-                st.markdown(f"**{t['ticket_code']}**")
-            with col2:
-                st.write(client_nom)
-            with col3:
-                st.caption(modele)
-            with col4:
-                if tech_display != "—":
-                    st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.75rem;'>{tech_display}</span>", unsafe_allow_html=True)
-                else:
-                    st.caption("Non assigné")
-            with col5:
-                st.markdown(f"<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:18]}</span>", unsafe_allow_html=True)
-            with col6:
-                st.caption(contact_icons)
-            with col7:
-                if st.button("📂", key=f"process_{t['id']}", use_container_width=True):
+            # Contact
+            wa_bg = "#ecfdf5" if t.get('msg_whatsapp') else "#f5f5f5"
+            wa_color = "#10b981" if t.get('msg_whatsapp') else "#d4d4d4"
+            sms_bg = "#ecfdf5" if t.get('msg_sms') else "#f5f5f5"
+            sms_color = "#10b981" if t.get('msg_sms') else "#d4d4d4"
+            email_bg = "#ecfdf5" if t.get('msg_email') else "#f5f5f5"
+            email_color = "#10b981" if t.get('msg_email') else "#d4d4d4"
+            
+            # Date formatée
+            date_depot = t.get('date_depot', '')
+            date_formatted = "-"
+            if date_depot:
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(date_depot.replace('Z', '+00:00')) if 'T' in date_depot else datetime.strptime(date_depot[:10], '%Y-%m-%d')
+                    date_formatted = dt.strftime('%d/%m')
+                except:
+                    pass
+            
+            # Colonnes de la ligne
+            row_cols = st.columns(col_props)
+            
+            # Ticket
+            with row_cols[0]:
+                st.markdown(f'''
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                    <div style="font-family:monospace;font-size:13px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
+                    <div style="font-size:11px;color:#a3a3a3;">{date_formatted}</div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Client
+            with row_cols[1]:
+                st.markdown(f'''
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffedd5,#fed7aa);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#ea580c;flex-shrink:0;">{initials}</div>
+                    <div style="min-width:0;overflow:hidden;">
+                        <div style="font-size:13px;font-weight:500;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{client_full}</div>
+                        <div style="font-size:10px;color:#a3a3a3;font-family:monospace;">{client_tel}</div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Appareil
+            with row_cols[2]:
+                st.markdown(f'''
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:30px;height:30px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{device_icon}</div>
+                    <div style="min-width:0;overflow:hidden;">
+                        <div style="font-size:12px;font-weight:500;color:#404040;">{marque}</div>
+                        <div style="font-size:10px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{modele}</div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Technicien
+            with row_cols[3]:
+                st.markdown(tech_html, unsafe_allow_html=True)
+            
+            # Statut
+            with row_cols[4]:
+                st.markdown(f'<span class="badge {status_class}" style="font-size:11px;">{statut}</span>', unsafe_allow_html=True)
+            
+            # Contact
+            with row_cols[5]:
+                st.markdown(f'''
+                <div style="display:flex;align-items:center;gap:3px;">
+                    <div style="width:22px;height:22px;border-radius:5px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="WhatsApp">📱</div>
+                    <div style="width:22px;height:22px;border-radius:5px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="SMS">💬</div>
+                    <div style="width:22px;height:22px;border-radius:5px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="Email">✉️</div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Action
+            with row_cols[6]:
+                if st.button("📂", key=f"process_{t['id']}", help="Ouvrir", use_container_width=True):
                     st.session_state.edit_id = t['id']
                     st.rerun()
             
-            st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
+            # Séparateur entre lignes
+            if idx < len(tickets_page) - 1:
+                st.markdown('<hr style="margin:0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
     
-    # Navigation pagination
+    # Footer pagination
+    pagination_dots = ""
+    for i in range(min(total_pages, 10)):
+        active_style = "background:#f97316;transform:scale(1.2);" if i + 1 == current_page else "background:#d4d4d4;"
+        pagination_dots += f'<div style="width:8px;height:8px;border-radius:50%;{active_style}"></div>'
+    
+    st.markdown(f'''
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fafafa;border-top:1px solid #e5e5e5;">
+        <div style="font-size:12px;color:#737373;">{len(tickets)} ticket(s) • Page {current_page}/{total_pages}</div>
+        <div style="display:flex;gap:6px;">{pagination_dots}</div>
+    </div>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Navigation pagination (boutons Streamlit)
     if total_pages > 1:
         st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
-        col_prev, col_pages, col_next = st.columns([1, 3, 1])
+        col_prev, col_spacer, col_next = st.columns([1, 4, 1])
         with col_prev:
             if current_page > 1:
                 if st.button("← Précédent", key="accueil_prev", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page - 1
                     st.rerun()
-        with col_pages:
-            # Indicateurs de pages
-            pages_html = " ".join([
-                f"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:{'var(--brand-500)' if i+1 == current_page else 'var(--neutral-300)'};margin:0 3px;'></span>"
-                for i in range(min(total_pages, 10))
-            ])
-            st.markdown(f"<div style='text-align:center;padding:8px 0;'>{pages_html}</div>", unsafe_allow_html=True)
         with col_next:
             if current_page < total_pages:
                 if st.button("Suivant →", key="accueil_next", type="secondary", use_container_width=True):
