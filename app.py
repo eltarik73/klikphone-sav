@@ -2953,37 +2953,50 @@ def staff_liste_demandes():
         return icons.get(categorie, "📱")
 
     # Proportions des colonnes (utilisées partout pour l'alignement)
-    col_props = [1.1, 1.8, 1.6, 1.2, 1.8, 1, 0.6]
+    col_props = [1.0, 1.6, 1.8, 1.1, 1.6, 0.9, 0.5]
     
-    # Container du tableau
-    st.markdown('<div style="background:white;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">', unsafe_allow_html=True)
-    
-    # Header du tableau avec st.columns
-    header_cols = st.columns(col_props)
-    headers = ["Ticket", "Client", "Appareil", "Technicien", "Statut", "Contact", ""]
-    
+    # Header du tableau
     st.markdown("""
     <style>
-    .table-header-row {
-        background: linear-gradient(180deg, #f5f5f5 0%, #fafafa 100%) !important;
-        border-bottom: 1px solid #e5e5e5;
-        padding: 12px 0 !important;
+    .ticket-table-wrapper {
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-bottom: 8px;
     }
-    .table-header-cell {
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        color: #737373 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+    .ticket-table-header-row {
+        background: linear-gradient(180deg, #f8f8f8 0%, #f3f3f3 100%);
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e5e5;
+    }
+    .ticket-row-wrapper {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s ease;
+    }
+    .ticket-row-wrapper:hover {
+        background: #fefefe;
+    }
+    .ticket-row-wrapper:last-child {
+        border-bottom: none;
     }
     </style>
+    <div class="ticket-table-wrapper">
+    <div class="ticket-table-header-row">
     """, unsafe_allow_html=True)
+    
+    # Header avec st.columns
+    header_cols = st.columns(col_props)
+    headers = ["Ticket", "Client", "Appareil", "Tech", "Statut", "Contact", ""]
+    header_styles = "font-size:11px;font-weight:600;color:#737373;text-transform:uppercase;letter-spacing:0.5px;"
     
     for i, col in enumerate(header_cols):
         with col:
-            st.markdown(f'<div class="table-header-cell">{headers[i]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="{header_styles}">{headers[i]}</div>', unsafe_allow_html=True)
     
-    st.markdown('<hr style="margin:0;border:none;border-top:1px solid #e5e5e5;">', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # Fermer header row
     
     # Liste des tickets
     if not tickets_page:
@@ -2991,6 +3004,7 @@ def staff_liste_demandes():
         <div style="padding:60px 20px;text-align:center;">
             <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">📭</div>
             <div style="color:#a3a3a3;font-size:14px;">Aucun ticket trouvé.<br>Modifiez vos filtres ou créez un nouveau ticket.</div>
+        </div>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -3001,18 +3015,24 @@ def staff_liste_demandes():
             client_nom = t.get('client_nom', '')
             client_prenom = t.get('client_prenom', '')
             client_full = f"{client_nom} {client_prenom}".strip()
-            if len(client_full) > 18:
-                client_full = client_full[:16] + "..."
+            if len(client_full) > 16:
+                client_full = client_full[:14] + "..."
             client_tel = t.get('client_tel', '')
             initials = get_initials(client_nom, client_prenom)
             
-            # Données appareil
+            # Données appareil - MODELE VISIBLE
             marque = t.get('marque', '')
             modele = t.get('modele', '')
             if t.get('modele_autre'): 
                 modele = t['modele_autre']
-            if len(modele) > 16:
-                modele = modele[:14] + "..."
+            
+            # Combiner marque + modèle pour affichage clair
+            appareil_full = f"{marque} {modele}".strip()
+            if len(appareil_full) > 22:
+                appareil_display = appareil_full[:20] + "..."
+            else:
+                appareil_display = appareil_full
+            
             categorie = t.get('categorie', 'Smartphone')
             device_icon = get_device_icon(categorie)
             
@@ -3027,20 +3047,20 @@ def staff_liste_demandes():
                         tech_name = m['nom']
                         tech_color = m['couleur']
                         break
-                tech_html = f'<span style="background:{tech_color};color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;">{tech_name}</span>'
+                tech_html = f'<span style="background:{tech_color};color:white;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:500;white-space:nowrap;">{tech_name}</span>'
             else:
-                tech_html = '<span style="color:#a3a3a3;font-size:12px;font-style:italic;">Non assigné</span>'
+                tech_html = '<span style="color:#a3a3a3;font-size:11px;font-style:italic;">—</span>'
             
             # Statut
             statut = t.get('statut', 'En attente')
+            statut_short = statut
+            if len(statut) > 18:
+                statut_short = statut[:16] + "..."
             
             # Contact
-            wa_bg = "#ecfdf5" if t.get('msg_whatsapp') else "#f5f5f5"
-            wa_color = "#10b981" if t.get('msg_whatsapp') else "#d4d4d4"
-            sms_bg = "#ecfdf5" if t.get('msg_sms') else "#f5f5f5"
-            sms_color = "#10b981" if t.get('msg_sms') else "#d4d4d4"
-            email_bg = "#ecfdf5" if t.get('msg_email') else "#f5f5f5"
-            email_color = "#10b981" if t.get('msg_email') else "#d4d4d4"
+            wa_bg = "#dcfce7" if t.get('msg_whatsapp') else "#f5f5f5"
+            sms_bg = "#dbeafe" if t.get('msg_sms') else "#f5f5f5"
+            email_bg = "#fef3c7" if t.get('msg_email') else "#f5f5f5"
             
             # Date formatée
             date_depot = t.get('date_depot', '')
@@ -3053,38 +3073,41 @@ def staff_liste_demandes():
                 except:
                     pass
             
+            # Wrapper de ligne
+            st.markdown('<div class="ticket-row-wrapper">', unsafe_allow_html=True)
+            
             # Colonnes de la ligne
             row_cols = st.columns(col_props)
             
             # Ticket
             with row_cols[0]:
                 st.markdown(f'''
-                <div style="display:flex;flex-direction:column;gap:2px;">
-                    <div style="font-family:monospace;font-size:13px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
-                    <div style="font-size:11px;color:#a3a3a3;">{date_formatted}</div>
+                <div>
+                    <div style="font-family:'SF Mono',Monaco,monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
+                    <div style="font-size:10px;color:#a3a3a3;">{date_formatted}</div>
                 </div>
                 ''', unsafe_allow_html=True)
             
             # Client
             with row_cols[1]:
                 st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffedd5,#fed7aa);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#ea580c;flex-shrink:0;">{initials}</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ffedd5,#fed7aa);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#ea580c;flex-shrink:0;">{initials}</div>
                     <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:13px;font-weight:500;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{client_full}</div>
+                        <div style="font-size:12px;font-weight:500;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{client_full}</div>
                         <div style="font-size:10px;color:#a3a3a3;font-family:monospace;">{client_tel}</div>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Appareil
+            # Appareil - MODELE BIEN VISIBLE
             with row_cols[2]:
                 st.markdown(f'''
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:30px;height:30px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{device_icon}</div>
+                    <div style="width:28px;height:28px;border-radius:6px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{device_icon}</div>
                     <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:12px;font-weight:500;color:#404040;">{marque}</div>
-                        <div style="font-size:10px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{modele}</div>
+                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}</div>
+                        <div style="font-size:10px;color:#737373;">{categorie}</div>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -3095,41 +3118,39 @@ def staff_liste_demandes():
             
             # Statut
             with row_cols[4]:
-                st.markdown(f'<span class="badge {status_class}" style="font-size:11px;">{statut}</span>', unsafe_allow_html=True)
+                st.markdown(f'<span class="badge {status_class}" style="font-size:10px;" title="{statut}">{statut_short}</span>', unsafe_allow_html=True)
             
             # Contact
             with row_cols[5]:
                 st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:3px;">
-                    <div style="width:22px;height:22px;border-radius:5px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="WhatsApp">📱</div>
-                    <div style="width:22px;height:22px;border-radius:5px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="SMS">💬</div>
-                    <div style="width:22px;height:22px;border-radius:5px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:10px;" title="Email">✉️</div>
+                <div style="display:flex;align-items:center;gap:2px;">
+                    <div style="width:20px;height:20px;border-radius:4px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="WhatsApp">📱</div>
+                    <div style="width:20px;height:20px;border-radius:4px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="SMS">💬</div>
+                    <div style="width:20px;height:20px;border-radius:4px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:9px;" title="Email">✉️</div>
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Action
+            # Action - Bouton Streamlit
             with row_cols[6]:
-                if st.button("📂", key=f"process_{t['id']}", help="Ouvrir", use_container_width=True):
+                if st.button("→", key=f"open_{t['id']}", help="Ouvrir", use_container_width=True):
                     st.session_state.edit_id = t['id']
                     st.rerun()
             
-            # Séparateur entre lignes
-            if idx < len(tickets_page) - 1:
-                st.markdown('<hr style="margin:0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
-    
-    # Footer pagination
-    pagination_dots = ""
-    for i in range(min(total_pages, 10)):
-        active_style = "background:#f97316;transform:scale(1.2);" if i + 1 == current_page else "background:#d4d4d4;"
-        pagination_dots += f'<div style="width:8px;height:8px;border-radius:50%;{active_style}"></div>'
-    
-    st.markdown(f'''
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fafafa;border-top:1px solid #e5e5e5;">
-        <div style="font-size:12px;color:#737373;">{len(tickets)} ticket(s) • Page {current_page}/{total_pages}</div>
-        <div style="display:flex;gap:6px;">{pagination_dots}</div>
-    </div>
-    </div>
-    ''', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)  # Fermer row wrapper
+        
+        # Footer pagination
+        pagination_dots = ""
+        for i in range(min(total_pages, 10)):
+            active_style = "background:#f97316;transform:scale(1.2);" if i + 1 == current_page else "background:#d4d4d4;"
+            pagination_dots += f'<div style="width:8px;height:8px;border-radius:50%;{active_style}"></div>'
+        
+        st.markdown(f'''
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fafafa;border-top:1px solid #e5e5e5;">
+            <div style="font-size:12px;color:#737373;">{len(tickets)} ticket(s) • Page {current_page}/{total_pages}</div>
+            <div style="display:flex;gap:6px;">{pagination_dots}</div>
+        </div>
+        </div>
+        ''', unsafe_allow_html=True)  # Fermer le wrapper principal
     
     # Navigation pagination (boutons Streamlit)
     if total_pages > 1:
@@ -3516,46 +3537,98 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                     st.rerun()
         
         # Boutons envoi par email
-        if email_client and get_param("SMTP_HOST"):
-            st.markdown("##### 📧 Envoyer par email")
-            col_e1, col_e2, col_e3 = st.columns(3)
-            with col_e1:
-                if st.button("📧 Ticket", use_container_width=True, key=f"email_client_{tid}"):
-                    sujet = f"Ticket {t.get('ticket_code','')} - Klikphone"
-                    html = ticket_client_html(t)
-                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre ticket de dépôt.\n\nCordialement,\nKlikphone"
-                    success, result = envoyer_email(email_client, sujet, msg, html)
-                    if success:
-                        update_ticket(tid, msg_email=1)
-                        st.success("✅ Ticket envoyé par email!")
-                        ajouter_note(tid, f"[EMAIL] Ticket envoyé à {email_client}")
-                    else:
-                        st.error(f"Erreur: {result}")
-            with col_e2:
-                if st.button("📧 Devis", use_container_width=True, key=f"email_devis_{tid}"):
-                    sujet = f"Devis D-{t.get('ticket_code','')} - Klikphone"
-                    html = ticket_devis_facture_html(t, "devis")
-                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre devis.\n\nCordialement,\nKlikphone"
-                    success, result = envoyer_email(email_client, sujet, msg, html)
-                    if success:
-                        update_ticket(tid, msg_email=1)
-                        st.success("✅ Devis envoyé par email!")
-                        ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_client}")
-                    else:
-                        st.error(f"Erreur: {result}")
-            with col_e3:
-                if st.button("📧 Reçu", use_container_width=True, key=f"email_recap_{tid}"):
-                    sujet = f"Reçu R-{t.get('ticket_code','')} - Klikphone"
-                    html = ticket_devis_facture_html(t, "facture")
-                    msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre reçu de paiement.\n\nCordialement,\nKlikphone"
-                    success, result = envoyer_email(email_client, sujet, msg, html)
-                    if success:
-                        update_ticket(tid, msg_email=1)
-                        st.success("✅ Reçu envoyé par email!")
-                        ajouter_note(tid, f"[EMAIL] Reçu envoyé à {email_client}")
-                    else:
-                        st.error(f"Erreur: {result}")
-        elif not email_client:
+        st.markdown("##### 📧 Envoyer par email")
+        
+        if email_client:
+            # Préparer le contenu du devis pour email
+            modele_email = f"{t.get('marque','')} {t.get('modele','')}"
+            if t.get('modele_autre'): modele_email = t['modele_autre']
+            devis_email = t.get('devis_estime') or 0
+            panne_email = t.get('panne', '')
+            if t.get('panne_detail'): panne_email += f" ({t['panne_detail']})"
+            
+            # Message devis formaté
+            msg_devis_email = f"""Bonjour {t.get('client_prenom', '')},
+
+Suite au diagnostic de votre {modele_email}, voici notre devis :
+
+📱 Appareil : {modele_email}
+🔧 Réparation : {panne_email}
+💰 Montant : {devis_email:.2f} € TTC
+
+Merci de nous confirmer votre accord pour procéder à la réparation.
+
+Cordialement,
+{get_param('NOM_BOUTIQUE') or 'Klikphone'}
+📞 {get_param('TEL_BOUTIQUE') or '04 79 60 89 22'}
+📍 {get_param('ADRESSE_BOUTIQUE') or '79 Place Saint Léger, Chambéry'}"""
+            
+            if get_param("SMTP_HOST"):
+                # SMTP configuré - envoi direct
+                col_e1, col_e2, col_e3 = st.columns(3)
+                with col_e1:
+                    if st.button("📧 Envoyer Ticket", use_container_width=True, key=f"email_client_{tid}"):
+                        sujet = f"Ticket {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        html = ticket_client_html(t)
+                        msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre ticket de dépôt.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        success, result = envoyer_email(email_client, sujet, msg, html)
+                        if success:
+                            update_ticket(tid, msg_email=1)
+                            st.success("✅ Ticket envoyé par email!")
+                            ajouter_note(tid, f"[EMAIL] Ticket envoyé à {email_client}")
+                        else:
+                            st.error(f"Erreur: {result}")
+                with col_e2:
+                    if st.button("📧 Envoyer Devis", use_container_width=True, key=f"email_devis_{tid}", type="primary"):
+                        sujet = f"Devis D-{t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        html = ticket_devis_facture_html(t, "devis")
+                        msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre devis.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        success, result = envoyer_email(email_client, sujet, msg, html)
+                        if success:
+                            update_ticket(tid, msg_email=1)
+                            st.success("✅ Devis envoyé par email!")
+                            ajouter_note(tid, f"[EMAIL] Devis envoyé à {email_client}")
+                        else:
+                            st.error(f"Erreur: {result}")
+                with col_e3:
+                    if st.button("📧 Envoyer Reçu", use_container_width=True, key=f"email_recap_{tid}"):
+                        sujet = f"Reçu R-{t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        html = ticket_devis_facture_html(t, "facture")
+                        msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre reçu de paiement.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                        success, result = envoyer_email(email_client, sujet, msg, html)
+                        if success:
+                            update_ticket(tid, msg_email=1)
+                            st.success("✅ Reçu envoyé par email!")
+                            ajouter_note(tid, f"[EMAIL] Reçu envoyé à {email_client}")
+                        else:
+                            st.error(f"Erreur: {result}")
+            else:
+                # Pas de SMTP - utiliser mailto
+                st.warning("⚙️ SMTP non configuré. Utilisez les liens mailto ci-dessous.")
+                
+                sujet_devis = f"Devis D-{t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                mailto_devis = f"mailto:{email_client}?subject={urllib.parse.quote(sujet_devis)}&body={urllib.parse.quote(msg_devis_email)}"
+                
+                sujet_ticket = f"Ticket {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                msg_ticket = f"Bonjour {t.get('client_prenom', '')},\n\nVotre ticket de dépôt : {t.get('ticket_code','')}\nAppareil : {modele_email}\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
+                mailto_ticket = f"mailto:{email_client}?subject={urllib.parse.quote(sujet_ticket)}&body={urllib.parse.quote(msg_ticket)}"
+                
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    st.markdown(f'''
+                    <a href="{mailto_devis}" target="_blank" style="display:block;text-align:center;padding:10px 16px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;border-radius:8px;text-decoration:none;font-weight:500;font-size:14px;">
+                        📧 Envoyer Devis par Email
+                    </a>
+                    ''', unsafe_allow_html=True)
+                with col_e2:
+                    st.markdown(f'''
+                    <a href="{mailto_ticket}" target="_blank" style="display:block;text-align:center;padding:10px 16px;background:#e5e5e5;color:#404040;border-radius:8px;text-decoration:none;font-weight:500;font-size:14px;">
+                        📧 Envoyer Ticket par Email
+                    </a>
+                    ''', unsafe_allow_html=True)
+                
+                st.caption("💡 Pour l'envoi automatique, configurez le SMTP dans Config > Email")
+        else:
             st.info("💡 Ajoutez l'email du client pour envoyer les documents par email")
     
     # === SECTION RÉCAPITULATIF DE PAIEMENT ===
@@ -4663,26 +4736,51 @@ def ui_tech():
     
     st.markdown(f"**{len(tickets)} réparation(s)** • Page {current_page}/{total_pages}")
     
-    # En-tete du tableau amélioré
+    # En-tete du tableau avec st.columns (aligné avec les lignes)
+    col_props_tech = [1, 1.4, 1.6, 1, 1.4, 0.6]
+    
+    header_cols = st.columns(col_props_tech)
+    headers_tech = ["Ticket", "Client", "Appareil", "Tech", "Statut", ""]
+    
     st.markdown("""
-    <div style="display:grid;grid-template-columns:80px 1fr 1fr 100px 130px 70px;gap:8px;padding:10px;background:#1e293b;color:white;border-radius:8px;margin-bottom:8px;font-weight:600;font-size:0.8rem;">
-        <div>Ticket</div>
-        <div>Client</div>
-        <div>Appareil</div>
-        <div>Assigné</div>
-        <div>Statut</div>
-        <div>Action</div>
-    </div>
+    <style>
+    .tech-header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        margin: -12px -16px 12px -16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+    }
+    </style>
     """, unsafe_allow_html=True)
+    
+    for i, col in enumerate(header_cols):
+        with col:
+            st.markdown(f'<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">{headers_tech[i]}</div>', unsafe_allow_html=True)
+    
+    st.markdown('<hr style="margin:8px 0;border:none;border-top:1px solid #e5e5e5;">', unsafe_allow_html=True)
     
     # Affichage en liste avec boutons
     for t in tickets_page:
         tid = t['id']
         status_class = get_status_class(t.get('statut', ''))
         
-        # Modèle
-        modele = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
-        modele = modele[:20] + "..." if len(modele) > 20 else modele
+        # Modèle COMPLET VISIBLE
+        marque = t.get('marque', '')
+        modele_nom = t.get('modele', '')
+        if t.get('modele_autre'):
+            modele_nom = t['modele_autre']
+        
+        # Afficher marque + modèle ensemble
+        appareil_complet = f"{marque} {modele_nom}".strip()
+        if len(appareil_complet) > 24:
+            appareil_display = appareil_complet[:22] + "..."
+        else:
+            appareil_display = appareil_complet
+        
+        # Catégorie pour icône
+        categorie = t.get('categorie', 'Smartphone')
+        device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
+        device_icon = device_icons.get(categorie, "📱")
         
         # Technicien avec couleur
         tech = t.get('technicien_assigne', '')
@@ -4698,28 +4796,48 @@ def ui_tech():
         # Indicateur accord client
         accord_icon = ""
         if t.get('statut') == "En attente d'accord client":
-            accord_icon = "⚠️"
+            accord_icon = "⚠️ "
         
-        col1, col2, col3, col4, col5, col6 = st.columns([1, 1.3, 1.3, 1.1, 1.5, 0.8])
-        with col1:
-            st.markdown(f"**{t['ticket_code']}**")
-        with col2:
-            st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')[:10]}")
-        with col3:
-            st.caption(modele)
-        with col4:
+        # Colonnes alignées avec le header
+        row_cols = st.columns(col_props_tech)
+        
+        with row_cols[0]:
+            st.markdown(f'''
+            <div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
+            ''', unsafe_allow_html=True)
+        
+        with row_cols[1]:
+            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()
+            if len(client_nom) > 16:
+                client_nom = client_nom[:14] + "..."
+            st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
+        
+        with row_cols[2]:
+            # Appareil avec icône et modèle VISIBLE
+            st.markdown(f'''
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:14px;">{device_icon}</span>
+                <span style="font-size:12px;font-weight:500;color:#171717;" title="{appareil_complet}">{appareil_display}</span>
+            </div>
+            ''', unsafe_allow_html=True)
+        
+        with row_cols[3]:
             if tech_display != "—":
-                st.markdown(f"<span style='background:{tech_color};color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;'>{tech_display}</span>", unsafe_allow_html=True)
+                st.markdown(f'<span style="background:{tech_color};color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:500;">{tech_display}</span>', unsafe_allow_html=True)
             else:
-                st.caption("Non assigné")
-        with col5:
-            st.markdown(f"{accord_icon}<span class='badge {status_class}' style='font-size:0.7rem;'>{t.get('statut','')[:16]}</span>", unsafe_allow_html=True)
-        with col6:
-            if st.button("📂", key=f"tech_open_{tid}", use_container_width=True):
+                st.markdown('<span style="color:#a3a3a3;font-size:11px;font-style:italic;">—</span>', unsafe_allow_html=True)
+        
+        with row_cols[4]:
+            statut = t.get('statut', '')
+            statut_short = statut[:14] + "..." if len(statut) > 14 else statut
+            st.markdown(f'{accord_icon}<span class="badge {status_class}" style="font-size:10px;" title="{statut}">{statut_short}</span>', unsafe_allow_html=True)
+        
+        with row_cols[5]:
+            if st.button("→", key=f"tech_open_{tid}", use_container_width=True):
                 st.session_state.tech_selected = tid
                 st.rerun()
         
-        st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
+        st.markdown('<hr style="margin:6px 0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
     
     # Navigation pagination
     if total_pages > 1:
