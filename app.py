@@ -8,6 +8,7 @@ Couleurs orange, style moderne Tailwind
 import streamlit as st
 import sqlite3
 from datetime import datetime
+import json
 import urllib.parse
 
 import html
@@ -65,6 +66,101 @@ def _restore_db_from_upload(uploaded_bytes: bytes) -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception:
         pass
+def _export_config_bundle() -> bytes:
+    """Exporte les éléments de configuration (hors clients/tickets) en JSON."""
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    def _fetch_all(sql: str, params=()):
+        c.execute(sql, params)
+        return [dict(r) for r in c.fetchall()]
+
+    bundle = {
+        "schema": "klikphone_sav_config_v1",
+        "exported_at": datetime.now().isoformat(timespec="seconds"),
+        "db_path": DB_PATH,
+        "params": _fetch_all("SELECT cle, valeur FROM params ORDER BY cle"),
+        "membres_equipe": _fetch_all("SELECT nom, role, couleur, actif FROM membres_equipe ORDER BY id"),
+        "catalog_marques": _fetch_all("SELECT categorie, marque FROM catalog_marques ORDER BY categorie, marque"),
+        "catalog_modeles": _fetch_all("SELECT categorie, marque, modele FROM catalog_modeles ORDER BY categorie, marque, modele"),
+    }
+    return json.dumps(bundle, ensure_ascii=False, indent=2).encode("utf-8")
+
+
+def _import_config_bundle(bundle_bytes: bytes, replace: bool = False) -> None:
+    """Importe un bundle config JSON.
+
+    - replace=False : fusion (upsert params + ajout catalogue + ajout membres manquants)
+    - replace=True  : remplace params/catalogue/équipe
+    """
+    payload = json.loads(bundle_bytes.decode("utf-8", errors="strict"))
+    if not isinstance(payload, dict) or payload.get("schema") != "klikphone_sav_config_v1":
+        raise ValueError("Format de sauvegarde config invalide (schema).")
+
+    conn = get_db()
+    c = conn.cursor()
+
+    if replace:
+        c.execute("DELETE FROM params")
+        c.execute("DELETE FROM membres_equipe")
+        c.execute("DELETE FROM catalog_marques")
+        c.execute("DELETE FROM catalog_modeles")
+
+    # Params : upsert
+    for row in payload.get("params", []):
+        cle = (row.get("cle") or "").strip()
+        if not cle:
+            continue
+        val = "" if row.get("valeur") is None else str(row.get("valeur"))
+        c.execute(
+            "INSERT INTO params (cle, valeur) VALUES (?, ?) "
+            "ON CONFLICT(cle) DO UPDATE SET valeur=excluded.valeur",
+            (cle, val),
+        )
+
+    # Équipe : merge = ajoute si non présent (nom+role), replace = déjà vidé puis insère tout
+    for row in payload.get("membres_equipe", []):
+        nom = (row.get("nom") or "").strip()
+        role = (row.get("role") or "").strip()
+        couleur = (row.get("couleur") or "").strip() or "#64748b"
+        actif = 1 if int(row.get("actif", 1) or 1) else 0
+        if not nom:
+            continue
+        if replace:
+            c.execute(
+                "INSERT INTO membres_equipe (nom, role, couleur, actif) VALUES (?, ?, ?, ?)",
+                (nom, role, couleur, actif),
+            )
+        else:
+            c.execute("SELECT COUNT(*) FROM membres_equipe WHERE nom=? AND role=?", (nom, role))
+            if c.fetchone()[0] == 0:
+                c.execute(
+                    "INSERT INTO membres_equipe (nom, role, couleur, actif) VALUES (?, ?, ?, ?)",
+                    (nom, role, couleur, actif),
+                )
+
+    # Catalogue : insert ignore
+    for row in payload.get("catalog_marques", []):
+        categorie = (row.get("categorie") or "").strip()
+        marque = (row.get("marque") or "").strip()
+        if categorie and marque:
+            c.execute(
+                "INSERT OR IGNORE INTO catalog_marques (categorie, marque) VALUES (?, ?)",
+                (categorie, marque),
+            )
+
+    for row in payload.get("catalog_modeles", []):
+        categorie = (row.get("categorie") or "").strip()
+        marque = (row.get("marque") or "").strip()
+        modele = (row.get("modele") or "").strip()
+        if categorie and marque and modele:
+            c.execute(
+                "INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)",
+                (categorie, marque, modele),
+            )
+
+    conn.commit()
 
 
 # Logo Klikphone en base64
@@ -6625,6 +6721,91 @@ def staff_config():
             set_param("PIN_ACCUEIL", pin_acc)
             set_param("PIN_TECH", pin_tech)
             st.success("PIN mis à jour!")
+
+
+st.markdown("---")
+st.markdown("### 💾 Sauvegardes (base + config)")
+st.caption(
+    "Sur un hébergement **OVH mutualisé**, une application Streamlit \"vivante\" n'est pas le bon modèle : "
+    "privilégie un **VPS / Public Cloud** (SQLite persistante) ou une **base externe** si tu es sur Streamlit Cloud."
+)
+
+with st.expander("📦 Base de données (clients, tickets, commandes)", expanded=True):
+    st.caption(
+        f"Fichier SQLite actuel : `{DB_PATH}`. "
+        "Conseil : télécharge une sauvegarde régulièrement (et avant toute mise à jour)."
+    )
+
+    if _db_file_exists():
+        try:
+            with open(DB_PATH, "rb") as f:
+                db_bytes = f.read()
+            st.download_button(
+                "⬇️ Télécharger la sauvegarde (SQLite .db)",
+                data=db_bytes,
+                file_name="klikphone_sav_backup.db",
+                mime="application/octet-stream",
+                use_container_width=True,
+                key="dl_db_backup",
+            )
+        except Exception as e:
+            st.error(f"Impossible de lire la base : {e}")
+    else:
+        st.warning("Aucune base SQLite trouvée (ou fichier vide).")
+
+    st.markdown("#### Restaurer une sauvegarde (.db)")
+    uploaded_db = st.file_uploader("Choisir un fichier .db", type=["db", "sqlite", "sqlite3"], key="u_db_restore")
+    confirm_restore = st.checkbox(
+        "Je confirme : remplacer la base actuelle par ce fichier",
+        value=False,
+        key="chk_restore_db",
+    )
+
+    if uploaded_db is not None and confirm_restore:
+        if st.button("♻️ Restaurer maintenant", type="primary", use_container_width=True, key="btn_restore_db"):
+            try:
+                _restore_db_from_upload(uploaded_db.getvalue())
+                st.success("Base restaurée. L'application va se recharger.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Restauration impossible : {e}")
+
+with st.expander("⚙️ Config (boutique, email, messages, catalogue, équipe, PIN)", expanded=False):
+    st.caption("Sauvegarde uniquement l'onglet **Config** (pas les clients/tickets).")
+
+    try:
+        cfg_bytes = _export_config_bundle()
+        st.download_button(
+            "⬇️ Télécharger la config (JSON)",
+            data=cfg_bytes,
+            file_name="klikphone_config_backup.json",
+            mime="application/json",
+            use_container_width=True,
+            key="dl_cfg_json",
+        )
+    except Exception as e:
+        st.error(f"Export config impossible : {e}")
+
+    st.markdown("#### Restaurer une config (JSON)")
+    uploaded_cfg = st.file_uploader("Choisir un fichier .json", type=["json"], key="u_cfg_restore")
+    replace_all = st.checkbox(
+        "Remplacer entièrement la config (sinon : fusion/ajout)",
+        value=False,
+        key="chk_cfg_replace",
+    )
+    confirm_cfg = st.checkbox(
+        "Je confirme : appliquer cette config",
+        value=False,
+        key="chk_cfg_confirm",
+    )
+    if uploaded_cfg is not None and confirm_cfg:
+        if st.button("♻️ Appliquer la config", type="primary", use_container_width=True, key="btn_restore_cfg"):
+            try:
+                _import_config_bundle(uploaded_cfg.getvalue(), replace=replace_all)
+                st.success("Config appliquée. L'application va se recharger.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Import config impossible : {e}")
 st.markdown("---")
 st.markdown("### 💾 Sauvegarde / restauration des données")
 st.caption(
