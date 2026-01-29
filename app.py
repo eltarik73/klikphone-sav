@@ -2347,11 +2347,11 @@ def envoyer_email(destinataire, sujet, message, html_content=None):
             html_clean = html_clean.replace('IMPRIMER', '')
             msg.attach(MIMEText(html_clean, 'html', 'utf-8'))
         
-        # Connexion et envoi
+        # Connexion et envoi - Encoder en bytes UTF-8
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_string())
+        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
         server.quit()
         
         return True, "Email envoyé avec succès!"
@@ -2393,7 +2393,7 @@ def envoyer_email_avec_pdf(destinataire, sujet, message, pdf_bytes, filename="do
         server = smtplib.SMTP(smtp_host, int(smtp_port or 587))
         server.starttls()
         server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_string())
+        server.sendmail(smtp_from or smtp_user, destinataire, msg.as_bytes())
         server.quit()
         
         return True, "Email avec PDF envoyé!"
