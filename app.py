@@ -2641,8 +2641,8 @@ L'équipe {nom_boutique}
 # =============================================================================
 # TICKETS HTML
 # =============================================================================
-def ticket_client_html(t):
-    """Ticket client optimisé pour imprimante thermique 80mm - NOIR uniquement"""
+def ticket_client_html(t, for_email=False):
+    """Ticket client - version impression thermique ou email"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
@@ -2671,99 +2671,91 @@ def ticket_client_html(t):
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={urllib.parse.quote(url_suivi_ticket)}"
     
+    # Version EMAIL (colorée)
+    if for_email:
+        return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20px; background: #f5f5f5; }}
+.ticket {{ max-width: 400px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+.header {{ background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 20px; text-align: center; }}
+.header h1 {{ margin: 0; font-size: 24px; }}
+.header p {{ margin: 5px 0 0; opacity: 0.9; font-size: 12px; }}
+.ticket-num {{ background: #1e293b; color: white; text-align: center; padding: 15px; font-size: 20px; font-weight: bold; letter-spacing: 2px; }}
+.content {{ padding: 20px; }}
+.section {{ margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }}
+.section:last-child {{ border-bottom: none; }}
+.section-title {{ font-weight: bold; color: #f97316; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }}
+.qr-section {{ text-align: center; padding: 15px; background: #f8fafc; }}
+.qr-section img {{ width: 100px; height: 100px; }}
+.footer {{ background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="ticket">
+<div class="header">
+<h1>KLIKPHONE</h1>
+<p>Spécialiste Apple - 79 Place Saint Léger, Chambéry</p>
+</div>
+<div class="ticket-num">TICKET N° {t['ticket_code']}</div>
+<div class="content">
+<div class="section">
+<div class="section-title">Client</div>
+<div><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
+<div>Tél: {t.get('client_tel','')}</div>
+</div>
+<div class="section">
+<div class="section-title">Appareil</div>
+<div><strong>{t.get('marque','')} {modele_txt}</strong></div>
+</div>
+<div class="section">
+<div class="section-title">Réparation</div>
+<div>{panne}</div>
+{f"<div style='margin-top:10px;padding:10px;background:#fff7ed;border-radius:6px;'><strong>Devis:</strong> {devis}€ | <strong>Reste:</strong> {(tarif or devis or 0) - (acompte or 0):.0f}€</div>" if devis else ""}
+</div>
+</div>
+<div class="qr-section">
+<img src="{qr_url}" alt="QR Code">
+<p style="color:#64748b;font-size:11px;margin-top:8px;">Scannez pour suivre votre réparation</p>
+</div>
+<div class="footer">
+<p>Date de dépôt: {fmt_date(t.get('date_depot',''))}</p>
+<p style="margin-top:8px;">Merci de votre confiance !</p>
+</div>
+</div>
+</body>
+</html>"""
+    
+    # Version IMPRESSION THERMIQUE (noir, compact, sans marge)
     return f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{
-        size: 80mm auto !important;
-        margin: 0mm !important;
-    }}
-    html, body {{
-        width: 80mm !important;
-        margin: 0 !important;
-        padding: 2mm !important;
-    }}
+    @page {{ size: 80mm auto !important; margin: 0 !important; }}
+    html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    line-height: 1.2;
-    color: #000;
-    background: #fff;
-    width: 76mm;
-    max-width: 76mm;
-    padding: 2mm;
-}}
+html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 3mm; }}
 .ticket {{ width: 100%; }}
-.center {{ text-align: center; }}
 .bold {{ font-weight: bold; }}
-.header {{
-    text-align: center;
-    border-bottom: 2px solid #000;
-    padding-bottom: 6px;
-    margin-bottom: 6px;
-}}
-.header h1 {{
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: 1px;
-}}
-.header p {{ font-size: 9px; margin: 1px 0; }}
-.ticket-num {{
-    text-align: center;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 5px;
-    margin: 5px 0;
-    border: 2px solid #000;
-}}
-.date {{ text-align: center; font-size: 10px; margin-bottom: 6px; }}
-.section {{
-    border-top: 1px dashed #000;
-    padding: 5px 0;
-}}
-.section-title {{
-    font-weight: bold;
-    font-size: 10px;
-    margin-bottom: 3px;
-}}
-.qr-section {{
-    text-align: center;
-    padding: 6px 0;
-    border-top: 1px dashed #000;
-}}
-.qr-section img {{ width: 60px; height: 60px; }}
-.qr-section p {{ font-size: 8px; margin-top: 3px; }}
-.conditions {{
-    font-size: 7px;
-    line-height: 1.1;
-    border-top: 1px dashed #000;
-    padding-top: 5px;
-}}
-.footer {{
-    text-align: center;
-    font-weight: bold;
-    font-size: 10px;
-    padding-top: 5px;
-    border-top: 2px solid #000;
-    margin-top: 5px;
-}}
-.print-btn {{
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    background: #000;
-    color: #fff;
-    border: none;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-}}
+.header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 4px; }}
+.header h1 {{ font-size: 16px; font-weight: 900; }}
+.header p {{ font-size: 8px; margin: 1px 0; }}
+.ticket-num {{ text-align: center; font-size: 12px; font-weight: bold; padding: 4px; border: 1px solid #000; margin-bottom: 4px; }}
+.date {{ text-align: center; font-size: 9px; margin-bottom: 4px; }}
+.section {{ border-top: 1px dashed #000; padding: 3px 0; }}
+.section-title {{ font-weight: bold; font-size: 9px; text-decoration: underline; }}
+.qr-section {{ text-align: center; padding: 4px 0; border-top: 1px dashed #000; }}
+.qr-section img {{ width: 50px; height: 50px; }}
+.qr-section p {{ font-size: 7px; }}
+.conditions {{ font-size: 7px; line-height: 1.1; border-top: 1px dashed #000; padding-top: 3px; }}
+.footer {{ text-align: center; font-weight: bold; font-size: 9px; padding-top: 4px; border-top: 2px solid #000; margin-top: 4px; }}
+.print-btn {{ display: block; width: 100%; padding: 8px; margin-top: 8px; background: #000; color: #fff; border: none; font-size: 11px; font-weight: bold; cursor: pointer; }}
 @media print {{ .print-btn {{ display: none !important; }} }}
 </style>
 </head>
@@ -2771,45 +2763,35 @@ body {{
 <div class="ticket">
 <div class="header">
 <h1>KLIKPHONE</h1>
-<p>Spécialiste Apple</p>
-<p>79 Place Saint Léger, 73000 Chambéry</p>
-<p>Tél: 04 79 60 89 22</p>
+<p>79 Pl. Saint Léger, Chambéry</p>
+<p>04 79 60 89 22</p>
 </div>
-
 <div class="ticket-num">N° {t['ticket_code']}</div>
 <div class="date">{fmt_date(t.get('date_depot',''))}</div>
-
 <div class="section">
 <div class="section-title">CLIENT</div>
 <div>{t.get('client_nom','')} {t.get('client_prenom','')}</div>
 <div>Tél: {t.get('client_tel','')}</div>
 </div>
-
 <div class="section">
 <div class="section-title">APPAREIL</div>
 <div>{t.get('marque','')} {modele_txt}</div>
 </div>
-
 <div class="section">
-<div class="section-title">MOTIF DU DÉPÔT</div>
+<div class="section-title">RÉPARATION</div>
 <div>{panne}</div>
 </div>
-
 {tarif_section}
-
 <div class="qr-section">
 <img src="{qr_url}" alt="QR">
 <p>Scannez pour suivre</p>
 </div>
-
 <div class="conditions">
 • Klikphone ne consulte pas vos données<br>
-• Pensez à sauvegarder<br>
-• Décline toute responsabilité perte données
+• Pensez à sauvegarder vos données<br>
+• Décline responsabilité perte données
 </div>
-
 <div class="footer">Merci de votre confiance !</div>
-
 <button class="print-btn" onclick="window.print()">IMPRIMER</button>
 </div>
 </body>
@@ -2833,89 +2815,24 @@ def ticket_staff_html(t):
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{
-        size: 80mm auto !important;
-        margin: 0mm !important;
-    }}
-    html, body {{
-        width: 80mm !important;
-        margin: 0 !important;
-        padding: 2mm !important;
-    }}
+    @page {{ size: 80mm auto !important; margin: 0 !important; }}
+    html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    line-height: 1.2;
-    color: #000;
-    background: #fff;
-    width: 76mm;
-    max-width: 76mm;
-    padding: 2mm;
-}}
+html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 3mm; }}
 .ticket {{ width: 100%; }}
-.header {{
-    text-align: center;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 4px;
-    border: 2px solid #000;
-    margin-bottom: 6px;
-}}
-.ticket-num {{
-    text-align: center;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 4px;
-    border: 1px solid #000;
-    margin-bottom: 4px;
-}}
-.status {{
-    text-align: center;
-    padding: 3px;
-    border: 1px dashed #000;
-    font-weight: bold;
-    font-size: 9px;
-    margin-bottom: 6px;
-}}
-.section {{
-    border-top: 1px dashed #000;
-    padding: 4px 0;
-}}
-.section-title {{
-    font-weight: bold;
-    font-size: 9px;
-    text-decoration: underline;
-}}
-.security-box {{
-    border: 2px solid #000;
-    padding: 5px;
-    margin: 5px 0;
-    text-align: center;
-}}
-.security-box .title {{
-    font-weight: bold;
-    font-size: 9px;
-}}
-.security-box .codes {{
-    font-size: 12px;
-    font-weight: bold;
-}}
-.tarif-box {{
-    border: 1px solid #000;
-    padding: 4px;
-    margin: 5px 0;
-    font-size: 10px;
-}}
-.notes-box {{
-    border: 1px dashed #000;
-    padding: 4px;
-    margin: 5px 0;
-    font-size: 8px;
-}}
-.footer {{
-    text-align: center;
+.header {{ text-align: center; font-weight: bold; font-size: 12px; padding: 4px; border: 2px solid #000; margin-bottom: 6px; }}
+.ticket-num {{ text-align: center; font-size: 14px; font-weight: bold; padding: 4px; border: 1px solid #000; margin-bottom: 4px; }}
+.status {{ text-align: center; padding: 3px; border: 1px dashed #000; font-weight: bold; font-size: 9px; margin-bottom: 6px; }}
+.section {{ border-top: 1px dashed #000; padding: 4px 0; }}
+.section-title {{ font-weight: bold; font-size: 9px; text-decoration: underline; }}
+.security-box {{ border: 2px solid #000; padding: 5px; margin: 5px 0; text-align: center; }}
+.security-box .title {{ font-weight: bold; font-size: 9px; }}
+.security-box .codes {{ font-size: 12px; font-weight: bold; }}
+.tarif-box {{ border: 1px solid #000; padding: 4px; margin: 5px 0; font-size: 10px; }}
+.notes-box {{ border: 1px dashed #000; padding: 4px; margin: 5px 0; font-size: 8px; }}
+.footer {{ text-align: center;
     font-size: 9px;
     padding-top: 5px;
     border-top: 2px solid #000;
@@ -2983,8 +2900,8 @@ Dépôt: {fmt_date(t.get('date_depot',''))}
 </body>
 </html>"""
 
-def ticket_devis_facture_html(t, doc_type="devis"):
-    """Génère un ticket DEVIS ou RÉCAPITULATIF DE PAIEMENT selon le type"""
+def ticket_devis_facture_html(t, doc_type="devis", for_email=False):
+    """Génère un ticket DEVIS ou RÉCAPITULATIF - version impression ou email"""
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
     
@@ -3008,244 +2925,157 @@ def ticket_devis_facture_html(t, doc_type="devis"):
     
     # Type de document
     is_facture = doc_type == "facture"
-    doc_title = "RÉCAPITULATIF DE PAIEMENT" if is_facture else "DEVIS"
-    doc_color = "#16a34a" if is_facture else "#3b82f6"
+    doc_title = "REÇU" if is_facture else "DEVIS"
     doc_num = f"R-{t['ticket_code']}" if is_facture else f"D-{t['ticket_code']}"
     
-    # Ligne réparation supplémentaire
-    rep_supp_line = ""
-    if rep_supp:
-        rep_supp_line = f"""
-        <tr>
-            <td style="padding:10px; border-bottom:1px solid #e5e7eb;">Réparation supplémentaire<br><small style="color:#666;">{rep_supp}</small></td>
-            <td style="padding:10px; text-align:right; border-bottom:1px solid #e5e7eb;">{prix_supp:.2f} €</td>
-        </tr>
-        """
-    
-    # Date du document
     from datetime import datetime
     date_doc = datetime.now().strftime("%d/%m/%Y")
     
-    return f"""
-<!DOCTYPE html>
+    # VERSION EMAIL (colorée, design)
+    if for_email:
+        doc_color = "#16a34a" if is_facture else "#3b82f6"
+        rep_supp_line = ""
+        if rep_supp:
+            rep_supp_line = f"<tr><td style='padding:10px;border-bottom:1px solid #e5e7eb;'>Réparation supp.<br><small>{rep_supp}</small></td><td style='padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;'>{prix_supp:.2f} €</td></tr>"
+        
+        return f"""<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            font-size: 12px; 
-            padding: 20px;
-            background: #f5f5f5;
-        }}
-        .document {{ 
-            max-width: 400px; 
-            margin: 0 auto; 
-            background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            overflow: hidden;
-        }}
-        .header {{
-            background: linear-gradient(135deg, {doc_color} 0%, {doc_color}dd 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }}
-        .header img {{ width: 50px; height: 50px; margin-bottom: 10px; }}
-        .header h1 {{ font-size: 24px; font-weight: 800; margin: 5px 0; letter-spacing: 2px; }}
-        .header .doc-num {{ font-size: 14px; opacity: 0.9; margin-top: 5px; }}
-        .header .date {{ font-size: 11px; opacity: 0.8; margin-top: 5px; }}
-        
-        .company-info {{
-            background: #f8f9fa;
-            padding: 15px;
-            text-align: center;
-            font-size: 11px;
-            color: #666;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        
-        .client-section {{
-            padding: 15px 20px;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        .client-section h3 {{
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #999;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }}
-        .client-section p {{ margin: 3px 0; color: #333; }}
-        
-        .details-section {{
-            padding: 15px 20px;
-        }}
-        .details-section h3 {{
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #999;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-        }}
-        
-        .items-table {{
-            width: 100%;
-            border-collapse: collapse;
-        }}
-        .items-table th {{
-            background: #f3f4f6;
-            padding: 10px;
-            text-align: left;
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #666;
-            letter-spacing: 0.5px;
-        }}
-        .items-table th:last-child {{ text-align: right; }}
-        
-        .totals {{
-            background: linear-gradient(180deg, #f8f9fa 0%, #f3f4f6 100%);
-            padding: 15px 20px;
-            margin-top: 10px;
-        }}
-        .total-line {{
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            font-size: 12px;
-        }}
-        .total-line.small {{ color: #666; font-size: 11px; }}
-        .total-line.main {{
-            font-size: 16px;
-            font-weight: 700;
-            border-top: 2px solid {doc_color};
-            padding-top: 10px;
-            margin-top: 5px;
-        }}
-        .total-line.reste {{
-            font-size: 18px;
-            font-weight: 800;
-            color: #dc2626;
-            border-top: 2px dashed #dc2626;
-            padding-top: 10px;
-            margin-top: 10px;
-        }}
-        
-        .footer {{
-            background: #1f2937;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 10px;
-        }}
-        .footer p {{ margin: 3px 0; opacity: 0.8; }}
-        
-        .print-btn {{
-            display: block;
-            width: calc(100% - 40px);
-            margin: 20px;
-            padding: 12px;
-            background: linear-gradient(135deg, {doc_color} 0%, {doc_color}dd 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-        }}
-        .print-btn:hover {{ opacity: 0.9; }}
-        
-        @media print {{
-            .print-btn {{ display: none; }}
-            body {{ padding: 0; background: white; }}
-            .document {{ box-shadow: none; max-width: 100%; }}
-        }}
-    </style>
+<meta charset="UTF-8">
+<style>
+body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20px; background: #f5f5f5; }}
+.document {{ max-width: 450px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+.header {{ background: linear-gradient(135deg, {doc_color}, {doc_color}dd); color: white; padding: 25px; text-align: center; }}
+.header h1 {{ margin: 0; font-size: 28px; font-weight: 800; }}
+.header .doc-num {{ font-size: 16px; opacity: 0.9; margin-top: 8px; }}
+.header .date {{ font-size: 12px; opacity: 0.8; margin-top: 5px; }}
+.company-info {{ background: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; border-bottom: 1px solid #e5e7eb; }}
+.section {{ padding: 15px 20px; border-bottom: 1px solid #e5e7eb; }}
+.section-title {{ font-size: 11px; text-transform: uppercase; color: #999; margin-bottom: 8px; letter-spacing: 1px; }}
+.items-table {{ width: 100%; border-collapse: collapse; }}
+.items-table th {{ background: #f3f4f6; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; }}
+.items-table th:last-child {{ text-align: right; }}
+.totals {{ background: #f8f9fa; padding: 15px 20px; }}
+.total-line {{ display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; }}
+.total-line.main {{ font-size: 18px; font-weight: 700; border-top: 2px solid {doc_color}; padding-top: 12px; margin-top: 8px; }}
+.total-line.reste {{ font-size: 20px; font-weight: 800; color: #dc2626; border-top: 2px dashed #dc2626; padding-top: 12px; margin-top: 10px; }}
+.footer {{ background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 11px; }}
+</style>
 </head>
 <body>
-    <div class="document">
-        <div class="header">
-            <img src="data:image/png;base64,{LOGO_B64}" alt="Klikphone">
-            <h1>{doc_title}</h1>
-            <div class="doc-num">{doc_num}</div>
-            <div class="date">Date: {date_doc}</div>
-        </div>
-        
-        <div class="company-info">
-            <strong>KLIKPHONE</strong> - Spécialiste Apple<br>
-            79 Place Saint Léger, 73000 Chambéry<br>
-            Tél: 04 79 60 89 22 | SIRET: XXX XXX XXX XXXXX
-        </div>
-        
-        <div class="client-section">
-            <h3>Client</h3>
-            <p><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></p>
-            <p>Tél: {t.get('client_tel','')}</p>
-            {f"<p>Email: {t.get('client_email')}</p>" if t.get('client_email') else ""}
-        </div>
-        
-        <div class="client-section">
-            <h3>Appareil</h3>
-            <p><strong>{t.get('marque','')} {modele_txt}</strong></p>
-            {f"<p>IMEI: {t.get('imei')}</p>" if t.get('imei') else ""}
-        </div>
-        
-        <div class="details-section">
-            <h3>Prestations</h3>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Prix TTC</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="padding:10px; border-bottom:1px solid #e5e7eb;">{panne}</td>
-                        <td style="padding:10px; text-align:right; border-bottom:1px solid #e5e7eb;">{devis_val:.2f} €</td>
-                    </tr>
-                    {rep_supp_line}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="totals">
-            <div class="total-line main">
-                <span>Total TTC</span>
-                <span>{total_ttc:.2f} €</span>
-            </div>
-            <div class="total-line small">
-                <span>dont HT</span>
-                <span>{total_ht:.2f} €</span>
-            </div>
-            <div class="total-line small">
-                <span>dont TVA (20%)</span>
-                <span>{tva:.2f} €</span>
-            </div>
-            <div class="total-line">
-                <span>Acompte versé</span>
-                <span style="color:#16a34a;">- {acompte_val:.2f} €</span>
-            </div>
-            <div class="total-line reste">
-                <span>RESTE À PAYER</span>
-                <span>{reste:.2f} €</span>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>{"Ce devis est valable 30 jours." if not is_facture else "Merci pour votre confiance !"}</p>
-            <p>{"Devis non contractuel - Prix susceptibles de modification après diagnostic." if not is_facture else ""}</p>
-            <p style="margin-top:8px; font-weight:bold; color:#dc2626;">{"" if not is_facture else "⚠️ Ce ticket ne fait pas office de facture."}</p>
-        </div>
-        
-        <button class="print-btn" onclick="window.print()">IMPRIMER {doc_title}</button>
-    </div>
+<div class="document">
+<div class="header">
+<h1>{doc_title}</h1>
+<div class="doc-num">{doc_num}</div>
+<div class="date">Date: {date_doc}</div>
+</div>
+<div class="company-info">
+<strong>KLIKPHONE</strong> - Spécialiste Apple<br>
+79 Place Saint Léger, 73000 Chambéry | Tél: 04 79 60 89 22
+</div>
+<div class="section">
+<div class="section-title">Client</div>
+<p><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></p>
+<p>Tél: {t.get('client_tel','')}</p>
+</div>
+<div class="section">
+<div class="section-title">Appareil</div>
+<p><strong>{t.get('marque','')} {modele_txt}</strong></p>
+</div>
+<div class="section">
+<div class="section-title">Prestations</div>
+<table class="items-table">
+<thead><tr><th>Description</th><th>Prix TTC</th></tr></thead>
+<tbody>
+<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{panne}</td><td style="padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;">{devis_val:.2f} €</td></tr>
+{rep_supp_line}
+</tbody>
+</table>
+</div>
+<div class="totals">
+<div class="total-line main"><span>Total TTC</span><span>{total_ttc:.2f} €</span></div>
+<div class="total-line" style="color:#666;font-size:11px;"><span>dont HT: {total_ht:.2f} € | TVA: {tva:.2f} €</span></div>
+<div class="total-line"><span>Acompte versé</span><span style="color:#16a34a;">- {acompte_val:.2f} €</span></div>
+<div class="total-line reste"><span>RESTE À PAYER</span><span>{reste:.2f} €</span></div>
+</div>
+<div class="footer">
+<p>{"Ce devis est valable 30 jours." if not is_facture else "Merci pour votre confiance !"}</p>
+<p style="margin-top:5px;color:#fbbf24;">{"" if not is_facture else "⚠️ Ce ticket ne fait pas office de facture."}</p>
+</div>
+</div>
 </body>
-</html>
-"""
+</html>"""
+    
+    # VERSION IMPRESSION THERMIQUE (noir, compact)
+    rep_supp_line = f"<div>+ {rep_supp}: {prix_supp:.2f}€</div>" if rep_supp else ""
+    
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@media print {{
+    @page {{ size: 80mm auto !important; margin: 0 !important; }}
+    html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
+}}
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.2; color: #000; padding: 3mm; }}
+.ticket {{ width: 100%; }}
+.bold {{ font-weight: bold; }}
+.header {{ text-align: center; border: 2px solid #000; padding: 6px; margin-bottom: 6px; }}
+.header h1 {{ font-size: 18px; font-weight: 900; }}
+.header p {{ font-size: 9px; }}
+.doc-info {{ text-align: center; font-size: 10px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #000; }}
+.section {{ padding: 4px 0; border-bottom: 1px dashed #000; }}
+.section-title {{ font-weight: bold; font-size: 9px; text-decoration: underline; }}
+.totals {{ padding: 6px 0; }}
+.total-line {{ display: flex; justify-content: space-between; padding: 2px 0; }}
+.total-main {{ font-size: 14px; font-weight: bold; border-top: 2px solid #000; padding-top: 6px; margin-top: 4px; }}
+.total-reste {{ font-size: 16px; font-weight: bold; border: 2px solid #000; padding: 6px; margin-top: 6px; text-align: center; }}
+.footer {{ text-align: center; font-size: 8px; padding-top: 6px; border-top: 2px solid #000; margin-top: 6px; }}
+.print-btn {{ display: block; width: 100%; padding: 8px; margin-top: 8px; background: #000; color: #fff; border: none; font-size: 11px; font-weight: bold; cursor: pointer; }}
+@media print {{ .print-btn {{ display: none !important; }} }}
+</style>
+</head>
+<body>
+<div class="ticket">
+<div class="header">
+<h1>{doc_title}</h1>
+<p>KLIKPHONE - Chambéry</p>
+</div>
+<div class="doc-info">
+<div><b>{doc_num}</b></div>
+<div>Date: {date_doc}</div>
+</div>
+<div class="section">
+<div class="section-title">CLIENT</div>
+<div><b>{t.get('client_nom','')} {t.get('client_prenom','')}</b></div>
+<div>Tél: {t.get('client_tel','')}</div>
+</div>
+<div class="section">
+<div class="section-title">APPAREIL</div>
+<div><b>{t.get('marque','')} {modele_txt}</b></div>
+</div>
+<div class="section">
+<div class="section-title">PRESTATION</div>
+<div>{panne}: <b>{devis_val:.2f}€</b></div>
+{rep_supp_line}
+</div>
+<div class="totals">
+<div class="total-line total-main"><span>TOTAL TTC</span><span>{total_ttc:.2f} €</span></div>
+<div class="total-line" style="font-size:9px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
+<div class="total-line"><span>Acompte versé</span><span>- {acompte_val:.2f} €</span></div>
+</div>
+<div class="total-reste">RESTE À PAYER: {reste:.2f} €</div>
+<div class="footer">
+{"Devis valable 30 jours" if not is_facture else "Merci de votre confiance !"}
+<br>{"" if not is_facture else "Ce ticket ne fait pas office de facture"}
+</div>
+<button class="print-btn" onclick="window.print()">IMPRIMER</button>
+</div>
+</body>
+</html>"""
 
 def ticket_combined_html(t):
     """Génère les deux tickets (client + staff) pour impression thermique 80mm"""
@@ -3276,108 +3106,32 @@ def ticket_combined_html(t):
 <meta charset="UTF-8">
 <style>
 @media print {{
-    @page {{
-        size: 80mm auto !important;
-        margin: 0mm !important;
-    }}
-    html, body {{
-        width: 80mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-    .page-break {{
-        page-break-after: always;
-        break-after: page;
-        height: 1px;
-    }}
+    @page {{ size: 80mm auto !important; margin: 0 !important; }}
+    html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
+    .page-break {{ page-break-after: always; break-after: page; height: 1px; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    line-height: 1.2;
-    color: #000;
-    background: #fff;
-    width: 76mm;
-    max-width: 76mm;
-    padding: 2mm;
-}}
-.ticket {{ width: 100%; margin-bottom: 10px; }}
-.center {{ text-align: center; }}
+html, body {{ width: 80mm; max-width: 80mm; margin: 0; padding: 0; background: #fff; }}
+body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000; padding: 3mm; }}
+.ticket {{ width: 100%; margin-bottom: 8px; }}
 .bold {{ font-weight: bold; }}
-.header {{
-    text-align: center;
-    border-bottom: 2px solid #000;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
-}}
-.header h1 {{ font-size: 16px; font-weight: 900; }}
+.header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 4px; }}
+.header h1 {{ font-size: 14px; font-weight: 900; }}
 .header p {{ font-size: 8px; margin: 1px 0; }}
-.ticket-type {{
-    text-align: center;
-    font-weight: bold;
-    font-size: 11px;
-    padding: 3px;
-    border: 2px solid #000;
-    margin-bottom: 4px;
-}}
-.ticket-num {{
-    text-align: center;
-    font-size: 12px;
-    font-weight: bold;
-    padding: 4px;
-    border: 1px solid #000;
-    margin-bottom: 4px;
-}}
-.date {{ text-align: center; font-size: 9px; margin-bottom: 4px; }}
-.section {{
-    border-top: 1px dashed #000;
-    padding: 3px 0;
-}}
-.section-title {{
-    font-weight: bold;
-    font-size: 9px;
-    text-decoration: underline;
-}}
-.security-box {{
-    border: 2px solid #000;
-    padding: 4px;
-    margin: 4px 0;
-    text-align: center;
-}}
-.security-box .codes {{
-    font-size: 11px;
-    font-weight: bold;
-}}
-.qr-section {{
-    text-align: center;
-    padding: 4px 0;
-    border-top: 1px dashed #000;
-}}
-.qr-section img {{ width: 50px; height: 50px; }}
+.ticket-type {{ text-align: center; font-weight: bold; font-size: 10px; padding: 3px; border: 2px solid #000; margin-bottom: 4px; }}
+.ticket-num {{ text-align: center; font-size: 11px; font-weight: bold; padding: 3px; border: 1px solid #000; margin-bottom: 3px; }}
+.date {{ text-align: center; font-size: 8px; margin-bottom: 3px; }}
+.section {{ border-top: 1px dashed #000; padding: 3px 0; }}
+.section-title {{ font-weight: bold; font-size: 8px; text-decoration: underline; }}
+.security-box {{ border: 2px solid #000; padding: 3px; margin: 3px 0; text-align: center; }}
+.security-box .codes {{ font-size: 10px; font-weight: bold; }}
+.qr-section {{ text-align: center; padding: 3px 0; border-top: 1px dashed #000; }}
+.qr-section img {{ width: 45px; height: 45px; }}
 .qr-section p {{ font-size: 7px; }}
-.footer {{
-    text-align: center;
-    font-weight: bold;
-    font-size: 9px;
-    padding-top: 4px;
-    border-top: 2px solid #000;
-    margin-top: 4px;
-}}
-.print-btn {{
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    background: #000;
-    color: #fff;
-    border: none;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-}}
-@media print {{ .print-btn, .no-print {{ display: none !important; }} }}
-.page-break {{ height: 20px; border-top: 2px dashed #ccc; margin: 10px 0; }}
+.footer {{ text-align: center; font-weight: bold; font-size: 8px; padding-top: 3px; border-top: 2px solid #000; margin-top: 3px; }}
+.print-btn {{ display: block; width: 100%; padding: 8px; margin-top: 8px; background: #000; color: #fff; border: none; font-size: 10px; font-weight: bold; cursor: pointer; }}
+@media print {{ .print-btn {{ display: none !important; }} }}
+.page-break {{ height: 15px; border-top: 2px dashed #999; margin: 8px 0; }}
 </style>
 </head>
 <body>
@@ -5153,7 +4907,7 @@ Cordialement,
                 with col_e1:
                     if st.button("📧 Envoyer Ticket", use_container_width=True, key=f"email_client_{tid}"):
                         sujet = f"Ticket {t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
-                        html = ticket_client_html(t)
+                        html = ticket_client_html(t, for_email=True)
                         msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre ticket de dépôt.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
                         success, result = envoyer_email(email_client, sujet, msg, html)
                         if success:
@@ -5165,7 +4919,7 @@ Cordialement,
                 with col_e2:
                     if st.button("📧 Envoyer Devis", use_container_width=True, key=f"email_devis_{tid}", type="primary"):
                         sujet = f"Devis D-{t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
-                        html = ticket_devis_facture_html(t, "devis")
+                        html = ticket_devis_facture_html(t, "devis", for_email=True)
                         msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre devis.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
                         success, result = envoyer_email(email_client, sujet, msg, html)
                         if success:
@@ -5177,7 +4931,7 @@ Cordialement,
                 with col_e3:
                     if st.button("📧 Envoyer Reçu", use_container_width=True, key=f"email_recap_{tid}"):
                         sujet = f"Reçu R-{t.get('ticket_code','')} - {get_param('NOM_BOUTIQUE') or 'Klikphone'}"
-                        html = ticket_devis_facture_html(t, "facture")
+                        html = ticket_devis_facture_html(t, "facture", for_email=True)
                         msg = f"Bonjour,\n\nVeuillez trouver ci-joint votre reçu de paiement.\n\nCordialement,\n{get_param('NOM_BOUTIQUE') or 'Klikphone'}"
                         success, result = envoyer_email(email_client, sujet, msg, html)
                         if success:
