@@ -7172,67 +7172,48 @@ def afficher_suivi_ticket(t):
     }
     progress = progress_map.get(statut, 10)
     
-    # Carte principale
+    # Carte principale - Utiliser st.container et colonnes Streamlit
     st.markdown(f"""
-    <div style="background:white;border-radius:16px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:1rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-            <div>
-                <span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {t['ticket_code']}</span>
-            </div>
-            <span class="badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-            <div>
-                <p style="color:#64748b;font-size:0.8rem;margin:0;">Client</p>
-                <p style="color:#1e293b;font-weight:500;margin:0;">{t.get('client_nom','')} {t.get('client_prenom','')}</p>
-            </div>
-            <div>
-                <p style="color:#64748b;font-size:0.8rem;margin:0;">Appareil</p>
-                <p style="color:#1e293b;font-weight:500;margin:0;">{modele_txt}</p>
-            </div>
-            <div>
-                <p style="color:#64748b;font-size:0.8rem;margin:0;">Réparation</p>
-                <p style="color:#1e293b;font-weight:500;margin:0;">{panne}</p>
-            </div>
-            <div>
-                <p style="color:#64748b;font-size:0.8rem;margin:0;">Déposé le</p>
-                <p style="color:#1e293b;font-weight:500;margin:0;">{fmt_date(t.get('date_depot',''))}</p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+<div style="background:white;border-radius:16px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:1rem;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+<span style="font-size:1.5rem;font-weight:700;color:#1e293b;">🎫 {t['ticket_code']}</span>
+<span class="badge {status_class}" style="font-size:0.9rem;padding:8px 16px;">{statut}</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
+    
+    # Infos en colonnes Streamlit native
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Client**")
+        st.write(f"{t.get('client_nom','')} {t.get('client_prenom','')}")
+        st.markdown("**Réparation**")
+        st.write(panne)
+    with col2:
+        st.markdown("**Appareil**")
+        st.write(modele_txt)
+        st.markdown("**Déposé le**")
+        st.write(fmt_date(t.get('date_depot','')))
     
     # Date de récupération si définie
     if t.get('date_recuperation'):
-        st.markdown(f"""
-        <div style="background:#dcfce7;border:2px solid #22c55e;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center;">
-            <p style="color:#166534;font-size:1.1rem;margin:0;">
-                📅 <strong>Récupération prévue :</strong> {t.get('date_recuperation')}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.success(f"📅 **Récupération prévue :** {t.get('date_recuperation')}")
     
     # Tarification si définie
     if total_ttc > 0:
-        acompte_html = ""
-        if acompte > 0:
-            acompte_html = f'<div style="display:flex;justify-content:space-between;margin-top:0.5rem;"><span style="color:#64748b;">Acompte versé</span><span style="color:#22c55e;">-{acompte:.2f} €</span></div>'
-        
         st.markdown(f"""
-        <div style="background:#fff7ed;border:1px solid #f97316;border-radius:12px;padding:1rem;margin-bottom:1rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#9a3412;">💰 Total TTC</span>
-                <span style="color:#1e293b;font-size:1.2rem;font-weight:700;">{total_ttc:.2f} €</span>
-            </div>
-            {acompte_html}
-            <hr style="margin:0.5rem 0;border:none;border-top:1px solid #fed7aa;">
-            <div style="display:flex;justify-content:space-between;">
-                <span style="color:#9a3412;font-weight:600;">Reste à payer</span>
-                <span style="color:#dc2626;font-size:1.1rem;font-weight:700;">{reste:.2f} €</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+<div style="background:#fff7ed;border:1px solid #f97316;border-radius:12px;padding:1rem;margin:1rem 0;">
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<span style="color:#9a3412;">💰 Total TTC</span>
+<span style="color:#1e293b;font-size:1.2rem;font-weight:700;">{total_ttc:.2f} €</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
+        
+        if acompte > 0:
+            st.info(f"✅ Acompte versé : {acompte:.2f} €")
+        
+        st.warning(f"💳 **Reste à payer : {reste:.2f} €**")
     
     # Barre de progression
     st.markdown(f"**Progression : {progress}%**")
