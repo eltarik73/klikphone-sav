@@ -2755,7 +2755,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Version IMPRESSION THERMIQUE (noir, compact, sans marge)
+    # Version IMPRESSION THERMIQUE (noir, TRÈS lisible, BIEN espacé)
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -2766,60 +2766,80 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #ffffff !important; min-height: 100%; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; color: #000; padding: 10px; }}
-.ticket {{ width: 100%; max-width: 320px; background: #fff; }}
-.bold {{ font-weight: bold; }}
-.header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }}
-.header h1 {{ font-size: 18px; font-weight: 900; margin-bottom: 4px; }}
-.header p {{ font-size: 9px; margin: 2px 0; }}
-.ticket-num {{ text-align: center; font-size: 14px; font-weight: bold; padding: 6px; border: 2px solid #000; margin-bottom: 8px; }}
-.date {{ text-align: center; font-size: 10px; margin-bottom: 8px; }}
-.section {{ border-top: 1px dashed #000; padding: 6px 0; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 4px; }}
-.qr-section {{ text-align: center; padding: 8px 0; border-top: 1px dashed #000; }}
-.qr-section img {{ width: 60px; height: 60px; }}
-.qr-section p {{ font-size: 8px; margin-top: 4px; }}
-.conditions {{ font-size: 8px; line-height: 1.2; border-top: 1px dashed #000; padding-top: 6px; }}
-.footer {{ text-align: center; font-weight: bold; font-size: 10px; padding-top: 8px; border-top: 2px solid #000; margin-top: 8px; }}
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 12px; background: #000; color: #fff; border: none; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+html, body {{ margin: 0; padding: 0; background: #ffffff !important; }}
+body {{ font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.5; color: #000; padding: 20px; }}
+.ticket {{ width: 100%; max-width: 380px; background: #fff; }}
+
+.header {{ text-align: center; border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 15px; }}
+.header h1 {{ font-size: 28px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; }}
+.header p {{ font-size: 14px; margin: 4px 0; }}
+
+.ticket-num {{ text-align: center; font-size: 22px; font-weight: bold; padding: 12px; border: 3px solid #000; margin-bottom: 15px; letter-spacing: 1px; }}
+
+.date {{ text-align: center; font-size: 15px; margin-bottom: 15px; }}
+
+.section {{ border-top: 2px dashed #000; padding: 15px 0; }}
+.section-title {{ font-weight: bold; font-size: 14px; text-decoration: underline; margin-bottom: 8px; text-transform: uppercase; }}
+.section-content {{ font-size: 16px; line-height: 1.6; margin: 5px 0; }}
+
+.qr-section {{ text-align: center; padding: 20px 0; border-top: 2px dashed #000; }}
+.qr-section img {{ width: 90px; height: 90px; }}
+.qr-section p {{ font-size: 13px; margin-top: 10px; }}
+
+.conditions {{ font-size: 12px; line-height: 1.5; border-top: 2px dashed #000; padding-top: 12px; }}
+
+.footer {{ text-align: center; font-weight: bold; font-size: 16px; padding-top: 15px; border-top: 3px solid #000; margin-top: 15px; }}
+
+.print-btn {{ display: block; width: 100%; padding: 14px; margin-top: 20px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
 @media print {{ .print-btn {{ display: none !important; }} }}
 </style>
 </head>
 <body>
 <div class="ticket">
+
 <div class="header">
 <h1>KLIKPHONE</h1>
-<p>79 Pl. Saint Léger, Chambéry</p>
-<p>04 79 60 89 22</p>
+<p>Spécialiste Apple</p>
+<p>79 Place Saint Léger, Chambéry</p>
+<p>Tél: 04 79 60 89 22</p>
 </div>
+
 <div class="ticket-num">N° {t['ticket_code']}</div>
-<div class="date">{fmt_date(t.get('date_depot',''))}</div>
+
+<div class="date">Déposé le {fmt_date(t.get('date_depot',''))}</div>
+
 <div class="section">
-<div class="section-title">CLIENT</div>
-<div>{t.get('client_nom','')} {t.get('client_prenom','')}</div>
-<div>Tél: {t.get('client_tel','')}</div>
+<div class="section-title">Client</div>
+<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
+<div class="section-content">Tél: {t.get('client_tel','')}</div>
 </div>
+
 <div class="section">
-<div class="section-title">APPAREIL</div>
-<div>{t.get('marque','')} {modele_txt}</div>
+<div class="section-title">Appareil</div>
+<div class="section-content"><strong>{t.get('marque','')} {modele_txt}</strong></div>
 </div>
+
 <div class="section">
-<div class="section-title">RÉPARATION</div>
-<div>{panne}</div>
+<div class="section-title">Réparation</div>
+<div class="section-content"><strong>{panne}</strong></div>
 </div>
+
 {tarif_section}
+
 <div class="qr-section">
 <img src="{qr_url}" alt="QR">
-<p>Scannez pour suivre</p>
+<p>Scannez pour suivre votre réparation</p>
 </div>
+
 <div class="conditions">
-• Klikphone ne consulte pas vos données<br>
-• Pensez à sauvegarder vos données<br>
-• Décline responsabilité perte données
+• Klikphone ne consulte pas vos données personnelles<br><br>
+• Pensez à sauvegarder vos données<br><br>
+• Klikphone décline toute responsabilité en cas de perte de données
 </div>
+
 <div class="footer">Merci de votre confiance !</div>
-<button class="print-btn" onclick="window.print()">IMPRIMER</button>
+
+<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
@@ -2846,67 +2866,83 @@ def ticket_staff_html(t):
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #ffffff !important; min-height: 100%; }}
-body {{ font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.3; color: #000; padding: 10px; }}
-.ticket {{ width: 100%; max-width: 320px; background: #fff; }}
-.header {{ text-align: center; font-weight: bold; font-size: 14px; padding: 6px; border: 2px solid #000; margin-bottom: 8px; }}
-.ticket-num {{ text-align: center; font-size: 16px; font-weight: bold; padding: 6px; border: 2px solid #000; margin-bottom: 6px; }}
-.status {{ text-align: center; padding: 4px; border: 1px dashed #000; font-weight: bold; font-size: 10px; margin-bottom: 8px; }}
-.section {{ border-top: 1px dashed #000; padding: 6px 0; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 4px; }}
-.security-box {{ border: 2px solid #000; padding: 6px; margin: 6px 0; text-align: center; }}
-.security-box .title {{ font-weight: bold; font-size: 10px; margin-bottom: 4px; }}
-.security-box .codes {{ font-size: 14px; font-weight: bold; }}
-.tarif-box {{ border: 1px solid #000; padding: 6px; margin: 6px 0; font-size: 11px; }}
-.notes-box {{ border: 1px dashed #000; padding: 6px; margin: 6px 0; font-size: 9px; }}
-.footer {{ text-align: center; font-size: 10px; padding-top: 6px; border-top: 2px solid #000; margin-top: 6px; }}
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 12px; background: #000; color: #fff; border: none; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+html, body {{ margin: 0; padding: 0; background: #ffffff !important; }}
+body {{ font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.5; color: #000; padding: 20px; }}
+.ticket {{ width: 100%; max-width: 380px; background: #fff; }}
+
+.header {{ text-align: center; font-weight: bold; font-size: 22px; padding: 12px; border: 3px solid #000; margin-bottom: 15px; }}
+
+.ticket-num {{ text-align: center; font-size: 24px; font-weight: bold; padding: 12px; border: 3px solid #000; margin-bottom: 12px; letter-spacing: 1px; }}
+
+.status {{ text-align: center; padding: 10px; border: 2px dashed #000; font-weight: bold; font-size: 16px; margin-bottom: 15px; }}
+
+.section {{ border-top: 2px dashed #000; padding: 15px 0; }}
+.section-title {{ font-weight: bold; font-size: 14px; text-decoration: underline; margin-bottom: 8px; text-transform: uppercase; }}
+.section-content {{ font-size: 16px; margin: 6px 0; line-height: 1.6; }}
+
+.security-box {{ border: 3px solid #000; padding: 15px; margin: 15px 0; text-align: center; }}
+.security-box .title {{ font-weight: bold; font-size: 16px; margin-bottom: 10px; }}
+.security-box .codes {{ font-size: 20px; font-weight: bold; margin: 6px 0; }}
+
+.tarif-box {{ border: 2px solid #000; padding: 12px; margin: 12px 0; font-size: 16px; }}
+.tarif-box div {{ margin: 6px 0; }}
+
+.notes-box {{ border: 2px dashed #000; padding: 12px; margin: 12px 0; font-size: 14px; line-height: 1.5; }}
+.notes-box .title {{ font-weight: bold; margin-bottom: 8px; }}
+
+.footer {{ text-align: center; font-size: 14px; padding-top: 12px; border-top: 3px solid #000; margin-top: 12px; }}
+
+.print-btn {{ display: block; width: 100%; padding: 14px; margin-top: 20px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
 @media print {{ .print-btn {{ display: none !important; }} }}
 </style>
 </head>
 <body>
 <div class="ticket">
-<div class="header">TICKET STAFF</div>
+
+<div class="header">★ TICKET STAFF ★</div>
 
 <div class="ticket-num">{t['ticket_code']}</div>
 
 <div class="status">STATUT: {t.get('statut','')}</div>
 
 <div class="section">
-<div class="section-title">CLIENT</div>
-<div><b>{t.get('client_nom','')} {t.get('client_prenom','')}</b></div>
-<div>Tél: {t.get('client_tel','')}</div>
+<div class="section-title">Client</div>
+<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
+<div class="section-content">Tél: {t.get('client_tel','')}</div>
 </div>
 
 <div class="section">
-<div class="section-title">APPAREIL</div>
-<div><b>{t.get('marque','')} {modele}</b></div>
+<div class="section-title">Appareil</div>
+<div class="section-content"><strong>{t.get('marque','')} {modele}</strong></div>
 </div>
 
 <div class="security-box">
-<div class="title">CODES SÉCURITÉ</div>
-<div class="codes">PIN: {t.get('pin') or '----'} | {t.get('pattern') or '----'}</div>
+<div class="title">🔐 CODES DE SÉCURITÉ</div>
+<div class="codes">PIN: {t.get('pin') or '----'}</div>
+<div class="codes">Schéma: {t.get('pattern') or '----'}</div>
 </div>
 
 <div class="section">
-<div class="section-title">PANNE</div>
-<div><b>{panne}</b></div>
+<div class="section-title">Panne / Réparation</div>
+<div class="section-content"><strong>{panne}</strong></div>
 </div>
 
 <div class="tarif-box">
-Devis: {fmt_prix(t.get('devis_estime'))} | Acompte: {fmt_prix(t.get('acompte'))}<br>
-<b>Final: {fmt_prix(t.get('tarif_final'))}</b>
+<div>Devis: <strong>{fmt_prix(t.get('devis_estime'))}</strong></div>
+<div>Acompte: <strong>{fmt_prix(t.get('acompte'))}</strong></div>
+<div style="margin-top:10px;font-size:18px;border-top:1px solid #000;padding-top:8px;">Final: <strong>{fmt_prix(t.get('tarif_final'))}</strong></div>
 </div>
 
 <div class="notes-box">
-<b>NOTES:</b> {notes}
+<div class="title">📝 NOTES INTERNES:</div>
+{notes}
 </div>
 
 <div class="footer">
-Dépôt: {fmt_date(t.get('date_depot',''))}
+📅 Dépôt: {fmt_date(t.get('date_depot',''))}
 </div>
 
-<button class="print-btn" onclick="window.print()">IMPRIMER</button>
+<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
@@ -3017,8 +3053,8 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # VERSION IMPRESSION THERMIQUE (noir, compact)
-    rep_supp_line = f"<div>+ {rep_supp}: {prix_supp:.2f}€</div>" if rep_supp else ""
+    # VERSION IMPRESSION THERMIQUE (noir, TRÈS lisible, BIEN espacé)
+    rep_supp_line = f"<div class='section-content'>+ {rep_supp}: <strong>{prix_supp:.2f}€</strong></div>" if rep_supp else ""
     
     return f"""<!DOCTYPE html>
 <html>
@@ -3030,60 +3066,77 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     html, body {{ width: 80mm !important; margin: 0 !important; padding: 0 !important; }}
 }}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-html, body {{ margin: 0; padding: 0; background: #ffffff !important; min-height: 100%; }}
-body {{ font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; color: #000; padding: 10px; }}
-.ticket {{ width: 100%; max-width: 320px; background: #fff; }}
-.bold {{ font-weight: bold; }}
-.header {{ text-align: center; border: 2px solid #000; padding: 8px; margin-bottom: 8px; }}
-.header h1 {{ font-size: 20px; font-weight: 900; margin-bottom: 4px; }}
-.header p {{ font-size: 10px; }}
-.doc-info {{ text-align: center; font-size: 11px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #000; }}
-.section {{ padding: 6px 0; border-bottom: 1px dashed #000; }}
-.section-title {{ font-weight: bold; font-size: 10px; text-decoration: underline; margin-bottom: 4px; }}
-.totals {{ padding: 8px 0; }}
-.total-line {{ display: flex; justify-content: space-between; padding: 3px 0; }}
-.total-main {{ font-size: 16px; font-weight: bold; border-top: 2px solid #000; padding-top: 8px; margin-top: 6px; }}
-.total-reste {{ font-size: 18px; font-weight: bold; border: 2px solid #000; padding: 8px; margin-top: 8px; text-align: center; }}
-.footer {{ text-align: center; font-size: 9px; padding-top: 8px; border-top: 2px solid #000; margin-top: 8px; }}
-.print-btn {{ display: block; width: 100%; padding: 10px; margin-top: 12px; background: #000; color: #fff; border: none; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; }}
+html, body {{ margin: 0; padding: 0; background: #ffffff !important; }}
+body {{ font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.5; color: #000; padding: 20px; }}
+.ticket {{ width: 100%; max-width: 380px; background: #fff; }}
+
+.header {{ text-align: center; border: 3px solid #000; padding: 15px; margin-bottom: 15px; }}
+.header h1 {{ font-size: 30px; font-weight: 900; margin-bottom: 6px; letter-spacing: 1px; }}
+.header p {{ font-size: 14px; }}
+
+.doc-info {{ text-align: center; font-size: 16px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px dashed #000; }}
+.doc-info .num {{ font-size: 20px; font-weight: bold; margin-bottom: 5px; }}
+
+.section {{ padding: 15px 0; border-bottom: 2px dashed #000; }}
+.section-title {{ font-weight: bold; font-size: 14px; text-decoration: underline; margin-bottom: 8px; text-transform: uppercase; }}
+.section-content {{ font-size: 16px; margin: 6px 0; line-height: 1.6; }}
+
+.totals {{ padding: 15px 0; }}
+.total-line {{ display: flex; justify-content: space-between; padding: 6px 0; font-size: 16px; }}
+.total-main {{ font-size: 22px; font-weight: bold; border-top: 3px solid #000; padding-top: 12px; margin-top: 10px; }}
+
+.total-reste {{ font-size: 24px; font-weight: bold; border: 3px solid #000; padding: 15px; margin-top: 15px; text-align: center; }}
+
+.footer {{ text-align: center; font-size: 13px; padding-top: 15px; border-top: 3px solid #000; margin-top: 15px; line-height: 1.5; }}
+
+.print-btn {{ display: block; width: 100%; padding: 14px; margin-top: 20px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; }}
 @media print {{ .print-btn {{ display: none !important; }} }}
 </style>
 </head>
 <body>
 <div class="ticket">
+
 <div class="header">
 <h1>{doc_title}</h1>
 <p>KLIKPHONE - Chambéry</p>
 </div>
+
 <div class="doc-info">
-<div><b>{doc_num}</b></div>
+<div class="num">{doc_num}</div>
 <div>Date: {date_doc}</div>
 </div>
+
 <div class="section">
-<div class="section-title">CLIENT</div>
-<div><b>{t.get('client_nom','')} {t.get('client_prenom','')}</b></div>
-<div>Tél: {t.get('client_tel','')}</div>
+<div class="section-title">Client</div>
+<div class="section-content"><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
+<div class="section-content">Tél: {t.get('client_tel','')}</div>
 </div>
+
 <div class="section">
-<div class="section-title">APPAREIL</div>
-<div><b>{t.get('marque','')} {modele_txt}</b></div>
+<div class="section-title">Appareil</div>
+<div class="section-content"><strong>{t.get('marque','')} {modele_txt}</strong></div>
 </div>
+
 <div class="section">
-<div class="section-title">PRESTATION</div>
-<div>{panne}: <b>{devis_val:.2f}€</b></div>
+<div class="section-title">Prestation</div>
+<div class="section-content">{panne}: <strong>{devis_val:.2f}€</strong></div>
 {rep_supp_line}
 </div>
+
 <div class="totals">
 <div class="total-line total-main"><span>TOTAL TTC</span><span>{total_ttc:.2f} €</span></div>
-<div class="total-line" style="font-size:9px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
+<div class="total-line" style="font-size:13px;"><span>HT: {total_ht:.2f}€ | TVA: {tva:.2f}€</span></div>
 <div class="total-line"><span>Acompte versé</span><span>- {acompte_val:.2f} €</span></div>
 </div>
+
 <div class="total-reste">RESTE À PAYER: {reste:.2f} €</div>
+
 <div class="footer">
 {"Devis valable 30 jours" if not is_facture else "Merci de votre confiance !"}
-<br>{"" if not is_facture else "Ce ticket ne fait pas office de facture"}
+<br><br>{"Prix susceptibles de modification après diagnostic" if not is_facture else "Ce ticket ne fait pas office de facture"}
 </div>
-<button class="print-btn" onclick="window.print()">IMPRIMER</button>
+
+<button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
@@ -3316,7 +3369,7 @@ def ui_client():
                 st.rerun()
             
             if st.session_state.show_ticket_depot:
-                st.components.v1.html(ticket_client_html(t), height=520, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
         
         # Forcer un rerun pour le compteur
         time.sleep(1)
@@ -4551,15 +4604,15 @@ def staff_traiter_demande(tid):
             
             # Affichage du ticket selon le type
             if ticket_type == "client":
-                st.components.v1.html(ticket_client_html(t), height=520, scrolling=False)
+                st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
             elif ticket_type == "staff":
-                st.components.v1.html(ticket_staff_html(t), height=480, scrolling=False)
+                st.components.v1.html(ticket_staff_html(t), height=750, scrolling=True)
             elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=900, scrolling=True)
+                st.components.v1.html(ticket_combined_html(t), height=1200, scrolling=True)
             elif ticket_type == "devis":
-                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=500, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=680, scrolling=True)
             elif ticket_type == "facture":
-                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=500, scrolling=False)
+                st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=680, scrolling=True)
     
     # === COLONNE DROITE: Actions ===
     with col2:
