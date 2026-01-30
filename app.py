@@ -4731,33 +4731,40 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style pour les boutons avec logos
+    # Style pour logo + bouton collés
     st.markdown("""
     <style>
-    /* Conteneur de bouton marque */
-    .brand-btn-wrapper {
-        position: relative;
+    /* Container pour logo + bouton */
+    .brand-item {
         margin-bottom: 10px;
     }
-    .brand-btn-wrapper .brand-logo {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 28px;
-        height: 28px;
+    .brand-item [data-testid="stHorizontalBlock"] {
+        gap: 0 !important;
+        align-items: stretch !important;
+    }
+    .brand-item [data-testid="stHorizontalBlock"] > div:first-child > div > div {
+        height: 100%;
+    }
+    .logo-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 2px solid #e2e8f0;
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+        padding: 10px;
+        height: 48px;
+    }
+    .logo-box img {
+        width: 24px;
+        height: 24px;
         object-fit: contain;
-        z-index: 10;
-        pointer-events: none;
     }
-    /* Décaler le texte du bouton vers la droite */
-    .brand-btn-wrapper button {
-        padding-left: 56px !important;
-        text-align: left !important;
-        justify-content: flex-start !important;
-    }
-    .brand-btn-wrapper button p {
-        text-align: left !important;
+    .brand-item [data-testid="stHorizontalBlock"] > div:last-child button {
+        border-radius: 0 12px 12px 0 !important;
+        height: 48px !important;
+        min-height: 48px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -4769,19 +4776,18 @@ def client_step2():
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # Ouvrir le wrapper avec le logo
-                st.markdown(f'''<div class="brand-btn-wrapper"><img class="brand-logo" src="{logo_url}" alt="{m}">''', unsafe_allow_html=True)
-                
-                # Bouton Streamlit cliquable
-                if st.button(m, key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
-                
-                # Fermer le wrapper
+                st.markdown('<div class="brand-item">', unsafe_allow_html=True)
+                c1, c2 = st.columns([0.15, 0.85], gap="small")
+                with c1:
+                    st.markdown(f'<div class="logo-box"><img src="{logo_url}"></div>', unsafe_allow_html=True)
+                with c2:
+                    if st.button(m, key=f"brand_{m}", use_container_width=True):
+                        st.session_state.data["marque"] = m
+                        st.session_state.step = 3
+                        st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
-                # Bouton "Autre" avec emoji
+                # Bouton "Autre"
                 if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
