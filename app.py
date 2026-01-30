@@ -5343,24 +5343,6 @@ def ui_accueil():
         if st.button(f"📦 **{nb_attente_piece}**\nPièces", key="kpi_pieces", use_container_width=True, type=color):
             st.session_state.filtre_kpi = "En attente de pièce"
             st.rerun()
-    
-    
-    # === NOTE PRIVÉE (ACCUEIL) ===
-    st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="detail-card-header">📝 Note privée (Accueil)</div>', unsafe_allow_html=True)
-    note_priv = st.text_area(
-        "Note privée (réservée équipe)",
-        value=get_param("NOTE_PRIVEE_ACCUEIL") or "",
-        height=90,
-        key="accueil_note_privee",
-        help="Visible uniquement par l'équipe (accueil).",
-    )
-    col_np1, col_np2 = st.columns([4, 1])
-    with col_np2:
-        if st.button("OK", key="save_accueil_note", type="primary", use_container_width=True):
-            set_param("NOTE_PRIVEE_ACCUEIL", note_priv.strip())
-            st.toast("✅ Note enregistrée")
-            st.rerun()
 
 # === TABS ===
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "📄 Attestation", "⚙️ Config"])
@@ -5872,6 +5854,21 @@ def staff_traiter_demande(tid):
             key=f"notes_pub_{tid}",
             help="Ce texte s'imprime sur le ticket/reçu remis au client.",
         )
+
+        # Note privée (interne) — placée sous le commentaire public
+        note_privee_val = st.text_area(
+            "Note privée (équipe uniquement)",
+            value=get_param("NOTE_PRIVEE_ACCUEIL") or "",
+            height=80,
+            key=f"note_privee_global_{tid}",
+            help="Non imprimée, non visible client.",
+        )
+        col_np1, col_np2 = st.columns([4, 1], gap="small")
+        with col_np2:
+            if st.button("OK", key=f"save_note_privee_global_{tid}", type="secondary", use_container_width=True):
+                set_param("NOTE_PRIVEE_ACCUEIL", note_privee_val.strip())
+                st.toast("✅ Note privée enregistrée")
+                st.rerun()
 
         st.caption("💾 Ces notes sont enregistrées via le bouton **ENREGISTRER LES MODIFICATIONS** (colonne droite).")
 
@@ -8022,25 +8019,35 @@ def tech_detail_ticket(tid):
                 <span style="font-weight:600;color:#166534;margin-left:8px;">Récupération: {t.get('date_recuperation')}</span>
             </div>
             """, unsafe_allow_html=True)
-        
-        # --- NOTES INTERNES ---
-        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">📝 Notes internes</div>""", unsafe_allow_html=True)
-        if t.get('notes_internes'):
-            st.text_area("", value=t.get('notes_internes', ''), height=120, disabled=True, key=f"tech_notes_view_{tid}", label_visibility="collapsed")
-        else:
-            st.info("Aucune note pour le moment")
-        
-        # Ajouter une note
-        col_note, col_btn = st.columns([5, 2])
-        with col_note:
-            note_tech = st.text_input("Nouvelle note", placeholder="Ex: Pièce commandée, problème identifié...", key=f"tech_comment_{tid}", label_visibility="collapsed")
-        with col_btn:
-            if st.button("OK", key=f"tech_add_comment_{tid}", type="primary", help="Enregistrer la note", use_container_width=True):
-                if note_tech:
-                    ajouter_note(tid, f"[TECH] {note_tech}")
-                    st.rerun()
-    
+
+        # --- NOTES (INTERNE + PUBLIC) ---
+        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">📝 Notes</div>""", unsafe_allow_html=True)
+
+        notes_internes_edit = st.text_area(
+            "Note interne (équipe)",
+            value=t.get('notes_internes') or "",
+            height=130,
+            key=f"tech_notes_int_edit_{tid}",
+            help="Visible uniquement par l'équipe (atelier/accueil).",
+        )
+
+        commentaire_public_edit = st.text_area(
+            "Commentaire public (visible sur le ticket client)",
+            value=t.get('commentaire_client') or "",
+            height=90,
+            key=f"tech_comment_pub_edit_{tid}",
+            help="S'imprime sur le ticket/reçu remis au client.",
+        )
+
+        col_save_notes, _sp = st.columns([1, 3], gap="small")
+        with col_save_notes:
+            if st.button("OK", key=f"tech_save_notes_{tid}", type="primary", use_container_width=True):
+                update_ticket(tid, notes_internes=notes_internes_edit, commentaire_client=commentaire_public_edit)
+                st.toast("✅ Notes mises à jour")
+                st.rerun()
+
     with col2:
+
         # === ZONE D'ACTION CONTEXTUELLE ===
         
         # Tarification actuelle
