@@ -5222,8 +5222,11 @@ def client_step6():
             help="Cochez si vous possédez la carte de fidélité Camby"
         )
     with col_opt2:
+        # Si c'est une commande pièce depuis le menu, pré-cocher
+        is_commande = st.session_state.data.get("is_commande", False)
         commande_piece = st.checkbox(
             "⚙️ Pièce à commander",
+            value=is_commande,  # Pré-coché si vient de "Commander pièce"
             help="Cochez si une pièce doit être commandée"
         )
     
@@ -5259,18 +5262,27 @@ def client_step6():
                 # Nouveau client - créer le ticket
                 d = st.session_state.data
                 cid = get_or_create_client(nom, telephone, prenom, email, societe, 1 if carte_camby else 0)
+                
+                # Forcer commande_piece si is_commande
+                final_commande_piece = commande_piece or is_commande
+                
                 code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
                                    d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
-                                   d.get("pin",""), d.get("pattern",""), notes, "", 1 if commande_piece else 0)
+                                   d.get("pin",""), d.get("pattern",""), notes, "", 1 if final_commande_piece else 0)
                 
-                # Si commande pièce cochée, créer une entrée dans commandes_pieces
-                if commande_piece:
+                # Si commande pièce, créer une entrée dans commandes_pieces
+                if final_commande_piece:
                     t = get_ticket(code=code)
                     if t:
-                        modele_txt = f"{d.get('marque','')} {d.get('modèle','')}"
-                        if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
-                        panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
-                        ajouter_commande_piece(t['id'], f"Pièce pour {panne_txt} - {modele_txt}", "A définir", "", 0, "Commande créée depuis totem client")
+                        # Pour les commandes pièces, utiliser la description saisie
+                        if is_commande and d.get('panne_detail'):
+                            description_cmd = d.get('panne_detail')
+                        else:
+                            modele_txt = f"{d.get('marque','')} {d.get('modèle','')}"
+                            if d.get('modele_autre'): modele_txt += f" ({d['modele_autre']})"
+                            panne_txt = d.get('panne', '') or d.get('panne_detail', '') or 'Pièce à préciser'
+                            description_cmd = f"Pièce pour {panne_txt} - {modele_txt}"
+                        ajouter_commande_piece(t['id'], description_cmd, "A définir", "", 0, "Commande créée depuis totem client")
                 
                 st.session_state.done = code
                 st.rerun()
