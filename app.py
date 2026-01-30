@@ -4671,13 +4671,12 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style uniforme pour toutes les marques - hauteur fixe
+    # Style uniforme pour toutes les marques
     st.markdown("""
     <style>
     .brand-grid button {
         height: 50px !important;
         min-height: 50px !important;
-        max-height: 50px !important;
         font-size: 15px !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
@@ -4687,22 +4686,28 @@ def client_step2():
     
     st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
     
-    # Afficher les marques en grille 2 colonnes - boutons simples avec emojis
-    brand_emojis = {
-        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "📱", "Huawei": "📱",
-        "Google": "📱", "OnePlus": "📱", "Oppo": "📱", "Sony": "🎮",
-        "Nintendo": "🎮", "Microsoft": "🖥️", "HP": "💻", "Dell": "💻",
-        "Lenovo": "💻", "Asus": "💻", "Acer": "💻", "Autre": "🔧"
-    }
-    
+    # Afficher les marques en grille 2 colonnes avec logos
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
-            emoji = brand_emojis.get(m, "📱")
-            if st.button(f"{emoji}  {m}", key=f"brand_{m}", use_container_width=True):
-                st.session_state.data["marque"] = m
-                st.session_state.step = 3
-                st.rerun()
+            logo_url = BRAND_LOGOS.get(m, "")
+            
+            if logo_url and m != "Autre":
+                # Logo superposé sur le bouton
+                st.markdown(f'''
+                <div style="position:relative; height:0; overflow:visible; z-index:100;">
+                    <img src="{logo_url}" style="position:absolute; top:14px; left:16px; width:20px; height:20px; pointer-events:none;">
+                </div>
+                ''', unsafe_allow_html=True)
+                if st.button(f"        {m}", key=f"brand_{m}", use_container_width=True):
+                    st.session_state.data["marque"] = m
+                    st.session_state.step = 3
+                    st.rerun()
+            else:
+                if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
+                    st.session_state.data["marque"] = m
+                    st.session_state.step = 3
+                    st.rerun()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
