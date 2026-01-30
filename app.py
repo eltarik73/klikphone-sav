@@ -4671,7 +4671,7 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style uniforme pour toutes les marques
+    # Style uniforme (même que catégories)
     st.markdown("""
     <style>
     .brand-grid button {
@@ -4681,23 +4681,6 @@ def client_step2():
         font-size: 15px !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
-    }
-    .brand-grid [data-testid="stVerticalBlock"] {
-        gap: 8px !important;
-    }
-    .brand-logo-inline {
-        margin-top: -42px;
-        margin-bottom: 26px;
-        text-align: center;
-        pointer-events: none;
-        position: relative;
-        z-index: 100;
-    }
-    .brand-logo-inline img {
-        width: 16px;
-        height: 16px;
-        vertical-align: middle;
-        margin-right: 6px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -4711,15 +4694,16 @@ def client_step2():
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # Bouton avec espaces pour le logo
-                if st.button(f"      {m}", key=f"brand_{m}", use_container_width=True):
+                # Bouton avec espaces puis logo superposé
+                if st.button(f"       {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
                     st.rerun()
-                # Logo superposé (après le bouton avec margin négatif)
+                # Logo superposé - remonte sur le bouton
+                offset = len(m) * 4 + 18
                 st.markdown(f'''
-                <div class="brand-logo-inline">
-                    <img src="{logo_url}"><span style="color:transparent">{m}</span>
+                <div style="margin-top: -37px; margin-bottom: 21px; pointer-events: none; text-align: center;">
+                    <img src="{logo_url}" style="width: 18px; height: 18px; margin-right: {offset}px;">
                 </div>
                 ''', unsafe_allow_html=True)
             else:
