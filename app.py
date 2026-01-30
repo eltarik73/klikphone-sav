@@ -8031,6 +8031,22 @@ def tech_detail_ticket(tid):
             help="Visible uniquement par l'équipe (atelier/accueil).",
         )
 
+
+        # Note privée (équipe uniquement) — mémo interne (non imprimé)
+        note_privee_tech_val = st.text_area(
+            "Note privée (équipe uniquement)",
+            value=get_param("NOTE_PRIVEE_TECH") or "",
+            height=80,
+            key=f"note_privee_tech_{tid}",
+            help="Non imprimée, non visible client. Mémo interne technicien.",
+        )
+        col_np_t1, col_np_t2 = st.columns([4, 1], gap="small")
+        with col_np_t2:
+            if st.button("OK", key=f"save_note_privee_tech_{tid}", type="secondary", use_container_width=True):
+                set_param("NOTE_PRIVEE_TECH", note_privee_tech_val.strip())
+                st.toast("✅ Note privée enregistrée")
+                st.rerun()
+
         commentaire_public_edit = st.text_area(
             "Commentaire public (visible sur le ticket client)",
             value=t.get('commentaire_client') or "",
