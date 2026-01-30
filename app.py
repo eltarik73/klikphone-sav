@@ -3414,49 +3414,20 @@ L'équipe {nom_boutique}
 # TICKETS HTML
 # =============================================================================
 def ticket_client_html(t, for_email=False):
-    """Ticket client - version impression thermique ou email"""
+    """Ticket client - VERSION AMÉLIORÉE - Style moderne comme le devis"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
+    
     # Commentaire public (imprimé sur le document)
     comment_public = (t.get("commentaire_client") or "").strip()
-
-
     
     # Tarifs
-    devis = t.get('devis_estime')
-    tarif = t.get('tarif_final')
-    acompte = t.get('acompte')
-    
-    tarif_section = ""
-    if devis or tarif:
-        tarif_section = f"""
-        <div class="section">
-            <div class="section-title">TARIFICATION</div>
-            {"<div>Devis: " + str(devis) + " €</div>" if devis else ""}
-            {"<div>Tarif final: " + str(tarif) + " €</div>" if tarif else ""}
-            {"<div>Acompte: -" + str(acompte) + " €</div>" if acompte else ""}
-            {"<div class='bold'>RESTE: " + str(round((tarif or devis or 0) - (acompte or 0), 2)) + " €</div>" if (tarif or devis) else ""}
-        </div>
-        """
-
-
-    # Commentaire public (visible sur ticket client)
-    comment_public = (t.get('commentaire_client') or '').strip()
-    comment_section_email = f"""
-    <div class="section">
-        <div class="section-title">Commentaire</div>
-        <div style="color:#0f172a;">{comment_public}</div>
-    </div>
-    """ if comment_public else ""
-    comment_section_thermal = f"""
-    <div class="section">
-        <div class="section-title">COMMENTAIRE</div>
-        <div>{comment_public}</div>
-    </div>
-    """ if comment_public else ""
-
+    devis = t.get('devis_estime') or 0
+    acompte = t.get('acompte') or 0
+    tarif = t.get('tarif_final') or devis
+    reste = max(0, tarif - acompte)
     
     # URL de suivi
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
@@ -3466,6 +3437,13 @@ def ticket_client_html(t, for_email=False):
     
     # Version EMAIL (colorée)
     if for_email:
+        comment_section = f"""
+        <div style="background:#fff7ed;border-radius:8px;padding:12px;margin:15px 0;">
+            <div style="font-weight:600;color:#ea580c;font-size:12px;margin-bottom:5px;">💬 Commentaire</div>
+            <div style="color:#1e293b;">{comment_public}</div>
+        </div>
+        """ if comment_public else ""
+        
         return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -3481,6 +3459,10 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 .section {{ margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }}
 .section:last-child {{ border-bottom: none; }}
 .section-title {{ font-weight: bold; color: #f97316; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }}
+.info-row {{ display: flex; justify-content: space-between; margin: 8px 0; }}
+.tarif-box {{ background: #f8fafc; border-radius: 8px; padding: 15px; margin: 15px 0; }}
+.tarif-row {{ display: flex; justify-content: space-between; margin: 5px 0; }}
+.tarif-row.total {{ font-weight: bold; font-size: 16px; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px; }}
 .qr-section {{ text-align: center; padding: 15px; background: #f8fafc; }}
 .qr-section img {{ width: 100px; height: 100px; }}
 .footer {{ background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px; }}
@@ -3495,21 +3477,22 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <div class="ticket-num">TICKET N° {t['ticket_code']}</div>
 <div class="content">
 <div class="section">
-<div class="section-title">Client</div>
-<div><strong>{t.get('client_nom','')} {t.get('client_prenom','')}</strong></div>
-<div>Tél: {t.get('client_tel','')}</div>
+<div class="section-title">👤 Client</div>
+<div style="font-weight:600;font-size:16px;">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+<div style="color:#64748b;">Tél: {t.get('client_tel','')}</div>
 </div>
 <div class="section">
-<div class="section-title">Appareil</div>
-<div><strong>{t.get('marque','')} {modele_txt}</strong></div>
+<div class="section-title">📱 Appareil</div>
+<div style="font-weight:600;">{t.get('marque','')} {modele_txt}</div>
+<div style="color:#64748b;margin-top:5px;">Motif: {panne}</div>
 </div>
-<div class="section">
-<div class="section-title">Réparation</div>
-<div>{panne}</div>
-{f"<div style='margin-top:10px;padding:10px;background:#fff7ed;border-radius:6px;'><strong>Devis:</strong> {devis}€ | <strong>Reste:</strong> {(tarif or devis or 0) - (acompte or 0):.0f}€</div>" if devis else ""}
+<div class="tarif-box">
+<div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
+<div class="tarif-row"><span>Acompte versé</span><span>- {acompte:.2f} €</span></div>
+<div class="tarif-row total"><span>Reste à payer</span><span>{reste:.2f} €</span></div>
 </div>
+{comment_section}
 </div>
-{comment_section_email}
 <div class="qr-section">
 <img src="{qr_url}" alt="QR Code">
 <p style="color:#64748b;font-size:11px;margin-top:8px;">Scannez pour suivre votre réparation</p>
@@ -3522,7 +3505,14 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Version IMPRESSION - 80mm x 200mm STRICT
+    # Version IMPRESSION - 80mm - Style moderne
+    comment_section_thermal = f"""
+    <div class="notes-box">
+        <div class="notes-title">💬 Commentaire</div>
+        {comment_public}
+    </div>
+    """ if comment_public else ""
+    
     return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -3544,108 +3534,153 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
             background: #fff;
             width: 80mm;
             max-width: 80mm;
-            height: 200mm;
-            max-height: 200mm;
+            min-height: 180mm;
             overflow: hidden;
-            padding: 3mm;
+            padding: 4mm;
             border: 1px solid #ccc;
             border-radius: 2px;
-            font-size: 9px;
-            line-height: 1.3;
-            color: #000;
-        }}
-        .logo-center {{
-            text-align: center;
-            margin-bottom: 2mm;
-        }}
-        .logo-center img {{
-            width: 12mm;
-            height: 12mm;
-            display: block;
-            margin: 0 auto;
-        }}
-        h1 {{
-            text-align: center;
             font-size: 11px;
-            font-weight: 900;
-            margin-bottom: 1mm;
+            line-height: 1.4;
             color: #000;
         }}
-        .contact {{
+        .header {{
             text-align: center;
-            font-size: 8px;
-            margin-bottom: 2mm;
-            color: #000;
+            border-bottom: 2px solid #000;
+            padding-bottom: 3mm;
+            margin-bottom: 3mm;
         }}
-        .contact .phone {{
+        .header img {{
+            width: 16mm;
+            height: 16mm;
+            margin-bottom: 2mm;
+        }}
+        .header h1 {{
+            font-size: 14px;
+            font-weight: 900;
+            margin: 0;
+        }}
+        .header .contact {{
+            font-size: 9px;
+            margin-top: 1mm;
+            color: #333;
+        }}
+        .header .phone {{
+            font-size: 12px;
+            font-weight: 800;
+        }}
+        .ticket-num {{
+            background: #000;
+            color: #fff;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 900;
+            padding: 3mm;
+            margin: 3mm 0;
+            letter-spacing: 1px;
+        }}
+        .section {{
+            margin: 3mm 0;
+            padding: 2mm 0;
+            border-bottom: 1px dashed #ccc;
+        }}
+        .section-title {{
             font-size: 10px;
             font-weight: 800;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
         }}
-        h2 {{
-            font-size: 9px;
-            font-weight: 800;
-            border-bottom: 1px solid #000;
-            padding-bottom: 0.5mm;
-            margin: 2mm 0 1mm 0;
-            text-align: center;
-            color: #000;
+        .info-row {{
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5mm 0;
+            font-size: 11px;
         }}
-        .info-line {{
-            font-size: 8px;
-            margin: 0.8mm 0;
-            color: #000;
+        .info-row .label {{
+            color: #555;
         }}
-        .info-line strong {{
+        .info-row .value {{
             font-weight: 700;
+            text-align: right;
+        }}
+        .big-info {{
+            font-size: 12px;
+            font-weight: 700;
+            margin: 1mm 0;
+        }}
+        .tarif-box {{
+            background: #f5f5f5;
+            padding: 3mm;
+            margin: 3mm 0;
+            border: 1px solid #ddd;
+        }}
+        .tarif-row {{
+            display: flex;
+            justify-content: space-between;
+            margin: 1mm 0;
+            font-size: 10px;
+        }}
+        .tarif-row.total {{
+            font-size: 13px;
+            font-weight: 900;
+            border-top: 1px solid #999;
+            padding-top: 2mm;
+            margin-top: 2mm;
+        }}
+        .notes-box {{
+            background: #fff7ed;
+            border-left: 3px solid #f97316;
+            padding: 2mm 3mm;
+            margin: 3mm 0;
+            font-size: 10px;
+        }}
+        .notes-title {{
+            font-weight: 700;
+            font-size: 9px;
+            margin-bottom: 1mm;
         }}
         .qr-box {{
             text-align: center;
-            padding: 2mm 0;
-            margin: 2mm 0;
-            background: #f5f5f5;
-            border-radius: 1mm;
+            padding: 3mm;
+            margin: 3mm 0;
+            background: #f8f8f8;
+            border-radius: 2mm;
         }}
         .qr-box img {{
-            width: 28mm;
-            height: 28mm;
-            display: block;
-            margin: 0 auto;
+            width: 25mm;
+            height: 25mm;
         }}
         .qr-box p {{
-            font-size: 7px;
+            font-size: 8px;
             margin-top: 1mm;
-            font-weight: 600;
-            color: #000;
-            text-align: center;
+            color: #666;
         }}
         .disclaimer {{
-            font-size: 6px;
-            font-style: italic;
-            border-top: 1px dashed #999;
-            padding-top: 1.5mm;
+            font-size: 7px;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            padding-top: 2mm;
             margin-top: 2mm;
-            line-height: 1.2;
-            color: #333;
+            line-height: 1.3;
         }}
         .footer {{
             text-align: center;
             font-weight: 700;
-            font-size: 9px;
-            margin-top: 2mm;
-            padding-top: 1.5mm;
+            font-size: 11px;
+            margin-top: 3mm;
+            padding-top: 2mm;
             border-top: 1px solid #000;
-            color: #000;
         }}
         .print-btn {{
             display: block;
             width: 100%;
-            margin-top: 2mm;
+            margin-top: 3mm;
             background: #000;
             color: #fff;
-            padding: 2mm;
+            padding: 3mm;
             border: none;
-            border-radius: 1mm;
-            font-size: 9px;
+            border-radius: 2mm;
+            font-size: 11px;
             font-weight: 700;
             cursor: pointer;
         }}
@@ -3653,43 +3688,72 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 
         @media print {{
             body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; min-height: auto; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
 </head>
 <body>
 <div class="ticket">
-    <div class="logo-center">
+    <div class="header">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
+        <h1>KLIKPHONE</h1>
+        <div class="contact">
+            <div class="phone">04 79 60 89 22</div>
+            <div>79 Pl. Saint Léger, 73000 Chambéry</div>
+        </div>
     </div>
-    <h1>Ticket de Réparation Client</h1>
-    <div class="contact">
-        <p class="phone">04 79 60 89 22</p>
-        <p>79 Pl. Saint Léger, 73000 Chambéry</p>
+
+    <div class="ticket-num">N° {t['ticket_code']}</div>
+
+    <div class="section">
+        <div class="section-title">👤 Client</div>
+        <div class="big-info">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+        <div class="info-row">
+            <span class="label">Téléphone</span>
+            <span class="value">{t.get('client_tel','')}</span>
+        </div>
     </div>
 
-    <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="section">
+        <div class="section-title">📱 Appareil</div>
+        <div class="big-info">{t.get('marque','')} {modele_txt}</div>
+        <div class="info-row">
+            <span class="label">Motif</span>
+            <span class="value">{panne}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Date dépôt</span>
+            <span class="value">{fmt_date(t.get('date_depot',''))}</span>
+        </div>
+    </div>
 
-    <h2>Demande</h2>
-    <div class="info-line"><strong>N°:</strong> {t['ticket_code']}</div>
-    <div class="info-line"><strong>Appareil:</strong> {t.get('marque','')} {modele_txt}</div>
-    <div class="info-line"><strong>Motif:</strong> {panne}</div>
-    <div class="info-line"><strong>Date:</strong> {fmt_date(t.get('date_depot',''))}</div>
-
-    <h2>Montant</h2>
-    <div class="info-line"><strong>Devis:</strong> {(t.get('devis_estime') or 0):.2f} € | <strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
+    <div class="tarif-box">
+        <div class="tarif-row">
+            <span>Devis estimé</span>
+            <span>{devis:.2f} €</span>
+        </div>
+        <div class="tarif-row">
+            <span>Acompte versé</span>
+            <span>- {acompte:.2f} €</span>
+        </div>
+        <div class="tarif-row total">
+            <span>RESTE À PAYER</span>
+            <span>{reste:.2f} €</span>
+        </div>
+    </div>
 
     {comment_section_thermal}
-<div class="qr-box">
+
+    <div class="qr-box">
         <img src="{qr_url}" alt="QR Code">
         <p>Scannez pour suivre votre réparation</p>
     </div>
 
     <div class="disclaimer">
-        • Klikphone ne consulte pas vos données • Sauvegardez vos données avant dépôt • Aucune responsabilité post-réparation
+        • Klikphone ne consulte pas vos données personnelles<br>
+        • Pensez à sauvegarder vos données avant dépôt<br>
+        • Garantie 3 mois sur les réparations
     </div>
 
     <div class="footer">Merci de votre confiance !</div>
@@ -3700,20 +3764,25 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </html>"""
 
 def ticket_staff_html(t):
-    """Ticket staff - 80mm x 200mm STRICT avec logo + gros QR code"""
+    """Ticket staff - 80mm x 200mm - VERSION AMÉLIORÉE - Plus lisible, sans QR code"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele = t.get("modele", "")
     if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
     
-    notes = t.get('notes_internes') or 'N/A'
-    if len(notes) > 60: notes = notes[:60] + "..."
+    # Notes privées
+    notes_privees = t.get('notes_internes') or ''
+    if len(notes_privees) > 100: notes_privees = notes_privees[:100] + "..."
     
-    # URL de suivi pour QR code
-    url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
-    ticket_code = t.get('ticket_code', '')
-    url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
+    # Notes publiques
+    notes_publiques = t.get('commentaire_client') or ''
+    if len(notes_publiques) > 80: notes_publiques = notes_publiques[:80] + "..."
+    
+    # Calcul reste à payer
+    devis = t.get('devis_estime') or 0
+    acompte = t.get('acompte') or 0
+    tarif_final = t.get('tarif_final') or devis
+    reste = max(0, tarif_final - acompte)
     
     return f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3736,121 +3805,159 @@ def ticket_staff_html(t):
             background: #fff;
             width: 80mm;
             max-width: 80mm;
-            height: 200mm;
-            max-height: 200mm;
+            min-height: 180mm;
             overflow: hidden;
-            padding: 3mm;
+            padding: 4mm;
             border: 1px solid #ccc;
             border-radius: 2px;
-            font-size: 9px;
-            line-height: 1.3;
-            color: #000;
-        }}
-        .logo-center {{
-            text-align: center;
-            margin-bottom: 1mm;
-        }}
-        .logo-center img {{
-            width: 12mm;
-            height: 12mm;
-            display: block;
-            margin: 0 auto;
-        }}
-        h1 {{
-            text-align: center;
             font-size: 11px;
+            line-height: 1.4;
+            color: #000;
+        }}
+        .header {{
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 3mm;
+            margin-bottom: 3mm;
+        }}
+        .header img {{
+            width: 18mm;
+            height: 18mm;
+            margin-bottom: 2mm;
+        }}
+        .header h1 {{
+            font-size: 14px;
             font-weight: 900;
-            margin-bottom: 1mm;
-            color: #000;
-        }}
-        .qr-box {{
-            text-align: center;
-            padding: 2mm 0;
-            margin: 1mm 0;
-            background: #f5f5f5;
-            border-radius: 1mm;
-        }}
-        .qr-box img {{
-            width: 32mm;
-            height: 32mm;
-            display: block;
-            margin: 0 auto;
-        }}
-        .qr-box p {{
-            font-size: 7px;
-            margin-top: 1mm;
-            font-weight: 600;
-            color: #000;
-            text-align: center;
+            margin: 0;
+            letter-spacing: 1px;
         }}
         .ticket-num {{
+            background: #000;
+            color: #fff;
             text-align: center;
-            font-size: 11px;
+            font-size: 16px;
             font-weight: 900;
-            padding: 1.5mm;
-            border: 2px solid #000;
-            margin: 2mm 0;
-            color: #000;
+            padding: 3mm;
+            margin: 3mm 0;
+            letter-spacing: 2px;
         }}
         .status {{
             text-align: center;
-            font-weight: 700;
-            font-size: 9px;
-            margin-bottom: 2mm;
-            color: #000;
-        }}
-        h2 {{
-            font-size: 9px;
             font-weight: 800;
-            border-bottom: 1px solid #000;
-            padding-bottom: 0.5mm;
-            margin: 2mm 0 1mm 0;
-            text-align: center;
-            color: #000;
+            font-size: 12px;
+            padding: 2mm;
+            margin-bottom: 3mm;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
         }}
-        .info-line {{
-            font-size: 8px;
-            margin: 0.8mm 0;
-            color: #000;
+        .section {{
+            margin: 3mm 0;
+            padding: 2mm 0;
+            border-bottom: 1px dashed #ccc;
         }}
-        .info-line strong {{
+        .section-title {{
+            font-size: 10px;
+            font-weight: 800;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
+            letter-spacing: 0.5px;
+        }}
+        .info-row {{
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5mm 0;
+            font-size: 11px;
+        }}
+        .info-row .label {{
+            color: #555;
+            font-weight: 500;
+        }}
+        .info-row .value {{
             font-weight: 700;
+            text-align: right;
+            max-width: 60%;
+        }}
+        .big-info {{
+            font-size: 13px;
+            font-weight: 800;
+            margin: 2mm 0;
         }}
         .security-box {{
-            border: 2px solid #000;
-            padding: 1.5mm;
-            margin: 2mm 0;
+            border: 3px solid #000;
+            padding: 3mm;
+            margin: 3mm 0;
             text-align: center;
-            background: #f9f9f9;
+            background: #fffbeb;
         }}
         .security-box .title {{
-            font-weight: 800;
-            font-size: 8px;
-            margin-bottom: 1mm;
+            font-weight: 900;
+            font-size: 11px;
+            margin-bottom: 2mm;
         }}
         .security-box .codes {{
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 900;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }}
+        .notes-box {{
+            background: #f8f8f8;
+            border-left: 3px solid #000;
+            padding: 2mm 3mm;
+            margin: 2mm 0;
+            font-size: 10px;
+        }}
+        .notes-box.private {{
+            background: #fef2f2;
+            border-color: #ef4444;
+        }}
+        .notes-box.public {{
+            background: #f0fdf4;
+            border-color: #22c55e;
+        }}
+        .notes-title {{
+            font-weight: 700;
+            font-size: 9px;
+            margin-bottom: 1mm;
+            text-transform: uppercase;
+        }}
+        .tarif-box {{
+            background: #000;
+            color: #fff;
+            padding: 3mm;
+            margin: 3mm 0;
+        }}
+        .tarif-row {{
+            display: flex;
+            justify-content: space-between;
+            margin: 1mm 0;
+            font-size: 11px;
+        }}
+        .tarif-row.total {{
+            font-size: 14px;
+            font-weight: 900;
+            border-top: 1px solid #fff;
+            padding-top: 2mm;
+            margin-top: 2mm;
         }}
         .footer {{
             text-align: center;
-            font-weight: 700;
-            font-size: 8px;
-            margin-top: 2mm;
-            padding-top: 1.5mm;
+            font-size: 10px;
+            margin-top: 3mm;
+            padding-top: 2mm;
             border-top: 1px solid #000;
-            color: #000;
         }}
         .print-btn {{
             display: block;
             width: 100%;
-            margin-top: 2mm;
+            margin-top: 3mm;
             background: #000;
             color: #fff;
-            padding: 2mm;
+            padding: 3mm;
             border: none;
-            border-radius: 1mm;
-            font-size: 9px;
+            border-radius: 2mm;
+            font-size: 11px;
             font-weight: 700;
             cursor: pointer;
         }}
@@ -3858,49 +3965,80 @@ def ticket_staff_html(t):
 
         @media print {{
             body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; height: auto; max-height: none; }}
+            .ticket {{ border: none; border-radius: 0; padding: 2mm; min-height: auto; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
 </head>
 <body>
 <div class="ticket">
-    <div class="logo-center">
+    <div class="header">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-    </div>
-    <h1>Ticket Staff</h1>
-
-    <div class="qr-box">
-        <img src="{qr_url}" alt="QR Code">
-        <p>Scanner pour accéder au dossier</p>
+        <h1>TICKET STAFF</h1>
     </div>
 
-    <div class="ticket-num">N° {t['ticket_code']}</div>
-    <div class="status">STATUT: {t.get('statut','')}</div>
+    <div class="ticket-num">{t['ticket_code']}</div>
+    <div class="status">📍 {t.get('statut','En attente')}</div>
 
-    <h2>Client</h2>
-    <div class="info-line"><strong>Nom:</strong> {t.get('client_nom','')} {t.get('client_prenom','')}</div>
-    <div class="info-line"><strong>Tél:</strong> {t.get('client_tel','')}</div>
+    <div class="section">
+        <div class="section-title">👤 Client</div>
+        <div class="big-info">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+        <div class="info-row">
+            <span class="label">Téléphone</span>
+            <span class="value" style="font-family:monospace;">{t.get('client_tel','')}</span>
+        </div>
+    </div>
 
-    <h2>Appareil</h2>
-    <div class="info-line"><strong>Modèle:</strong> {t.get('marque','')} {modele}</div>
-    <div class="info-line"><strong>Panne:</strong> {panne}</div>
+    <div class="section">
+        <div class="section-title">📱 Appareil</div>
+        <div class="big-info">{t.get('marque','')} {modele}</div>
+        <div class="info-row">
+            <span class="label">Panne</span>
+            <span class="value">{panne}</span>
+        </div>
+    </div>
 
     <div class="security-box">
-        <div class="title">🔐 CODES</div>
-        <div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
+        <div class="title">🔐 CODES DE SÉCURITÉ</div>
+        <div class="codes">
+            PIN: {t.get('pin') or '----'}  &nbsp;|&nbsp;  Schéma: {t.get('pattern') or '----'}
+        </div>
     </div>
 
-    <h2>Tarifs</h2>
-    <div class="info-line"><strong>Devis:</strong> {fmt_prix(t.get('devis_estime'))} | <strong>Acompte:</strong> {fmt_prix(t.get('acompte'))} | <strong>Final:</strong> {fmt_prix(t.get('tarif_final'))}</div>
+    <div class="tarif-box">
+        <div class="tarif-row">
+            <span>Devis estimé</span>
+            <span>{devis:.2f} €</span>
+        </div>
+        <div class="tarif-row">
+            <span>Acompte versé</span>
+            <span>- {acompte:.2f} €</span>
+        </div>
+        <div class="tarif-row total">
+            <span>RESTE À PAYER</span>
+            <span>{reste:.2f} €</span>
+        </div>
+    </div>
 
-    <h2>Dates</h2>
-    <div class="info-line"><strong>Dépôt:</strong> {fmt_date(t.get('date_depot',''))} | <strong>Récup:</strong> {fmt_date(t.get('date_recup',''))}</div>
+    <div class="section">
+        <div class="section-title">📅 Dates</div>
+        <div class="info-row">
+            <span class="label">Dépôt</span>
+            <span class="value">{fmt_date(t.get('date_depot',''))}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Récupération prévue</span>
+            <span class="value">{t.get('date_recuperation') or 'À définir'}</span>
+        </div>
+    </div>
 
-    <h2>Notes</h2>
-    <div class="info-line">{notes}</div>
+    {"<div class='notes-box public'><div class='notes-title'>💬 Note publique</div>" + notes_publiques + "</div>" if notes_publiques else ""}
+    
+    {"<div class='notes-box private'><div class='notes-title'>🔒 Note privée (équipe)</div>" + notes_privees + "</div>" if notes_privees else ""}
 
-    <div class="footer">Motif: {panne}</div>
+    <div class="footer">
+        <strong>Motif:</strong> {panne}
+    </div>
 
     <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
@@ -5879,91 +6017,149 @@ def staff_traiter_demande(tid):
             """, unsafe_allow_html=True)
 
 
-        # Notes / commentaires
-        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="detail-card-header">📝 Notes & Historique</div>', unsafe_allow_html=True)
+        # =================================================================
+        # SECTION NOTES & NOTIFICATIONS
+        # =================================================================
+        st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
         
-        # Initialiser les variables avec les valeurs actuelles du ticket
-        notes_internes_val = t.get('notes_internes') or ""
-        commentaire_public_val = t.get('commentaire_client') or ""
+        # ╔══════════════════════════════════════════════════════════════╗
+        # ║  1. CENTRE DE NOTIFICATIONS (Lecture seule)                  ║
+        # ╚══════════════════════════════════════════════════════════════╝
         
-        # === HISTORIQUE GLOBAL ===
+        # Construire le HTML du centre de notifications
+        notif_html = f"""
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 16px; padding: 20px; margin-bottom: 20px; color: white;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f97316, #ea580c); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px;">📊</div>
+                <span style="font-weight: 700; font-size: 15px;">Centre de notifications</span>
+            </div>
+            
+            <!-- Statut -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">📍</span>
+                    <span style="font-size: 13px; color: rgba(255,255,255,0.7);">Statut</span>
+                </div>
+                <span style="background: rgba(249,115,22,0.3); color: #fdba74; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">{t.get('statut', 'En attente')}</span>
+            </div>
+            
+            <!-- Communications -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">📨</span>
+                    <span style="font-size: 13px; color: rgba(255,255,255,0.7);">Communications</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <span style="background: {'#22c55e' if t.get('msg_whatsapp') else 'rgba(255,255,255,0.15)'}; color: {'white' if t.get('msg_whatsapp') else 'rgba(255,255,255,0.4)'}; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 500;">WhatsApp {'✓' if t.get('msg_whatsapp') else ''}</span>
+                    <span style="background: {'#3b82f6' if t.get('msg_sms') else 'rgba(255,255,255,0.15)'}; color: {'white' if t.get('msg_sms') else 'rgba(255,255,255,0.4)'}; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 500;">SMS {'✓' if t.get('msg_sms') else ''}</span>
+                    <span style="background: {'#f59e0b' if t.get('msg_email') else 'rgba(255,255,255,0.15)'}; color: {'white' if t.get('msg_email') else 'rgba(255,255,255,0.4)'}; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 500;">Email {'✓' if t.get('msg_email') else ''}</span>
+                </div>
+            </div>
+        """
+        
+        # Note client (dépôt) si existe
+        if t.get('notes_client'):
+            notif_html += f"""
+            <div style="background: rgba(249,115,22,0.15); border-left: 3px solid #f97316; border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #fdba74; margin-bottom: 4px; font-weight: 600;">📋 NOTE CLIENT (dépôt)</div>
+                <div style="font-size: 13px; color: rgba(255,255,255,0.9);">{t.get('notes_client')}</div>
+            </div>
+            """
+        
+        # Description commande si applicable
+        if t.get('panne_detail') and t.get('categorie') == 'Commande':
+            notif_html += f"""
+            <div style="background: rgba(168,85,247,0.15); border-left: 3px solid #a855f7; border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #c4b5fd; margin-bottom: 4px; font-weight: 600;">📦 COMMANDE</div>
+                <div style="font-size: 13px; color: rgba(255,255,255,0.9);">{t.get('panne_detail')}</div>
+            </div>
+            """
+        
+        # Note publique si existe
+        if t.get('commentaire_client'):
+            notif_html += f"""
+            <div style="background: rgba(34,197,94,0.15); border-left: 3px solid #22c55e; border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #86efac; margin-bottom: 4px; font-weight: 600;">💬 NOTE PUBLIQUE (sur ticket)</div>
+                <div style="font-size: 13px; color: rgba(255,255,255,0.9);">{t.get('commentaire_client')}</div>
+            </div>
+            """
+        
+        # Note privée si existe
+        if t.get('notes_internes'):
+            notif_html += f"""
+            <div style="background: rgba(239,68,68,0.15); border-left: 3px solid #ef4444; border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #fca5a5; margin-bottom: 4px; font-weight: 600;">🔒 NOTE PRIVÉE (équipe)</div>
+                <div style="font-size: 13px; color: rgba(255,255,255,0.9);">{t.get('notes_internes')}</div>
+            </div>
+            """
+        
+        # Date mise à jour
+        date_maj = t.get('date_maj', '')[:16] if t.get('date_maj') else 'N/A'
+        notif_html += f"""
+            <div style="text-align: right; font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 8px;">
+                Dernière mise à jour: {date_maj}
+            </div>
+        </div>
+        """
+        
+        st.markdown(notif_html, unsafe_allow_html=True)
+        
+        # ╔══════════════════════════════════════════════════════════════╗
+        # ║  2. CHAMPS DE SAISIE (Note publique + Note privée)          ║
+        # ╚══════════════════════════════════════════════════════════════╝
+        
+        # Note publique
         st.markdown("""
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-            <div style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 10px;">📊 Résumé des communications</div>
+        <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #22c55e; border-radius: 12px; padding: 12px 16px; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">💬</span>
+                <div>
+                    <div style="font-weight: 700; font-size: 13px; color: #166534;">NOTE PUBLIQUE</div>
+                    <div style="font-size: 11px; color: #22c55e;">Imprimée sur le ticket client</div>
+                </div>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
         
-        # Indicateurs de communication
-        comm_items = []
-        if t.get('msg_whatsapp'):
-            comm_items.append('<span style="background:#22c55e;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ WhatsApp envoyé</span>')
-        if t.get('msg_sms'):
-            comm_items.append('<span style="background:#3b82f6;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ SMS envoyé</span>')
-        if t.get('msg_email'):
-            comm_items.append('<span style="background:#f59e0b;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ Email envoyé</span>')
+        commentaire_public_val = st.text_area(
+            "Note publique",
+            value=t.get('commentaire_client') or "",
+            height=90,
+            key=f"notes_pub_{tid}",
+            label_visibility="collapsed",
+            placeholder="Saisissez ici les informations à communiquer au client (sera imprimé sur le ticket)..."
+        )
         
-        if comm_items:
-            st.markdown(f"<div style='margin-bottom:8px;'>{''.join(comm_items)}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div style='color:#94a3b8;font-size:12px;margin-bottom:8px;'>Aucune communication envoyée</div>", unsafe_allow_html=True)
+        st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
         
-        # Notes du client (lors du dépôt)
-        if t.get('notes_client'):
-            st.markdown(f"""
-            <div style="background:white;border-left:3px solid #f97316;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">📋 Note du client (dépôt)</div>
-                <div style="font-size:12px;color:#334155;">{t.get('notes_client')}</div>
+        # Note privée
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 16px; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">🔒</span>
+                <div>
+                    <div style="font-weight: 700; font-size: 13px; color: #991b1b;">NOTE PRIVÉE</div>
+                    <div style="font-size: 11px; color: #ef4444;">Visible uniquement par l'équipe</div>
+                </div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Détail de panne (si commande pièce ou autre)
-        if t.get('panne_detail') and t.get('categorie') == 'Commande':
-            st.markdown(f"""
-            <div style="background:white;border-left:3px solid #8b5cf6;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">📦 Description commande</div>
-                <div style="font-size:12px;color:#334155;">{t.get('panne_detail')}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        notes_internes_val = st.text_area(
+            "Note privée",
+            value=t.get('notes_internes') or "",
+            height=90,
+            key=f"notes_int_{tid}",
+            label_visibility="collapsed",
+            placeholder="Notes internes pour l'équipe (diagnostic, pièces, remarques...)..."
+        )
         
-        # Notes internes (si existantes)
-        if t.get('notes_internes'):
-            st.markdown(f"""
-            <div style="background:white;border-left:3px solid #3b82f6;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">🔒 Notes internes</div>
-                <div style="font-size:12px;color:#334155;">{t.get('notes_internes')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Commentaire public (si existant)
-        if t.get('commentaire_client'):
-            st.markdown(f"""
-            <div style="background:white;border-left:3px solid #22c55e;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">💬 Commentaire public</div>
-                <div style="font-size:12px;color:#334155;">{t.get('commentaire_client')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # === ÉDITION DES NOTES ===
-        with st.expander("✏️ Modifier les notes", expanded=False):
-            notes_internes_val = st.text_area(
-                "Note interne (réservée équipe)",
-                value=t.get('notes_internes') or "",
-                height=100,
-                key=f"notes_int_{tid}",
-                help="Visible uniquement par l'équipe (accueil/atelier).",
-            )
-
-            commentaire_public_val = st.text_area(
-                "Commentaire public (visible sur le ticket client)",
-                value=t.get('commentaire_client') or "",
-                height=80,
-                key=f"notes_pub_{tid}",
-                help="Ce texte s'imprime sur le ticket/reçu remis au client.",
-            )
-
-            st.caption("💾 Enregistrez via le bouton **ENREGISTRER LES MODIFICATIONS** (colonne droite).")
+        st.markdown("""
+        <div style="background: #f1f5f9; border-radius: 8px; padding: 10px 14px; margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 14px;">💾</span>
+            <span style="font-size: 12px; color: #64748b;">Cliquez sur <strong style="color: #f97316;">ENREGISTRER LES MODIFICATIONS</strong> pour sauvegarder</span>
+        </div>
+        """, unsafe_allow_html=True)
 
         # === AFFICHAGE DU TICKET DANS COL1 (à gauche) ===
 
