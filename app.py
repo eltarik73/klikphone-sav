@@ -3350,6 +3350,10 @@ def ticket_client_html(t, for_email=False):
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
+    # Commentaire public (imprimé sur le document)
+    comment_public = (t.get("commentaire_client") or "").strip()
+
+
     
     # Tarifs
     devis = t.get('devis_estime')
@@ -3367,6 +3371,23 @@ def ticket_client_html(t, for_email=False):
             {"<div class='bold'>RESTE: " + str(round((tarif or devis or 0) - (acompte or 0), 2)) + " €</div>" if (tarif or devis) else ""}
         </div>
         """
+
+
+    # Commentaire public (visible sur ticket client)
+    comment_public = (t.get('commentaire_client') or '').strip()
+    comment_section_email = f"""
+    <div class="section">
+        <div class="section-title">Commentaire</div>
+        <div style="color:#0f172a;">{comment_public}</div>
+    </div>
+    """ if comment_public else ""
+    comment_section_thermal = f"""
+    <div class="section">
+        <div class="section-title">COMMENTAIRE</div>
+        <div>{comment_public}</div>
+    </div>
+    """ if comment_public else ""
+
     
     # URL de suivi
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
@@ -3419,6 +3440,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 {f"<div style='margin-top:10px;padding:10px;background:#fff7ed;border-radius:6px;'><strong>Devis:</strong> {devis}€ | <strong>Reste:</strong> {(tarif or devis or 0) - (acompte or 0):.0f}€</div>" if devis else ""}
 </div>
 </div>
+{comment_section_email}
 <div class="qr-section">
 <img src="{qr_url}" alt="QR Code">
 <p style="color:#64748b;font-size:11px;margin-top:8px;">Scannez pour suivre votre réparation</p>
@@ -3591,7 +3613,8 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
     <h2>Montant</h2>
     <div class="info-line"><strong>Devis:</strong> {(t.get('devis_estime') or 0):.2f} € | <strong>Acompte:</strong> {(t.get('acompte') or 0):.2f} €</div>
 
-    <div class="qr-box">
+    {comment_section_thermal}
+<div class="qr-box">
         <img src="{qr_url}" alt="QR Code">
         <p>Scannez pour suivre votre réparation</p>
     </div>
@@ -3826,6 +3849,11 @@ def ticket_devis_facture_html(t, doc_type="devis", for_email=False):
     elif t.get('panne_detail'):
         panne += f" ({t['panne_detail']})"
     
+
+    # Commentaire public (imprimé sur le document)
+    comment_public = (t.get('commentaire_client') or '').strip()
+    comment_section_doc = f"""<div class="section"><div class="section-title">Commentaire</div><p style="margin:0;">{comment_public}</p></div>""" if comment_public else ""
+
     # Tarifs
     devis_val = t.get('devis_estime') or 0
     acompte_val = t.get('acompte') or 0
@@ -3907,6 +3935,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </tbody>
 </table>
 </div>
+{comment_section_doc}
 <div class="totals">
 <div class="total-line main"><span>Total TTC</span><span>{total_ttc:.2f} €</span></div>
 <div class="total-line" style="color:#666;font-size:11px;"><span>dont HT: {total_ht:.2f} € | TVA: {tva:.2f} €</span></div>
@@ -5695,23 +5724,62 @@ def staff_traiter_demande(tid):
                 client = get_client_by_id(client_id) if client_id else None
                 
                 if client:
-                    c1, c2 = st.columns(2)
+
+                    c1, c2 = st.columns(2, gap="small")
                     with c1:
                         new_nom = st.text_input("Nom", value=client.get('nom', ''), key=f"edit_nom_{tid}")
                         new_tel = st.text_input("Téléphone", value=client.get('telephone', ''), key=f"edit_tel_{tid}")
                     with c2:
                         new_prenom = st.text_input("Prénom", value=client.get('prenom', ''), key=f"edit_prenom_{tid}")
                         new_email = st.text_input("Email", value=client.get('email', '') or '', key=f"edit_email_{tid}")
-                    
-                    col_save, col_cancel = st.columns(2)
+
+                    st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
+                    st.markdown("**Appareil (modification rapide):**")
+
+                    c3, c4 = st.columns(2, gap="small")
+                    with c3:
+                        new_cat = st.selectbox(
+                            "Catégorie",
+                            CATEGORIES,
+                            index=CATEGORIES.index(t.get('categorie', CATEGORIES[0])) if t.get('categorie') in CATEGORIES else 0,
+                            key=f"edit_cat2_{tid}",
+                        )
+                    with c4:
+                        marques_dispo = get_marques(new_cat)
+                        new_marque = st.selectbox(
+                            "Marque",
+                            marques_dispo,
+                            index=marques_dispo.index(t.get('marque')) if t.get('marque') in marques_dispo else 0,
+                            key=f"edit_marque2_{tid}",
+                        )
+
+                    c5, c6 = st.columns(2, gap="small")
+                    with c5:
+                        modeles_dispo = get_modeles(new_cat, new_marque)
+                        new_modele = st.selectbox(
+                            "Modèle",
+                            modeles_dispo,
+                            index=modeles_dispo.index(t.get('modele')) if t.get('modele') in modeles_dispo else 0,
+                            key=f"edit_modele2_{tid}",
+                        )
+                    with c6:
+                        new_modele_autre = st.text_input(
+                            "Modèle (autre)",
+                            value=t.get('modele_autre', ''),
+                            key=f"edit_modele_autre2_{tid}",
+                            placeholder="Ex: Modèle exact si absent de la liste",
+                        )
+
+                    col_save, col_cancel = st.columns([2, 1], gap="small")
                     with col_save:
-                        if st.button("💾 Enregistrer client", key=f"save_client_{tid}", type="primary", use_container_width=True):
+                        if st.button("💾 Enregistrer les modifications", key=f"save_client_{tid}", type="primary", use_container_width=True):
                             update_client(client_id, nom=new_nom, prenom=new_prenom, telephone=new_tel, email=new_email)
+                            update_ticket(tid, categorie=new_cat, marque=new_marque, modele=new_modele, modele_autre=new_modele_autre)
                             st.session_state[f"show_edit_client_{tid}"] = False
-                            st.success("✅ Client mis à jour!")
+                            st.success("✅ Informations mises à jour!")
                             st.rerun()
                     with col_cancel:
-                        if st.button("❌ Annuler", key=f"cancel_client_{tid}", use_container_width=True):
+                        if st.button("Annuler", key=f"cancel_client_{tid}", use_container_width=True):
                             st.session_state[f"show_edit_client_{tid}"] = False
                             st.rerun()
         
@@ -5724,32 +5792,32 @@ def staff_traiter_demande(tid):
                 <div style="font-size:var(--text-sm);">Schéma: <strong>{t.get('pattern') or 'Aucun'}</strong></div>
             </div>
             """, unsafe_allow_html=True)
-        
-        # Message technicien
-        if t.get('commentaire_client'):
-            st.markdown(f"""
-            <div style="background:var(--error-light);border:2px solid var(--error);border-radius:var(--r-md);padding:16px;margin:16px 0;">
-                <div style="font-weight:600;color:var(--error-dark);margin-bottom:8px;">⚠️ Message du technicien à transmettre</div>
-                <div style="font-style:italic;color:var(--neutral-700);">{t.get('commentaire_client')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Notes internes
-        st.markdown("""<div style="height:16px;"></div>""", unsafe_allow_html=True)
-        st.markdown("""<div class="detail-card-header">📝 Notes internes</div>""", unsafe_allow_html=True)
-        st.text_area("", value=t.get('notes_internes') or "Aucune note", disabled=True, height=80, key=f"notes_view_{tid}", label_visibility="collapsed")
-        
-        col_note, col_add = st.columns([4, 1])
-        with col_note:
-            note = st.text_input("", placeholder="Ajouter une note...", key=f"new_note_{tid}", label_visibility="collapsed")
-        with col_add:
-            if st.button("Ajouter", key=f"add_note_{tid}", type="secondary", use_container_width=True):
-                if note:
-                    ajouter_note(tid, note)
-                    st.success("Note ajoutée!")
-                    st.rerun()
-        
+
+
+        # Notes / commentaires
+        st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="detail-card-header">📝 Notes</div>', unsafe_allow_html=True)
+
+        notes_internes_val = st.text_area(
+            "Note interne (réservée équipe)",
+            value=t.get('notes_internes') or "",
+            height=110,
+            key=f"notes_int_{tid}",
+            help="Visible uniquement par l'équipe (accueil/atelier).",
+        )
+
+        commentaire_public_val = st.text_area(
+            "Commentaire public (visible sur le ticket client)",
+            value=t.get('commentaire_client') or "",
+            height=90,
+            key=f"notes_pub_{tid}",
+            help="Ce texte s'imprime sur le ticket/reçu remis au client.",
+        )
+
+        st.caption("💾 Ces notes sont enregistrées via le bouton **ENREGISTRER LES MODIFICATIONS** (colonne droite).")
+
         # === AFFICHAGE DU TICKET DANS COL1 (à gauche) ===
+
         ticket_type = st.session_state.get(f"show_ticket_{tid}")
         if ticket_type:
             st.markdown("---")
@@ -5838,45 +5906,6 @@ def staff_traiter_demande(tid):
                 if m['nom'] in technicien:
                     st.markdown(f"<div style='width:20px;height:20px;background:{m['couleur']};border-radius:50%;display:inline-block;'></div>", unsafe_allow_html=True)
                     break
-        
-        # Modification appareil/modèle
-        st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
-        st.markdown("""<div class="detail-card-header">📱 Modifier l'appareil</div>""", unsafe_allow_html=True)
-        
-        if st.session_state.get(f"show_edit_appareil_{tid}"):
-            col_cat, col_marque = st.columns(2)
-            with col_cat:
-                new_cat = st.selectbox("Catégorie", CATEGORIES, index=CATEGORIES.index(t.get('categorie', CATEGORIES[0])) if t.get('categorie') in CATEGORIES else 0, key=f"edit_cat_{tid}")
-            with col_marque:
-                marques_dispo = get_marques(new_cat)
-                new_marque = st.selectbox("Marque", marques_dispo, index=marques_dispo.index(t.get('marque')) if t.get('marque') in marques_dispo else 0, key=f"edit_marque_{tid}")
-            
-            col_mod, col_autre = st.columns(2)
-            with col_mod:
-                modeles_dispo = get_modeles(new_cat, new_marque)
-                new_modele = st.selectbox("Modèle", modeles_dispo, index=modeles_dispo.index(t.get('modele')) if t.get('modele') in modeles_dispo else 0, key=f"edit_modele_{tid}")
-            with col_autre:
-                new_modele_autre = st.text_input("Modèle (autre)", value=t.get('modele_autre', ''), key=f"edit_modele_autre_{tid}")
-            
-            col_save, col_cancel = st.columns(2)
-            with col_save:
-                if st.button("💾 Enregistrer appareil", key=f"save_appareil_{tid}", type="primary"):
-                    update_ticket(tid, categorie=new_cat, marque=new_marque, modele=new_modele, modele_autre=new_modele_autre)
-                    st.session_state[f"show_edit_appareil_{tid}"] = False
-                    st.success("✅ Appareil mis à jour!")
-                    st.rerun()
-            with col_cancel:
-                if st.button("❌ Annuler", key=f"cancel_appareil_{tid}"):
-                    st.session_state[f"show_edit_appareil_{tid}"] = False
-                    st.rerun()
-        else:
-            modele_actuel = f"{t.get('marque','')} {t.get('modele','')}"
-            if t.get('modele_autre'): modele_actuel = t['modele_autre']
-            st.write(f"**{modele_actuel}**")
-            if st.button("✏️ Modifier", key=f"btn_edit_appareil_{tid}"):
-                st.session_state[f"show_edit_appareil_{tid}"] = True
-                st.rerun()
-        
         # Date de récupération avec calendrier
         st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
         st.markdown("""<div class="detail-card-header">📅 Date récupération prévue</div>""", unsafe_allow_html=True)
@@ -5933,8 +5962,6 @@ def staff_traiter_demande(tid):
         # Construire la date formatée
         date_recup = f"{date_picked.strftime('%d/%m')} à {heure_picked}"
         
-        comment = st.text_area("Commentaire interne", placeholder="Ajouter un commentaire...", height=60, key=f"comment_{tid}")
-        
         # Tarifs avec design amélioré
         st.markdown("""<div style="height:8px;"></div>""", unsafe_allow_html=True)
         st.markdown("""<div class="detail-card-header">💰 Tarification</div>""", unsafe_allow_html=True)
@@ -5977,13 +6004,10 @@ def staff_traiter_demande(tid):
                 st.rerun()
         
         # Bouton principal Enregistrer
-        st.markdown("""<div style="height:20px;"></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
         tech_name = technicien if technicien != "-- Non assigné --" else ""
         if st.button("💾 ENREGISTRER LES MODIFICATIONS", type="primary", use_container_width=True, key=f"save_{tid}"):
-            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, 
-                         devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup)
-            if comment:
-                ajouter_note(tid, comment)
+            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=notes_internes_val, commentaire_client=commentaire_public_val)
             if new_statut != statut_actuel:
                 changer_statut(tid, new_statut)
             st.success("✅ Demande mise à jour !")
@@ -8145,32 +8169,6 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     
     # === SECTION INFÉRIEURE ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-    
-    # Message pour l'accueil - Toggle avec session_state
-    if f"show_msg_accueil_{tid}" not in st.session_state:
-        st.session_state[f"show_msg_accueil_{tid}"] = False
-    
-    col_toggle1, col_spacer1 = st.columns([3, 1])
-    with col_toggle1:
-        if st.button("📝 Message pour l'accueil" + (" ▼" if st.session_state[f"show_msg_accueil_{tid}"] else " ▶"), 
-                     key=f"toggle_msg_{tid}", use_container_width=True, type="secondary"):
-            st.session_state[f"show_msg_accueil_{tid}"] = not st.session_state[f"show_msg_accueil_{tid}"]
-            st.rerun()
-    
-    if st.session_state[f"show_msg_accueil_{tid}"]:
-        st.markdown("""<div style="background:white;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:16px;margin-top:-10px;">""", unsafe_allow_html=True)
-        comment_client = st.text_area("Message à transmettre au client via l'accueil", 
-                                      value=t.get('commentaire_client') or "", 
-                                      height=80, 
-                                      placeholder="Ex: Écran remplacé, test OK. Attention batterie faible...",
-                                      key=f"tech_client_comment_{tid}")
-        if st.button("💾 Enregistrer le message", key=f"tech_save_client_comment_{tid}", type="primary"):
-            update_ticket(tid, commentaire_client=comment_client)
-            st.success("✅ Message enregistré!")
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
     
     # Changer statut - Toggle avec session_state
     if f"show_statuts_{tid}" not in st.session_state:
