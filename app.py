@@ -3,6 +3,7 @@
 """
 KLIKPHONE SAV - Design inspiré du portail officiel
 Couleurs orange, style moderne Tailwind
+OPTIMISÉ: Logos inline, caching, fragments
 """
 
 import streamlit as st
@@ -10,6 +11,7 @@ import sqlite3
 import os
 from datetime import datetime
 import re
+import functools
 
 # Option Postgres (Supabase)
 try:
@@ -132,23 +134,25 @@ MODELES = {
 # =============================================================================
 
 # Logos des marques en SVG (pour un rendu pro)
+# Logos des marques en SVG inline (évite les requêtes réseau)
+# Format: data:image/svg+xml pour performance maximale
 BRAND_LOGOS = {
-    "Apple": "https://cdn.simpleicons.org/apple/000000",
-    "Samsung": "https://cdn.simpleicons.org/samsung/1428a0",
-    "Xiaomi": "https://cdn.simpleicons.org/xiaomi/ff6900",
-    "Huawei": "https://cdn.simpleicons.org/huawei/ff0000",
-    "OnePlus": "https://cdn.simpleicons.org/oneplus/f5010c",
-    "Google": "https://cdn.simpleicons.org/google/4285f4",
-    "Oppo": "https://cdn.simpleicons.org/oppo/1a8f3e",
-    "Sony": "https://cdn.simpleicons.org/sony/000000",
-    "Microsoft": "https://cdn.simpleicons.org/microsoft/00a4ef",
-    "Nintendo": "https://cdn.simpleicons.org/nintendo/e60012",
-    "HP": "https://cdn.simpleicons.org/hp/0096d6",
-    "Dell": "https://cdn.simpleicons.org/dell/007db8",
-    "Lenovo": "https://cdn.simpleicons.org/lenovo/e2231a",
-    "Asus": "https://cdn.simpleicons.org/asus/000000",
-    "Acer": "https://cdn.simpleicons.org/acer/83b81a",
-    "MSI": "https://cdn.simpleicons.org/msi/ff0000",
+    "Apple": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z'/%3E%3C/svg%3E",
+    "Samsung": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231428a0'%3E%3Cpath d='M2.61 11.4c0 .94.47 1.52 1.63 1.85l1.22.34c.59.17.81.39.81.72 0 .41-.36.66-.96.66-.69 0-1.01-.31-1.04-.78H2.61c.03.98.74 1.61 1.96 1.61 1.14 0 1.96-.63 1.96-1.61 0-.89-.48-1.41-1.56-1.72l-1.17-.33c-.64-.18-.88-.42-.88-.77 0-.39.33-.65.88-.65.58 0 .91.29.95.71h1.56c-.04-.94-.79-1.56-1.91-1.56-1.19 0-1.79.67-1.79 1.53zm5.56 3.25h1.58v-4.98H8.17v4.98zm3.29-4.98l1.68 4.98h1.72l1.68-4.98h-1.62l-.92 3.13-.92-3.13h-1.62zm6.3 0v4.98h1.58v-4.98h-1.58zm4.24 0h-1.58v4.98h1.58v-1.77l.44-.47 1.25 2.24h1.76l-1.93-3.22 1.82-1.76h-1.83l-1.51 1.66v-1.66z'/%3E%3C/svg%3E",
+    "Xiaomi": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff6900'%3E%3Cpath d='M19.913 13.317V7.332c0-.636-.509-1.145-1.145-1.145h-6.462c-.636 0-1.145.509-1.145 1.145v11.523c0 .636.509 1.145 1.145 1.145h1.717c.636 0 1.145-.509 1.145-1.145v-5.538h3.6c.636 0 1.145-.509 1.145-1.145v-1.717c0-.636-.509-1.145-1.145-1.145h-3.6v-.573h4.745c.636 0 1.145-.509 1.145-1.145v-.13zm-9.324 5.538c0 .636-.509 1.145-1.145 1.145H7.727c-.636 0-1.145-.509-1.145-1.145V7.332c0-.636.509-1.145 1.145-1.145h1.717c.636 0 1.145.509 1.145 1.145v11.523z'/%3E%3C/svg%3E",
+    "Huawei": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff0000'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/%3E%3C/svg%3E",
+    "OnePlus": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f5010c'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z'/%3E%3C/svg%3E",
+    "Google": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234285f4'%3E%3Cpath d='M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z'/%3E%3C/svg%3E",
+    "Oppo": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231a8f3e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/%3E%3C/svg%3E",
+    "Sony": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M2 8.5v7h2.5v-2.5h2v2.5H9v-7H6.5v2.5h-2V8.5H2zm8 0v7h5v-2H12.5v-1h2.5v-2h-2.5v-1H15v-1h-5zm6 0v7h2.5v-5h2v5H23v-7h-7z'/%3E%3C/svg%3E",
+    "Microsoft": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300a4ef'%3E%3Cpath d='M11.4 11.4H2V2h9.4v9.4zm10.6 0H12.6V2H22v9.4zM11.4 22H2v-9.4h9.4V22zm10.6 0H12.6v-9.4H22V22z'/%3E%3C/svg%3E",
+    "Nintendo": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e60012'%3E%3Cpath d='M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5zm2 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm10 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6z'/%3E%3C/svg%3E",
+    "HP": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230096d6'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15H8v-4H6v4H4V7h2v4h2V7h2v10zm6-4h-2v4h-2V7h4c1.1 0 2 .9 2 2v2c0 1.1-.9 2-2 2zm0-4h-2v2h2V9z'/%3E%3C/svg%3E",
+    "Dell": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23007db8'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15H6V7h4c2.21 0 4 1.79 4 4v2c0 2.21-1.79 4-4 4zm0-2c1.1 0 2-.9 2-2v-2c0-1.1-.9-2-2-2H8v6h2z'/%3E%3C/svg%3E",
+    "Lenovo": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e2231a'%3E%3Cpath d='M2 8v8h3v-6h2v6h3V8H2zm10 0v8h8v-3h-5v-1h5v-4h-8zm3 2h2v1h-2v-1z'/%3E%3C/svg%3E",
+    "Asus": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M23 12l-11 7-11-7 2.5-1.5L12 16l8.5-5.5L23 12zm-11-9l11 7-2.5 1.5L12 6 3.5 11.5 1 10l11-7z'/%3E%3C/svg%3E",
+    "Acer": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2383b81a'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8l4-4 4 4-4 4-4-4z'/%3E%3C/svg%3E",
+    "MSI": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff0000'%3E%3Cpath d='M2 7v10h3V9h2l2 8h2l2-8h2v8h3V7H2z'/%3E%3C/svg%3E",
 }
 
 def load_css():
@@ -2327,6 +2331,29 @@ a[href*="streamlit.io"] {display:none !important;}
 /* Small header buttons: keep readable */
 [data-testid="column"] .stButton > button{
     min-height: 44px !important;
+}
+
+/* === BOUTONS UNIFORMES (Client step1, step2) === */
+.uniform-buttons button,
+.brand-grid button {
+    height: 50px !important;
+    min-height: 50px !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    border-radius: 10px !important;
+}
+
+/* === GRILLE MARQUES === */
+.brand-grid [data-testid="stVerticalBlock"] {
+    gap: 8px !important;
+}
+
+/* === HOME BUTTONS === */
+.home-buttons button {
+    height: 50px !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    border-radius: 10px !important;
 }
 
 </style>
@@ -4626,17 +4653,8 @@ def client_step1():
     </div>
     """, unsafe_allow_html=True)
     
-    # Style uniforme pour tous les boutons
-    st.markdown("""
-    <style>
-    div[data-testid="stHorizontalBlock"] button {
-        height: 50px !important;
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        border-radius: 10px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Wrapper avec classe CSS pour boutons uniformes (défini dans load_css)
+    st.markdown('<div class="uniform-buttons">', unsafe_allow_html=True)
     
     # Grille 2x2 avec icônes modernes
     col1, col2 = st.columns(2)
@@ -4684,6 +4702,8 @@ def client_step1():
             st.session_state.data["is_commande"] = False
             st.session_state.step = 4
             st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Ferme uniform-buttons
 
 def client_step2():
     """Étape 2: Choix de la marque - Design Premium avec logos"""
@@ -6759,8 +6779,16 @@ def staff_gestion_clients():
                     st.session_state.clients_page = current_page + 1
                     st.rerun()
 
+# Décorateur fragment conditionnel (compatibilité Streamlit < 1.33)
+def optional_fragment(func):
+    """Applique @st.fragment si disponible, sinon retourne la fonction telle quelle"""
+    if hasattr(st, 'fragment'):
+        return st.fragment(func)
+    return func
+
+@optional_fragment
 def staff_commandes_pieces():
-    """Gestion des commandes de pièces"""
+    """Gestion des commandes de pièces - FRAGMENT pour éviter les reruns globaux"""
     st.markdown("""<div class="detail-card-header">📦 Commandes de Pièces</div>""", unsafe_allow_html=True)
     
     # Onglets
