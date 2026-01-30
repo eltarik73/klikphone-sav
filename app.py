@@ -3925,21 +3925,24 @@ def ticket_staff_html(t):
         .tarif-box {{
             background: #000;
             color: #fff;
-            padding: 3mm;
-            margin: 3mm 0;
+            padding: 5mm;
+            margin: 4mm 0;
+            border: 3px solid #000;
         }}
         .tarif-row {{
             display: flex;
             justify-content: space-between;
-            margin: 1mm 0;
-            font-size: 11px;
+            margin: 2mm 0;
+            font-size: 13px;
+            font-weight: 600;
         }}
         .tarif-row.total {{
-            font-size: 14px;
+            font-size: 24px;
             font-weight: 900;
-            border-top: 1px solid #fff;
-            padding-top: 2mm;
-            margin-top: 2mm;
+            border-top: 3px solid #fff;
+            padding-top: 4mm;
+            margin-top: 4mm;
+            letter-spacing: 1px;
         }}
         .footer {{
             text-align: center;
@@ -6016,74 +6019,9 @@ def staff_traiter_demande(tid):
             </div>
             """, unsafe_allow_html=True)
 
-
         # =================================================================
-        # SECTION NOTES & NOTIFICATIONS
+        # BOUTONS APERÇU TICKETS (EN HAUT)
         # =================================================================
-        st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="detail-card-header">📝 Notes & Communications</div>', unsafe_allow_html=True)
-        
-        # Préparer les données
-        statut_actuel = t.get('statut', 'En attente')
-        wa_on = t.get('msg_whatsapp')
-        sms_on = t.get('msg_sms')
-        email_on = t.get('msg_email')
-        date_maj_raw = t.get('date_maj')
-        date_maj = str(date_maj_raw)[:16] if date_maj_raw else 'N/A'
-        
-        # Construire le HTML complet en une seule fois
-        notif_parts = []
-        
-        # Note client dépôt
-        if t.get('notes_client'):
-            notif_parts.append(f'<div style="background:rgba(249,115,22,0.15);border-left:3px solid #f97316;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fdba74;margin-bottom:3px;font-weight:600;">📋 NOTE CLIENT</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_client")}</div></div>')
-        
-        # Commande
-        if t.get('panne_detail') and t.get('categorie') == 'Commande':
-            notif_parts.append(f'<div style="background:rgba(168,85,247,0.15);border-left:3px solid #a855f7;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#c4b5fd;margin-bottom:3px;font-weight:600;">📦 COMMANDE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("panne_detail")}</div></div>')
-        
-        # Note publique
-        if t.get('commentaire_client'):
-            notif_parts.append(f'<div style="background:rgba(34,197,94,0.15);border-left:3px solid #22c55e;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#86efac;margin-bottom:3px;font-weight:600;">💬 NOTE PUBLIQUE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("commentaire_client")}</div></div>')
-        
-        # Note privée
-        if t.get('notes_internes'):
-            notif_parts.append(f'<div style="background:rgba(239,68,68,0.15);border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fca5a5;margin-bottom:3px;font-weight:600;">🔒 NOTE PRIVÉE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_internes")}</div></div>')
-        
-        notes_content = "".join(notif_parts)
-        
-        # Badges de communication
-        wa_bg = "#22c55e" if wa_on else "#374151"
-        wa_color = "white" if wa_on else "#6b7280"
-        sms_bg = "#3b82f6" if sms_on else "#374151"
-        sms_color = "white" if sms_on else "#6b7280"
-        email_bg = "#f59e0b" if email_on else "#374151"
-        email_color = "white" if email_on else "#6b7280"
-        
-        full_html = f'''<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.1);">
-<span style="font-size:16px;">📊</span>
-<span style="font-weight:600;font-size:14px;">Centre de notifications</span>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-<span style="font-size:12px;color:rgba(255,255,255,0.7);">📍 Statut</span>
-<span style="background:rgba(249,115,22,0.3);color:#fdba74;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">{statut_actuel}</span>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-<span style="font-size:12px;color:rgba(255,255,255,0.7);">📨 Communications</span>
-<div style="display:flex;gap:4px;">
-<span style="background:{wa_bg};color:{wa_color};padding:2px 8px;border-radius:10px;font-size:9px;">WA{"✓" if wa_on else ""}</span>
-<span style="background:{sms_bg};color:{sms_color};padding:2px 8px;border-radius:10px;font-size:9px;">SMS{"✓" if sms_on else ""}</span>
-<span style="background:{email_bg};color:{email_color};padding:2px 8px;border-radius:10px;font-size:9px;">Email{"✓" if email_on else ""}</span>
-</div>
-</div>
-{notes_content}
-<div style="text-align:right;font-size:9px;color:rgba(255,255,255,0.4);margin-top:6px;">Màj: {date_maj}</div>
-</div>'''
-        
-        st.markdown(full_html, unsafe_allow_html=True)
-        
-        # === BOUTONS APERÇU TICKETS ===
         st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="detail-card-header">🎫 Aperçu & Impression</div>', unsafe_allow_html=True)
         
@@ -6112,15 +6050,12 @@ def staff_traiter_demande(tid):
         if ticket_type:
             st.markdown("---")
             
-            # En-tête avec bouton fermer
             col_header, col_close = st.columns([4, 1])
             with col_header:
                 if ticket_type == "client":
                     st.markdown('<div style="background:linear-gradient(135deg,rgba(251,146,60,0.2),rgba(249,115,22,0.1));padding:10px 15px;border-radius:10px;border-left:4px solid #fb923c;"><strong>🎫 TICKET CLIENT</strong></div>', unsafe_allow_html=True)
                 elif ticket_type == "staff":
                     st.markdown('<div style="background:linear-gradient(135deg,rgba(107,114,128,0.2),rgba(75,85,99,0.1));padding:10px 15px;border-radius:10px;border-left:4px solid #6b7280;"><strong>📋 TICKET STAFF</strong></div>', unsafe_allow_html=True)
-                elif ticket_type == "both":
-                    st.markdown('<div style="background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(22,163,74,0.1));padding:10px 15px;border-radius:10px;border-left:4px solid #22c55e;"><strong>🖨️ TICKETS CLIENT + STAFF</strong></div>', unsafe_allow_html=True)
                 elif ticket_type == "devis":
                     st.markdown('<div style="background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.1));padding:10px 15px;border-radius:10px;border-left:4px solid #3b82f6;"><strong>📝 DEVIS</strong></div>', unsafe_allow_html=True)
                 elif ticket_type == "facture":
@@ -6131,17 +6066,83 @@ def staff_traiter_demande(tid):
                     del st.session_state[f"show_ticket_{tid}"]
                     st.rerun()
             
-            # Affichage du ticket selon le type
             if ticket_type == "client":
                 st.components.v1.html(ticket_client_html(t), height=750, scrolling=True)
             elif ticket_type == "staff":
                 st.components.v1.html(ticket_staff_html(t), height=800, scrolling=True)
-            elif ticket_type == "both":
-                st.components.v1.html(ticket_combined_html(t), height=1500, scrolling=True)
             elif ticket_type == "devis":
                 st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=750, scrolling=True)
             elif ticket_type == "facture":
                 st.components.v1.html(ticket_devis_facture_html(t, "facture"), height=750, scrolling=True)
+
+        # =================================================================
+        # CENTRE DE NOTIFICATIONS (EN BAS)
+        # =================================================================
+        st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="detail-card-header">📊 Centre de notifications</div>', unsafe_allow_html=True)
+        
+        # Préparer les données
+        statut_actuel = t.get('statut', 'En attente')
+        wa_on = t.get('msg_whatsapp')
+        sms_on = t.get('msg_sms')
+        email_on = t.get('msg_email')
+        date_maj_raw = t.get('date_maj')
+        date_maj = str(date_maj_raw)[:16] if date_maj_raw else 'N/A'
+        
+        # Construire le HTML des notes
+        notif_parts = []
+        
+        if t.get('notes_client'):
+            notif_parts.append(f'<div style="background:rgba(249,115,22,0.15);border-left:3px solid #f97316;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fdba74;margin-bottom:3px;font-weight:600;">📋 NOTE CLIENT</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_client")}</div></div>')
+        
+        if t.get('panne_detail') and t.get('categorie') == 'Commande':
+            notif_parts.append(f'<div style="background:rgba(168,85,247,0.15);border-left:3px solid #a855f7;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#c4b5fd;margin-bottom:3px;font-weight:600;">📦 COMMANDE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("panne_detail")}</div></div>')
+        
+        if t.get('commentaire_client'):
+            notif_parts.append(f'<div style="background:rgba(34,197,94,0.15);border-left:3px solid #22c55e;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#86efac;margin-bottom:3px;font-weight:600;">💬 NOTE PUBLIQUE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("commentaire_client")}</div></div>')
+        
+        if t.get('notes_internes'):
+            notif_parts.append(f'<div style="background:rgba(239,68,68,0.15);border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fca5a5;margin-bottom:3px;font-weight:600;">🔒 NOTE PRIVÉE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_internes")}</div></div>')
+        
+        notes_content = "".join(notif_parts)
+        
+        wa_bg = "#22c55e" if wa_on else "#374151"
+        wa_color = "white" if wa_on else "#6b7280"
+        sms_bg = "#3b82f6" if sms_on else "#374151"
+        sms_color = "white" if sms_on else "#6b7280"
+        email_bg = "#f59e0b" if email_on else "#374151"
+        email_color = "white" if email_on else "#6b7280"
+        
+        full_html = f'''<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+<span style="font-size:12px;color:rgba(255,255,255,0.7);">📍 Statut</span>
+<span style="background:rgba(249,115,22,0.3);color:#fdba74;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">{statut_actuel}</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+<span style="font-size:12px;color:rgba(255,255,255,0.7);">📨 Communications</span>
+<div style="display:flex;gap:4px;">
+<span style="background:{wa_bg};color:{wa_color};padding:2px 8px;border-radius:10px;font-size:9px;">WA{"✓" if wa_on else ""}</span>
+<span style="background:{sms_bg};color:{sms_color};padding:2px 8px;border-radius:10px;font-size:9px;">SMS{"✓" if sms_on else ""}</span>
+<span style="background:{email_bg};color:{email_color};padding:2px 8px;border-radius:10px;font-size:9px;">Email{"✓" if email_on else ""}</span>
+</div>
+</div>
+{notes_content}
+<div style="text-align:right;font-size:9px;color:rgba(255,255,255,0.4);margin-top:6px;">Màj: {date_maj}</div>
+</div>'''
+        
+        st.markdown(full_html, unsafe_allow_html=True)
+        
+        col_t3, col_t4 = st.columns(2)
+        with col_t3:
+            if st.button("📝 Devis", key=f"show_devis_{tid}", use_container_width=True):
+                st.session_state[f"show_ticket_{tid}"] = "devis"
+                st.rerun()
+        with col_t4:
+            if st.button("🧾 Récap/Facture", key=f"show_facture_{tid}", use_container_width=True):
+                st.session_state[f"show_ticket_{tid}"] = "facture"
+                st.rerun()
+
+        # === AFFICHAGE DU TICKET ===
     
     # === COLONNE DROITE: Actions ===
     with col2:
@@ -8258,8 +8259,89 @@ def tech_detail_ticket(tid):
             </div>
             """, unsafe_allow_html=True)
 
+        # --- APERÇU TICKETS (EN HAUT) ---
+        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">🎫 Aperçu & Impression</div>""", unsafe_allow_html=True)
+        
+        col_tk1, col_tk2 = st.columns(2)
+        with col_tk1:
+            if st.button("🎫 Ticket Client", key=f"tech_show_client_{tid}", use_container_width=True):
+                st.session_state[f"tech_show_ticket_{tid}"] = "client"
+                st.rerun()
+        with col_tk2:
+            if st.button("📋 Ticket Staff", key=f"tech_show_staff_{tid}", use_container_width=True):
+                st.session_state[f"tech_show_ticket_{tid}"] = "staff"
+                st.rerun()
+
+        # Affichage du ticket
+        tech_ticket_type = st.session_state.get(f"tech_show_ticket_{tid}")
+        if tech_ticket_type:
+            st.markdown("---")
+            col_hd, col_cl = st.columns([4, 1])
+            with col_hd:
+                if tech_ticket_type == "client":
+                    st.markdown('<div style="background:linear-gradient(135deg,rgba(251,146,60,0.2),rgba(249,115,22,0.1));padding:10px;border-radius:8px;border-left:4px solid #fb923c;"><strong>🎫 TICKET CLIENT</strong></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background:linear-gradient(135deg,rgba(107,114,128,0.2),rgba(75,85,99,0.1));padding:10px;border-radius:8px;border-left:4px solid #6b7280;"><strong>📋 TICKET STAFF</strong></div>', unsafe_allow_html=True)
+            with col_cl:
+                if st.button("✕", key=f"tech_close_ticket_{tid}", type="secondary", use_container_width=True):
+                    del st.session_state[f"tech_show_ticket_{tid}"]
+                    st.rerun()
+            
+            if tech_ticket_type == "client":
+                st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
+            else:
+                st.components.v1.html(ticket_staff_html(t), height=750, scrolling=True)
+
+        # --- CENTRE DE NOTIFICATIONS (EN BAS) ---
+        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">📊 Centre de notifications</div>""", unsafe_allow_html=True)
+        
+        wa_on = t.get('msg_whatsapp')
+        sms_on = t.get('msg_sms')
+        email_on = t.get('msg_email')
+        date_maj_raw = t.get('date_maj')
+        date_maj = str(date_maj_raw)[:16] if date_maj_raw else 'N/A'
+        
+        # Construire les notes
+        notif_parts_tech = []
+        if t.get('notes_client'):
+            notif_parts_tech.append(f'<div style="background:rgba(249,115,22,0.15);border-left:3px solid #f97316;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fdba74;margin-bottom:3px;font-weight:600;">📋 NOTE CLIENT</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_client")}</div></div>')
+        if t.get('panne_detail') and t.get('categorie') == 'Commande':
+            notif_parts_tech.append(f'<div style="background:rgba(168,85,247,0.15);border-left:3px solid #a855f7;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#c4b5fd;margin-bottom:3px;font-weight:600;">📦 COMMANDE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("panne_detail")}</div></div>')
+        if t.get('commentaire_client'):
+            notif_parts_tech.append(f'<div style="background:rgba(34,197,94,0.15);border-left:3px solid #22c55e;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#86efac;margin-bottom:3px;font-weight:600;">💬 NOTE PUBLIQUE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("commentaire_client")}</div></div>')
+        if t.get('notes_internes'):
+            notif_parts_tech.append(f'<div style="background:rgba(239,68,68,0.15);border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;"><div style="font-size:10px;color:#fca5a5;margin-bottom:3px;font-weight:600;">🔒 NOTE PRIVÉE</div><div style="font-size:12px;color:rgba(255,255,255,0.9);">{t.get("notes_internes")}</div></div>')
+        
+        notes_content_tech = "".join(notif_parts_tech)
+        
+        wa_bg = "#22c55e" if wa_on else "#374151"
+        wa_color = "white" if wa_on else "#6b7280"
+        sms_bg = "#3b82f6" if sms_on else "#374151"
+        sms_color = "white" if sms_on else "#6b7280"
+        email_bg = "#f59e0b" if email_on else "#374151"
+        email_color = "white" if email_on else "#6b7280"
+        
+        notif_html_tech = f'''<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+<span style="font-size:12px;color:rgba(255,255,255,0.7);">📍 Statut</span>
+<span style="background:rgba(249,115,22,0.3);color:#fdba74;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">{statut_actuel}</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+<span style="font-size:12px;color:rgba(255,255,255,0.7);">📨 Communications</span>
+<div style="display:flex;gap:4px;">
+<span style="background:{wa_bg};color:{wa_color};padding:2px 8px;border-radius:10px;font-size:9px;">WA{"✓" if wa_on else ""}</span>
+<span style="background:{sms_bg};color:{sms_color};padding:2px 8px;border-radius:10px;font-size:9px;">SMS{"✓" if sms_on else ""}</span>
+<span style="background:{email_bg};color:{email_color};padding:2px 8px;border-radius:10px;font-size:9px;">Email{"✓" if email_on else ""}</span>
+</div>
+</div>
+{notes_content_tech}
+<div style="text-align:right;font-size:9px;color:rgba(255,255,255,0.4);margin-top:6px;">Màj: {date_maj}</div>
+</div>'''
+        
+        st.markdown(notif_html_tech, unsafe_allow_html=True)
+
         # --- NOTES (INTERNE + PUBLIC) ---
-        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">📝 Notes</div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">📝 Modifier les notes</div>""", unsafe_allow_html=True)
 
         notes_internes_edit = st.text_area(
             "Note interne (équipe)",
