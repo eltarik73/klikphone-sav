@@ -4686,20 +4686,24 @@ def client_step2():
     
     st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
     
-    # Afficher les marques en grille 2 colonnes avec logos
+    # Afficher les marques en grille 2 colonnes avec logos centrés
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # Logo superposé sur le bouton
+                # Calculer le décalage selon la longueur du nom (environ 4px par caractère)
+                text_width = len(m) * 4.5
+                offset = int(text_width + 12)  # 12px d'espace entre logo et texte
+                
+                # Logo centré juste à côté du texte
                 st.markdown(f'''
                 <div style="position:relative; height:0; overflow:visible; z-index:100;">
-                    <img src="{logo_url}" style="position:absolute; top:14px; left:16px; width:20px; height:20px; pointer-events:none;">
+                    <img src="{logo_url}" style="position:absolute; top:15px; left:50%; transform:translateX(-{offset}px); width:18px; height:18px; pointer-events:none;">
                 </div>
                 ''', unsafe_allow_html=True)
-                if st.button(f"        {m}", key=f"brand_{m}", use_container_width=True):
+                if st.button(f"    {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
                     st.rerun()
