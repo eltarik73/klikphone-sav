@@ -8547,196 +8547,98 @@ def afficher_suivi_ticket(t):
 # =============================================================================
 # ÉCRAN D'ACCUEIL
 # =============================================================================
-
 def ui_home():
-    """Page d'accueil - 3 gros blocs premium (100% cliquables) + Suivi + footer.
-    UI uniquement : ne change aucune logique métier (on ne fait que changer la navigation via query params).
-    """
+    """Page d'accueil - tuiles premium (UI only)"""
 
-    # --- Styles Home only (scopés) ---
-    st.markdown("""
-    <style>
-    .kp-home-wrap{max-width:1180px;margin:0 auto;padding:18px 0 0 0;}
-    .kp-home-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:6px 0 18px 0;}
-    .kp-home-brand{display:flex;gap:14px;align-items:center;}
-    .kp-home-brand img{width:74px;height:74px;border-radius:18px;box-shadow:0 10px 26px rgba(16,24,40,.10);}
-    .kp-home-title{font-size:34px;font-weight:950;letter-spacing:-0.05em;line-height:1.02;color:#0f172a;}
-    .kp-home-sub{color:#64748b;font-size:13.5px;margin-top:6px;}
-    .kp-home-pill{
-      display:inline-flex;align-items:center;gap:10px;
-      padding:10px 13px;border-radius:999px;
-      border:1px solid rgba(15,23,42,.10);
-      background:rgba(255,255,255,.75);
-      backdrop-filter: blur(10px);
-      color:#0f172a;font-weight:900;font-size:12px;
-      box-shadow:0 10px 26px rgba(16,24,40,.06);
-    }
-
-    .kp-home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-    @media (max-width: 980px){.kp-home-grid{grid-template-columns:1fr;}}
-
-    .kp-card{
-      position:relative;display:block;text-decoration:none;color:inherit;
-      min-height:210px;border-radius:22px;
-      border:1px solid rgba(15,23,42,.10);
-      background: linear-gradient(180deg,#ffffff 0%, #fbfcff 100%);
-      box-shadow: 0 18px 55px rgba(16,24,40,.10);
-      overflow:hidden;
-      transform: translateY(0);
-      transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
-    }
-    .kp-card:hover{
-      transform: translateY(-3px);
-      box-shadow: 0 24px 80px rgba(16,24,40,.14);
-      border-color: rgba(15,23,42,.16);
-    }
-    .kp-card::before{
-      content:"";
-      position:absolute;inset:-2px;
-      background:
-        radial-gradient(520px 260px at 18% 0%, rgba(255,106,0,.16), transparent 62%),
-        radial-gradient(520px 260px at 82% 22%, rgba(255,138,61,.10), transparent 62%);
-      opacity:.85;
-      pointer-events:none;
-    }
-    .kp-card-inner{
-      position:relative;z-index:2;
-      padding:18px 18px 16px 18px;height:100%;
-      display:flex;flex-direction:column;justify-content:space-between;gap:10px;
-    }
-    .kp-card-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-    .kp-card-tag{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 11px;border-radius:999px;
-      border:1px solid rgba(255,106,0,.18);
-      background: rgba(255,106,0,.08);
-      color:#9a3412;font-size:12px;font-weight:950;
-    }
-    .kp-card-icon{
-      width:50px;height:50px;border-radius:18px;
-      display:flex;align-items:center;justify-content:center;
-      background: radial-gradient(90px 90px at 30% 20%, rgba(255,106,0,.22), rgba(255,255,255,.9));
-      border:1px solid rgba(255,106,0,.18);
-      box-shadow:0 12px 36px rgba(16,24,40,.10);
-    }
-    .kp-card-icon svg{width:22px;height:22px;fill:#0f172a;opacity:.92;}
-    .kp-card-h{font-size:20.5px;font-weight:950;letter-spacing:-0.02em;color:#0f172a;margin:0;}
-    .kp-card-p{margin:0;color:#64748b;font-size:13.5px;line-height:1.38;}
-    .kp-card-cta{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
-    .kp-card-go{display:inline-flex;align-items:center;gap:10px;color:#0f172a;font-weight:950;font-size:13px;letter-spacing:.01em;}
-    .kp-dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(180deg,#ff6a00,#ff8a3d);box-shadow:0 12px 28px rgba(255,106,0,.22);}
-    .kp-arrow{
-      width:32px;height:32px;border-radius:12px;
-      border:1px solid rgba(15,23,42,.10);
-      background: rgba(255,255,255,.75);
-      display:flex;align-items:center;justify-content:center;
-      color:#0f172a;font-weight:950;
-    }
-
-    .kp-card-full{grid-column:1 / -1;min-height:170px;}
-    .kp-footer{
-      margin:18px 0 10px 0;text-align:center;
-      color:rgba(15,23,42,.55);
-      font-size:12px;font-weight:900;letter-spacing:.02em;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Icons (inline SVG, pas d'emojis)
-    ICON_CLIENT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.2 4.2 0 1 0-4.2-4.2A4.2 4.2 0 0 0 12 12Zm0 2.2c-4.23 0-7.8 2.06-7.8 4.6A2 2 0 0 0 6.1 21h11.8a2 2 0 0 0 1.9-2.2c0-2.54-3.57-4.6-7.8-4.6Z"/></svg>'
-    ICON_STORE  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 7.5 19.6 4.6A2 2 0 0 0 17.8 3.5H6.2A2 2 0 0 0 4.4 4.6L3 7.5v1.2A3 3 0 0 0 6 11.7a3.2 3.2 0 0 0 2.5-1.2A3.2 3.2 0 0 0 11 11.7a3.2 3.2 0 0 0 2.5-1.2A3.2 3.2 0 0 0 16 11.7a3 3 0 0 0 3-3V7.5Zm-2 6.3V20.5H5V13.8a4.8 4.8 0 0 0 1 .1 5.1 5.1 0 0 0 3-1 5.4 5.4 0 0 0 6 0 5.1 5.1 0 0 0 3 1 4.8 4.8 0 0 0 1-.1Z"/></svg>'
-    ICON_TOOLS  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.1 7.9a6.1 6.1 0 0 1-7.8 7.8l-6.1 6.1a1.7 1.7 0 0 1-2.4-2.4l6.1-6.1A6.1 6.1 0 0 1 16.1 3a4.7 4.7 0 0 0-1.2 4l-2.2 2.2 2.1 2.1 2.2-2.2a4.7 4.7 0 0 0 4.1-1.2Z"/></svg>'
-    ICON_QR     = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3V3Zm2.2 2.2v3.6h3.6V5.2H5.2ZM13 3h8v8h-8V3Zm2.2 2.2v3.6h3.6V5.2h-3.6ZM3 13h8v8H3v-8Zm2.2 2.2v3.6h3.6v-3.6H5.2ZM13 13h2.4v2.4H13V13Zm3.6 0H21v4.8h-2.4v-2.4h-2V13Zm-3.6 3.6h4.8V21H13v-4.4Zm6.8 1.2H21V21h-2.2v-3.2Z"/></svg>'
-
-    # Header (on garde tes infos boutique)
     st.markdown(f"""
-    <div class="kp-home-wrap">
-      <div class="kp-home-top">
-        <div class="kp-home-brand">
-          <img src="data:image/png;base64,{LOGO_B64}" alt="KLIKPHONE">
-          <div>
-            <div class="kp-home-title">KLIKPHONE</div>
-            <div class="kp-home-sub">SAV Manager • 79 Place Saint Léger, Chambéry • 04 79 60 89 22</div>
-          </div>
+    <div style="text-align:center;padding:2.2rem 1rem 1.2rem;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:74px;height:74px;margin-bottom:0.9rem;">
+        <div style="font-size:2.35rem;font-weight:900;letter-spacing:-1px;color:#0f172a;line-height:1;">KLIKPHONE</div>
+        <div style="margin-top:0.35rem;color:#64748b;font-size:0.95rem;">
+            SAV Manager • 79 Place Saint Léger, Chambéry • 04 79 60 89 22
         </div>
-        <div class="kp-home-pill">🟠 Accès rapide • Home</div>
-      </div>
-
-      <div class="kp-home-grid">
-        <a class="kp-card" href="?nav=client">
-          <div class="kp-card-inner">
-            <div class="kp-card-meta">
-              <div class="kp-card-icon">{ICON_CLIENT}</div>
-              <div class="kp-card-tag">Totem / iPad</div>
-            </div>
-            <div>
-              <p class="kp-card-h">Espace Client</p>
-              <p class="kp-card-p">Création de ticket simple, rapide et guidée.</p>
-            </div>
-            <div class="kp-card-cta">
-              <div class="kp-card-go"><span class="kp-dot"></span> Ouvrir</div>
-              <div class="kp-arrow">→</div>
-            </div>
-          </div>
-        </a>
-
-        <a class="kp-card" href="?nav=accueil">
-          <div class="kp-card-inner">
-            <div class="kp-card-meta">
-              <div class="kp-card-icon">{ICON_STORE}</div>
-              <div class="kp-card-tag">Comptoir</div>
-            </div>
-            <div>
-              <p class="kp-card-h">Accueil</p>
-              <p class="kp-card-p">Recherche, devis, encaissement et suivi des tickets.</p>
-            </div>
-            <div class="kp-card-cta">
-              <div class="kp-card-go"><span class="kp-dot"></span> Ouvrir</div>
-              <div class="kp-arrow">→</div>
-            </div>
-          </div>
-        </a>
-
-        <a class="kp-card" href="?nav=tech">
-          <div class="kp-card-inner">
-            <div class="kp-card-meta">
-              <div class="kp-card-icon">{ICON_TOOLS}</div>
-              <div class="kp-card-tag">Atelier</div>
-            </div>
-            <div>
-              <p class="kp-card-h">Technicien</p>
-              <p class="kp-card-p">Diagnostic, pièces, statuts, notes internes.</p>
-            </div>
-            <div class="kp-card-cta">
-              <div class="kp-card-go"><span class="kp-dot"></span> Ouvrir</div>
-              <div class="kp-arrow">→</div>
-            </div>
-          </div>
-        </a>
-
-        <a class="kp-card kp-card-full" href="?nav=suivi">
-          <div class="kp-card-inner">
-            <div class="kp-card-meta">
-              <div class="kp-card-icon">{ICON_QR}</div>
-              <div class="kp-card-tag">Suivi / QR</div>
-            </div>
-            <div>
-              <p class="kp-card-h">Suivi de réparation</p>
-              <p class="kp-card-p">Consulter l’avancement d’un ticket (code / QR) : statut, diagnostic, et dernières notes.</p>
-            </div>
-            <div class="kp-card-cta">
-              <div class="kp-card-go"><span class="kp-dot"></span> Ouvrir</div>
-              <div class="kp-arrow">→</div>
-            </div>
-          </div>
-        </a>
-      </div>
-
-      <div class="kp-footer">klikphone révolution project by TKconcept26</div>
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown('<div class="home-grid">', unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="large")
 
+    with c1:
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("👤  Client  ·  Déposer un appareil", key="go_client", use_container_width=True):
+            st.session_state.mode = "client"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div style="height:14px;"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🧾  Accueil  ·  Gestion SAV", key="go_accueil", use_container_width=True):
+            st.session_state.mode = "auth_accueil"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c2:
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🔧  Technicien  ·  Atelier", key="go_tech", use_container_width=True):
+            st.session_state.mode = "auth_tech"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div style="height:14px;"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🔍  Suivi  ·  Voir l'avancement", key="go_suivi", use_container_width=True):
+            st.session_state.mode = "suivi"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def ui_auth(mode):
+    titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
+    target = "accueil" if mode == "accueil" else "tech"
+    
+    st.markdown(f"""
+    <div style="text-align:center; padding:1.5rem 0;">
+        <div style="color:#f97316; font-size: 1.5rem; font-weight: 700;">{titre}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        # Vérifier si le PIN est déjà mémorisé
+        saved_key = f"saved_pin_{target}"
+        if saved_key in st.session_state and st.session_state[saved_key]:
+            st.session_state.mode = target
+            st.session_state.auth = True
+            st.rerun()
+        
+        pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input", label_visibility="collapsed")
+        
+        # Checkbox pour mémoriser
+        remember = st.checkbox("Se souvenir de moi", key="remember_pin")
+        
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("← Retour", use_container_width=True):
+                st.session_state.mode = None
+                st.rerun()
+        with col_btn2:
+            if st.button("Valider →", type="primary", use_container_width=True):
+                if pin == "2626":
+                    st.session_state.mode = target
+                    st.session_state.auth = True
+                    if remember:
+                        st.session_state[saved_key] = True
+                    st.rerun()
+                else:
+                    st.error("❌ Code incorrect")
+
+# =============================================================================
+# MAIN
+# =============================================================================
 def main():
     init_db()
     load_css()
@@ -8746,26 +8648,9 @@ def main():
     
     # Si l'URL contient un ticket, aller directement vers le suivi
     params = st.query_params
-
-    # Navigation Home : cartes 100% cliquables via ?nav=client|accueil|tech|suivi
-    # (UI only — la logique métier reste inchangée)
-    if params.get("nav"):
-        nav = params.get("nav")
-        # Streamlit peut retourner une liste selon versions/config
-        if isinstance(nav, list) and nav:
-            nav = nav[0]
-        if nav in ("client", "accueil", "tech", "suivi"):
-            st.session_state.mode = nav
-        # On retire seulement 'nav' pour éviter les reruns infinis
-        try:
-            del params["nav"]
-        except Exception:
-            pass
-        st.rerun()
-
-    # Si l'URL contient un ticket, aller directement vers le suivi
     if params.get("ticket") and st.session_state.mode is None:
         st.session_state.mode = "suivi"
+    
     mode = st.session_state.mode
     
     if mode is None: ui_home()
