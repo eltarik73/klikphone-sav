@@ -2288,6 +2288,47 @@ hr {
     color: #64748b;
     line-height: 1.6;
 }
+
+/* === PREMIUM FIXES v4 === */
+.stButton > button { white-space: nowrap !important; }
+.stButton > button span { white-space: nowrap !important; }
+
+/* Hide Streamlit chrome for "custom app" look */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+[data-testid="stToolbar"] {visibility: hidden !important;}
+[data-testid="stStatusWidget"] {visibility: hidden !important;}
+.stApp > footer {display: none !important;}
+a[href*="streamlit.io"] {display:none !important;}
+
+/* Home tiles (Accueil / Technicien / Client) */
+.home-grid{ max-width: 1040px; margin: 0 auto; }
+.home-tile .stButton > button{
+    height: 96px !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(226,232,240,1) !important;
+    background: rgba(255,255,255,0.92) !important;
+    box-shadow: 0 18px 40px rgba(16,24,40,0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0 22px !important;
+    gap: 16px !important;
+    text-align: left !important;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease !important;
+}
+.home-tile .stButton > button:hover{
+    transform: translateY(-1px) !important;
+    box-shadow: 0 22px 55px rgba(16,24,40,0.10) !important;
+    border-color: rgba(249,115,22,0.35) !important;
+}
+
+/* Small header buttons: keep readable */
+[data-testid="column"] .stButton > button{
+    min-height: 44px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 # =============================================================================
@@ -5249,7 +5290,7 @@ def ui_accueil():
     """, unsafe_allow_html=True)
     
     # Boutons navigation
-    col_spacer, col_tech, col_logout = st.columns([8, 1, 1])
+    col_spacer, col_tech, col_logout = st.columns([6, 2, 2])
     with col_tech:
         if st.button("🔧 Tech", key="goto_tech", type="secondary", use_container_width=True):
             st.session_state.mode = "tech"
@@ -5303,7 +5344,25 @@ def ui_accueil():
             st.session_state.filtre_kpi = "En attente de pièce"
             st.rerun()
     
-    # === TABS ===
+    
+    # === NOTE PRIVÉE (ACCUEIL) ===
+    st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="detail-card-header">📝 Note privée (Accueil)</div>', unsafe_allow_html=True)
+    note_priv = st.text_area(
+        "Note privée (réservée équipe)",
+        value=get_param("NOTE_PRIVEE_ACCUEIL") or "",
+        height=90,
+        key="accueil_note_privee",
+        help="Visible uniquement par l'équipe (accueil).",
+    )
+    col_np1, col_np2 = st.columns([4, 1])
+    with col_np2:
+        if st.button("OK", key="save_accueil_note", type="primary", use_container_width=True):
+            set_param("NOTE_PRIVEE_ACCUEIL", note_priv.strip())
+            st.toast("✅ Note enregistrée")
+            st.rerun()
+
+# === TABS ===
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
@@ -6804,6 +6863,10 @@ def staff_commandes_pieces():
             if cmd_description:
                 ajouter_commande_piece(ticket_id, cmd_description, cmd_fournisseur, cmd_reference, cmd_prix, cmd_notes)
                 st.success("✅ Commande ajoutée!")
+                st.session_state.cmd_new_done = True
+                # Réinitialiser le formulaire (UI)
+                for _k in ["cmd_desc","cmd_fourni","cmd_ref","cmd_prix","cmd_notes","cmd_ticket"]:
+                    if _k in st.session_state: st.session_state[_k] = ""
                 st.rerun()
             else:
                 st.error("La description est obligatoire")
@@ -7618,15 +7681,15 @@ def staff_config():
 # INTERFACE TECHNICIEN
 # =============================================================================
 def ui_tech():
-    col1, col2, col3 = st.columns([5, 1, 1])
+    col1, col2, col3 = st.columns([6, 2, 2])
     with col1:
         st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
     with col2:
-        if st.button("🏠 Accueil", key="goto_accueil", type="secondary"):
+        if st.button("🏠 Accueil", key="goto_accueil", type="secondary", use_container_width=True):
             st.session_state.mode = "accueil"
             st.rerun()
     with col3:
-        if st.button("🚪 Sortir", key="logout_tech"):
+        if st.button("🚪 Sortir", key="logout_tech", use_container_width=True):
             st.session_state.mode = None
             st.session_state.auth = False
             st.rerun()
@@ -7968,11 +8031,11 @@ def tech_detail_ticket(tid):
             st.info("Aucune note pour le moment")
         
         # Ajouter une note
-        col_note, col_btn = st.columns([4, 1])
+        col_note, col_btn = st.columns([5, 2])
         with col_note:
             note_tech = st.text_input("Nouvelle note", placeholder="Ex: Pièce commandée, problème identifié...", key=f"tech_comment_{tid}", label_visibility="collapsed")
         with col_btn:
-            if st.button("➕", key=f"tech_add_comment_{tid}", type="primary", help="Ajouter la note"):
+            if st.button("OK", key=f"tech_add_comment_{tid}", type="primary", help="Enregistrer la note", use_container_width=True):
                 if note_tech:
                     ajouter_note(tid, f"[TECH] {note_tech}")
                     st.rerun()
@@ -8368,60 +8431,53 @@ def afficher_suivi_ticket(t):
 # ÉCRAN D'ACCUEIL
 # =============================================================================
 def ui_home():
-    """Page d'accueil - Design simplifié"""
-    
-    # Header avec logo
+    """Page d'accueil - tuiles premium (UI only)"""
+
     st.markdown(f"""
-    <div style="text-align: center; padding: 2rem 1rem 1.5rem;">
-        <img src="data:image/png;base64,{LOGO_B64}" style="width: 70px; height: 70px; margin-bottom: 1rem;">
-        <h1 style="font-size: 2.5rem; font-weight: 800; color: #f97316; margin: 0 0 0.5rem 0; letter-spacing: -1px;">
-            KLIKPHONE
-        </h1>
-        <p style="color: #64748b; font-size: 0.95rem;">
-            📍 79 Place Saint Léger, Chambéry • 📞 04 79 60 89 22
-        </p>
+    <div style="text-align:center;padding:2.2rem 1rem 1.2rem;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:74px;height:74px;margin-bottom:0.9rem;">
+        <div style="font-size:2.35rem;font-weight:900;letter-spacing:-1px;color:#0f172a;line-height:1;">KLIKPHONE</div>
+        <div style="margin-top:0.35rem;color:#64748b;font-size:0.95rem;">
+            SAV Manager • 79 Place Saint Léger, Chambéry • 04 79 60 89 22
+        </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Style pour boutons uniformes
-    st.markdown("""
-    <style>
-    div[data-testid="stHorizontalBlock"] button {
-        height: 50px !important;
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        border-radius: 10px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Boutons principaux
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📱  Client", key="go_client", use_container_width=True, type="primary"):
+
+    st.markdown('<div class="home-grid">', unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="large")
+
+    with c1:
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("👤  Client  ·  Déposer un appareil", key="go_client", use_container_width=True):
             st.session_state.mode = "client"
             st.rerun()
-    
-    with col2:
-        if st.button("💼  Accueil", key="go_accueil", use_container_width=True):
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div style="height:14px;"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🧾  Accueil  ·  Gestion SAV", key="go_accueil", use_container_width=True):
             st.session_state.mode = "auth_accueil"
             st.rerun()
-    
-    with col3:
-        if st.button("🔧  Technicien", key="go_tech", use_container_width=True):
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c2:
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🔧  Technicien  ·  Atelier", key="go_tech", use_container_width=True):
             st.session_state.mode = "auth_tech"
             st.rerun()
-    
-    # Séparateur
-    st.markdown("<div style='text-align: center; color: #94a3b8; margin: 1rem 0;'>─ ou ─</div>", unsafe_allow_html=True)
-    
-    # Bouton suivi réparation
-    col_left, col_center, col_right = st.columns([1, 2, 1])
-    with col_center:
-        if st.button("🔍  Suivre ma réparation", use_container_width=True, key="go_suivi"):
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div style="height:14px;"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="home-tile">', unsafe_allow_html=True)
+        if st.button("🔍  Suivi  ·  Voir l'avancement", key="go_suivi", use_container_width=True):
             st.session_state.mode = "suivi"
             st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 def ui_auth(mode):
     titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
