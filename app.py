@@ -4677,36 +4677,51 @@ def client_step2():
     .brand-grid button {
         height: 50px !important;
         min-height: 50px !important;
+        max-height: 50px !important;
         font-size: 15px !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
+    }
+    .brand-grid [data-testid="stVerticalBlock"] {
+        gap: 8px !important;
+    }
+    .brand-logo-inline {
+        margin-top: -42px;
+        margin-bottom: 26px;
+        text-align: center;
+        pointer-events: none;
+        position: relative;
+        z-index: 100;
+    }
+    .brand-logo-inline img {
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+        margin-right: 6px;
     }
     </style>
     """, unsafe_allow_html=True)
     
     st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
     
-    # Afficher les marques en grille 2 colonnes avec logos centrés
+    # Afficher les marques en grille 2 colonnes
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # Calculer le décalage selon la longueur du nom (environ 4px par caractère)
-                text_width = len(m) * 4.5
-                offset = int(text_width + 12)  # 12px d'espace entre logo et texte
-                
-                # Logo centré juste à côté du texte
-                st.markdown(f'''
-                <div style="position:relative; height:0; overflow:visible; z-index:100;">
-                    <img src="{logo_url}" style="position:absolute; top:15px; left:50%; transform:translateX(-{offset}px); width:18px; height:18px; pointer-events:none;">
-                </div>
-                ''', unsafe_allow_html=True)
-                if st.button(f"    {m}", key=f"brand_{m}", use_container_width=True):
+                # Bouton avec espaces pour le logo
+                if st.button(f"      {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
                     st.rerun()
+                # Logo superposé (après le bouton avec margin négatif)
+                st.markdown(f'''
+                <div class="brand-logo-inline">
+                    <img src="{logo_url}"><span style="color:transparent">{m}</span>
+                </div>
+                ''', unsafe_allow_html=True)
             else:
                 if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
