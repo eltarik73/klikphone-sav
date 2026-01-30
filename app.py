@@ -61,6 +61,55 @@ MARQUES = {
     "Console": ["Sony", "Microsoft", "Nintendo", "Autre"]
 }
 
+# ============================================================
+# BRAND LOGOS (UI ONLY)
+# Utilise Iconify + Simple Icons pour afficher les logos
+# sans toucher aux données ni à la logique métier.
+# Docs / Exemples : https://api.iconify.design (Simple Icons set)
+# ============================================================
+
+BRAND_ICON_SLUGS = {
+    # Téléphonie
+    "Apple": "apple",
+    "Samsung": "samsung",
+    "Xiaomi": "xiaomi",
+    "Huawei": "huawei",
+    "OnePlus": "oneplus",
+    "Google": "google",
+    "Oppo": "oppo",
+    # Informatique
+    "Microsoft": "microsoft",
+    "HP": "hp",
+    "Dell": "dell",
+    "Lenovo": "lenovo",
+    "Asus": "asus",
+    "Acer": "acer",
+    "MSI": "msi",
+    # Consoles (si utilisé)
+    "Sony": "sony",
+    "Nintendo": "nintendo",
+}
+
+def brand_logo_url(brand: str, color_hex: str = "111827", height: int = 18) -> str:
+    """Retourne une URL SVG (Iconify) pour un logo de marque.
+    - color_hex sans '#'
+    - height en pixels
+    """
+    slug = BRAND_ICON_SLUGS.get(brand)
+    if not slug:
+        return ""
+    # Iconify: simple-icons/<slug>.svg?color=%23<hex>&height=<n>
+    return f"https://api.iconify.design/simple-icons/{slug}.svg?color=%23{color_hex}&height={height}"
+
+def brand_chip(brand: str) -> str:
+    """Petit badge premium avec logo + nom (HTML)."""
+    brand = (brand or "").strip()
+    url = brand_logo_url(brand)
+    if url:
+        return f"""<div class="brand-chip"><img src="{url}" alt="{brand}"/><span>{brand}</span></div>"""
+    # Fallback (sans logo)
+    return f"""<div class="brand-chip brand-chip--fallback"><span>{brand if brand else "Autre"}</span></div>"""
+
 MODELES = {
     ("Smartphone", "Apple"): [
         "iPhone 16 Pro Max", "iPhone 16 Pro", "iPhone 16 Plus", "iPhone 16",
@@ -129,55 +178,26 @@ MODELES = {
 # =============================================================================
 # CSS DESIGN SYSTEM - SAAS PREMIUM (Notion/Stripe/Linear inspired)
 # =============================================================================
-
-# Logos des marques en SVG (pour un rendu pro)
-BRAND_LOGOS = {
-    "Apple": "https://cdn.simpleicons.org/apple/000000",
-    "Samsung": "https://cdn.simpleicons.org/samsung/1428a0",
-    "Xiaomi": "https://cdn.simpleicons.org/xiaomi/ff6900",
-    "Huawei": "https://cdn.simpleicons.org/huawei/ff0000",
-    "OnePlus": "https://cdn.simpleicons.org/oneplus/f5010c",
-    "Google": "https://cdn.simpleicons.org/google/4285f4",
-    "Oppo": "https://cdn.simpleicons.org/oppo/1a8f3e",
-    "Sony": "https://cdn.simpleicons.org/sony/000000",
-    "Microsoft": "https://cdn.simpleicons.org/microsoft/00a4ef",
-    "Nintendo": "https://cdn.simpleicons.org/nintendo/e60012",
-    "HP": "https://cdn.simpleicons.org/hp/0096d6",
-    "Dell": "https://cdn.simpleicons.org/dell/007db8",
-    "Lenovo": "https://cdn.simpleicons.org/lenovo/e2231a",
-    "Asus": "https://cdn.simpleicons.org/asus/000000",
-    "Acer": "https://cdn.simpleicons.org/acer/83b81a",
-    "MSI": "https://cdn.simpleicons.org/msi/ff0000",
-}
-
 def load_css():
     st.markdown("""
 <style>
 /* ============================================
-   KLIKPHONE SAV - DESIGN SYSTEM v3.0
-   Premium • Modern • Glass Morphism
+   KLIKPHONE SAV - DESIGN SYSTEM v2.0
+   Inspiration: Notion + Stripe + Linear
+   Minimal • Clean • Professional
    ============================================ */
 
-/* === FORCE LIGHT MODE === */
+/* === FORCE LIGHT MODE - FIX DARK MODE === */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    background-color: #ffffff !important;
     color: #1e293b !important;
-    min-height: 100vh;
 }
 
-/* Force inputs en mode clair */
+/* Force tous les inputs en mode clair */
 input, textarea, select, [data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] {
     background-color: #ffffff !important;
     color: #1e293b !important;
     -webkit-text-fill-color: #1e293b !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
-    transition: all 0.2s ease !important;
-}
-
-input:focus, textarea:focus, select:focus {
-    border-color: #f97316 !important;
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
 }
 
 input::placeholder, textarea::placeholder {
@@ -185,11 +205,21 @@ input::placeholder, textarea::placeholder {
     -webkit-text-fill-color: #94a3b8 !important;
 }
 
+/* Fix pour Safari/iOS mode sombre */
+@media (prefers-color-scheme: dark) {
+    input, textarea, select {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+}
+
 /* === TYPOGRAPHY === */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* === DESIGN TOKENS === */
 :root {
+    /* Brand */
     --brand-50: #fff7ed;
     --brand-100: #ffedd5;
     --brand-200: #fed7aa;
@@ -197,514 +227,73 @@ input::placeholder, textarea::placeholder {
     --brand-400: #fb923c;
     --brand-500: #f97316;
     --brand-600: #ea580c;
-    --brand-700: #c2410c;
     
+    /* Neutrals */
     --neutral-0: #ffffff;
-    --neutral-50: #f8fafc;
-    --neutral-100: #f1f5f9;
-    --neutral-200: #e2e8f0;
-    --neutral-300: #cbd5e1;
-    --neutral-400: #94a3b8;
-    --neutral-500: #64748b;
-    --neutral-600: #475569;
-    --neutral-700: #334155;
-    --neutral-800: #1e293b;
-    --neutral-900: #0f172a;
+    --neutral-50: #fafafa;
+    --neutral-100: #f5f5f5;
+    --neutral-200: #e5e5e5;
+    --neutral-300: #d4d4d4;
+    --neutral-400: #a3a3a3;
+    --neutral-500: #737373;
+    --neutral-600: #525252;
+    --neutral-700: #404040;
+    --neutral-800: #262626;
+    --neutral-900: #171717;
     
+    /* Semantic */
+    --success-light: #ecfdf5;
     --success: #10b981;
+    --success-dark: #059669;
+    --warning-light: #fffbeb;
     --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --error-light: #fef2f2;
     --error: #ef4444;
+    --error-dark: #dc2626;
+    --info-light: #eff6ff;
     --info: #3b82f6;
+    --info-dark: #2563eb;
     
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* Spacing (4px base) */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --sp-10: 40px;
+    --sp-12: 48px;
     
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    /* Radius */
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-full: 9999px;
+    
+    /* Shadows */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.3);
+    /* Typography */
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
 }
 
+/* === RESET === */
 *, *::before, *::after {
     font-family: var(--font) !important;
     box-sizing: border-box;
-}
-
-/* === HIDE STREAMLIT ELEMENTS === */
-#MainMenu, footer, header, [data-testid="stToolbar"] {visibility: hidden !important;}
-.stDeployButton {display: none !important;}
-
-/* === GLASS CARD === */
-.glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: var(--shadow-lg);
-}
-
-/* === PREMIUM BUTTONS === */
-.stButton > button {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-    color: #1e293b !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 14px !important;
-    padding: 14px 24px !important;
-    font-weight: 600 !important;
-    font-size: 15px !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1) !important;
-    position: relative;
-    overflow: hidden;
-}
-
-.stButton > button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1), 0 4px 10px rgba(0,0,0,0.08) !important;
-    border-color: #cbd5e1 !important;
-}
-
-.stButton > button:active {
-    transform: translateY(0) !important;
-}
-
-/* Primary Button */
-.stButton > button[kind="primary"],
-.stButton > button[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4), 0 2px 6px rgba(249, 115, 22, 0.3) !important;
-}
-
-.stButton > button[kind="primary"]:hover,
-.stButton > button[data-testid="baseButton-primary"]:hover {
-    background: linear-gradient(135deg, #ea580c 0%, #c2410c 50%, #9a3412 100%) !important;
-    box-shadow: 0 8px 30px rgba(249, 115, 22, 0.5), 0 4px 12px rgba(249, 115, 22, 0.4) !important;
-    transform: translateY(-3px) !important;
-}
-
-/* Secondary Button */
-.stButton > button[kind="secondary"],
-.stButton > button[data-testid="baseButton-secondary"] {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
-    color: #64748b !important;
-    border: 1px solid #e2e8f0 !important;
-}
-
-/* === BRAND BUTTON (pour les marques) === */
-.brand-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-height: 80px;
-}
-
-.brand-btn:hover {
-    border-color: #f97316;
-    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(249, 115, 22, 0.15);
-}
-
-.brand-btn img {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-}
-
-.brand-btn span {
-    font-weight: 600;
-    font-size: 16px;
-    color: #1e293b;
-}
-
-/* === CATEGORY CARDS (Smartphone, Tablette, etc) === */
-.category-card {
-    background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 32px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.category-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #f97316, #ea580c);
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-}
-
-.category-card:hover {
-    border-color: #f97316;
-    transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(249, 115, 22, 0.15);
-}
-
-.category-card:hover::before {
-    transform: scaleX(1);
-}
-
-.category-card .icon {
-    font-size: 48px;
-    margin-bottom: 12px;
-}
-
-.category-card .title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-/* === HEADER PREMIUM === */
-.header-premium {
-    text-align: center;
-    padding: 40px 20px 30px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.8) 100%);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-    margin-bottom: 30px;
-}
-
-.header-premium .logo-container {
-    width: 90px;
-    height: 90px;
-    margin: 0 auto 16px;
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 10px 30px rgba(249, 115, 22, 0.2);
-}
-
-.header-premium h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin: 0 0 8px 0;
-    letter-spacing: -1px;
-}
-
-.header-premium .subtitle {
-    color: #64748b;
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.header-premium .info {
-    color: #94a3b8;
-    font-size: 0.9rem;
-}
-
-/* === STEP INDICATOR === */
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin: 24px 0;
-}
-
-.step-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #e2e8f0;
-    transition: all 0.3s ease;
-}
-
-.step-dot.active {
-    background: linear-gradient(135deg, #f97316, #ea580c);
-    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2);
-    transform: scale(1.2);
-}
-
-.step-dot.completed {
-    background: #10b981;
-}
-
-/* === PAGE TITLE === */
-.page-title {
-    font-size: 1.75rem !important;
-    font-weight: 700 !important;
-    color: #1e293b !important;
-    margin-bottom: 8px !important;
-}
-
-/* === STAT CARDS === */
-.stat-card {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid #e2e8f0;
-    transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.stat-card .value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-.stat-card .label {
-    font-size: 0.875rem;
-    color: #64748b;
-    font-weight: 500;
-}
-
-/* === TABLE STYLES === */
-.table-header {
-    display: flex;
-    align-items: center;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    padding: 14px 20px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* === BADGES === */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.badge-orange {
-    background: linear-gradient(135deg, #fff7ed, #ffedd5);
-    color: #c2410c;
-    border: 1px solid #fed7aa;
-}
-
-.badge-green {
-    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-    color: #047857;
-    border: 1px solid #a7f3d0;
-}
-
-.badge-blue {
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-
-.badge-red {
-    background: linear-gradient(135deg, #fef2f2, #fee2e2);
-    color: #b91c1c;
-    border: 1px solid #fecaca;
-}
-
-.badge-gray {
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    color: #475569;
-    border: 1px solid #e2e8f0;
-}
-
-/* === TICKET ROW === */
-.ticket-row {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 8px;
-    transition: all 0.2s ease;
-}
-
-.ticket-row:hover {
-    border-color: #f97316;
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
-}
-
-/* === DETAIL CARD === */
-.detail-card {
-    background: white;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    margin-bottom: 16px;
-}
-
-.detail-card-header {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    color: white;
-    padding: 16px 20px;
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.detail-card-content {
-    padding: 20px;
-}
-
-/* === TABS === */
-.stTabs [data-baseweb="tab-list"] {
-    background: #f8fafc;
-    border-radius: 12px;
-    padding: 6px;
-    gap: 4px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    border-radius: 8px;
-    font-weight: 600;
-    padding: 12px 20px;
-}
-
-.stTabs [aria-selected="true"] {
-    background: white !important;
-    box-shadow: var(--shadow-sm);
-}
-
-/* === SUCCESS SCREEN === */
-.success-screen {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.success-icon {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 24px;
-    box-shadow: 0 20px 40px rgba(16, 185, 129, 0.3);
-}
-
-.success-icon span {
-    font-size: 50px;
-    color: white;
-}
-
-/* === ANIMATIONS === */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-}
-
-.animate-fadeInUp {
-    animation: fadeInUp 0.5s ease-out;
-}
-
-/* === RESPONSIVE === */
-@media (max-width: 768px) {
-    .header-premium h1 {
-        font-size: 1.75rem;
-    }
-    
-    .category-card {
-        padding: 20px 16px;
-    }
-    
-    .category-card .icon {
-        font-size: 36px;
-    }
-}
-
-/* === SCROLLBAR === */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* === EXPANDER === */
-.streamlit-expanderHeader {
-    background: #f8fafc !important;
-    border-radius: 12px !important;
-    font-weight: 600 !important;
-}
-
-/* === FORM CARD === */
-.form-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 24px;
-    margin: 16px 0;
-}
-
-/* === STEP TITLE === */
-.step-title {
-    text-align: center;
-    margin-bottom: 24px;
-}
-
-.step-title h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1e293b;
-    margin-bottom: 8px;
-}
-
-.step-title p {
-    color: #64748b;
-    font-size: 1rem;
 }
 
 /* === STREAMLIT OVERRIDES === */
@@ -2287,6 +1876,172 @@ hr {
     color: #64748b;
     line-height: 1.6;
 }
+
+/* ============================================================
+   PREMIUM OVERRIDE v3 (épure + orange moderne + logos marques)
+   Objectif: Linear/Stripe-like, contrastes doux, CTA lisibles
+   ============================================================ */
+
+/* Hide native Streamlit chrome */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
+
+/* Modern accent (orange) */
+:root{
+  --accent: #ff6a00;
+  --accent-2: #ff8a00;
+  --accent-soft: rgba(255,106,0,.12);
+  --ring: rgba(255,106,0,.35);
+  --surface: #ffffff;
+  --surface-2: #fbfbfc;
+  --border: rgba(15,23,42,.10);
+  --text: #0f172a;
+  --muted: #64748b;
+}
+
+/* App container rhythm */
+[data-testid="stAppViewContainer"]{
+  background: #ffffff !important;
+}
+.block-container{
+  padding-top: 1.5rem !important;
+  padding-bottom: 2rem !important;
+  max-width: 1200px !important;
+}
+
+/* Cards: cleaner, less glass */
+.card, .form-card, .detail-card, .stat-card, .ticket-card, .client-card{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 25px rgba(15,23,42,.06) !important;
+}
+.card:hover, .form-card:hover, .detail-card:hover{
+  border-color: rgba(255,106,0,.25) !important;
+  box-shadow: 0 14px 32px rgba(15,23,42,.08) !important;
+}
+
+/* Inputs (BaseWeb) */
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input,
+.stDateInput input,
+.stSelectbox [data-baseweb="select"] > div,
+.stMultiSelect [data-baseweb="select"] > div{
+  border-radius: 14px !important;
+  border: 1px solid rgba(15,23,42,.14) !important;
+  background: #fff !important;
+  box-shadow: 0 1px 0 rgba(15,23,42,.03) !important;
+}
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stNumberInput input:focus,
+.stDateInput input:focus,
+.stSelectbox [data-baseweb="select"] > div:focus-within,
+.stMultiSelect [data-baseweb="select"] > div:focus-within{
+  border-color: rgba(255,106,0,.60) !important;
+  box-shadow: 0 0 0 4px var(--ring) !important;
+}
+
+/* Buttons: clearer hierarchy */
+.stButton > button{
+  border-radius: 14px !important;
+  padding: 0.70rem 1rem !important;
+  font-weight: 650 !important;
+  border: 1px solid rgba(15,23,42,.12) !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  box-shadow: 0 8px 18px rgba(15,23,42,.06) !important;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease !important;
+  white-space: normal !important;
+  line-height: 1.2 !important;
+}
+.stButton > button:hover{
+  transform: translateY(-1px) !important;
+  border-color: rgba(15,23,42,.20) !important;
+  box-shadow: 0 12px 26px rgba(15,23,42,.10) !important;
+}
+.stButton > button:active{
+  transform: translateY(0px) !important;
+}
+
+/* Primary */
+.stButton > button[kind="primary"],
+.stButton > button[data-testid="baseButton-primary"]{
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%) !important;
+  border: 1px solid rgba(255,106,0,.45) !important;
+  color: #fff !important;
+  box-shadow: 0 14px 30px rgba(255,106,0,.22), 0 10px 18px rgba(15,23,42,.08) !important;
+}
+.stButton > button[kind="primary"]:hover,
+.stButton > button[data-testid="baseButton-primary"]:hover{
+  box-shadow: 0 16px 38px rgba(255,106,0,.26), 0 12px 24px rgba(15,23,42,.10) !important;
+}
+
+/* Secondary */
+.stButton > button[kind="secondary"],
+.stButton > button[data-testid="baseButton-secondary"]{
+  background: #fff !important;
+}
+
+/* Sidebar: SaaS panel */
+section[data-testid="stSidebar"]{
+  background: #ffffff !important;
+  border-right: 1px solid var(--border) !important;
+}
+section[data-testid="stSidebar"] .block-container{
+  padding-top: 1.25rem !important;
+}
+
+/* Tables / Dataframes */
+[data-testid="stDataFrame"]{
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 24px rgba(15,23,42,.06) !important;
+}
+[data-testid="stDataFrame"] thead tr th{
+  background: #f8fafc !important;
+}
+[data-testid="stDataFrame"] tbody tr:hover{
+  background: rgba(255,106,0,.05) !important;
+}
+
+/* Brand chip (logo + name) */
+.brand-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.12);
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(15,23,42,.06);
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-top: .35rem;
+}
+.brand-chip img{
+  height: 18px;
+  width: 18px;
+  display: block;
+  opacity: .92;
+}
+.brand-chip--fallback{
+  background: #f8fafc;
+  color: var(--muted);
+}
+
+/* Small helper: make metric cards feel premium */
+[data-testid="stMetric"]{
+  padding: 10px 12px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--border) !important;
+  background: #fff !important;
+  box-shadow: 0 10px 24px rgba(15,23,42,.06) !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 # =============================================================================
@@ -4542,66 +4297,30 @@ def ui_client():
     elif step == 6: client_step6()
 
 def client_step1():
-    """Étape 1: Choix du type d'appareil - Design Premium"""
-    
-    # Titre
+    """Étape 1: Choix du type d'appareil"""
     st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">
+    <div style="text-align:center;margin-bottom:1.5rem;">
+        <h2 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem;">
             Quel appareil déposez-vous ?
         </h2>
-        <p style="font-size: 1rem; color: #64748b;">
+        <p style="font-size:0.95rem;color:#64748b;">
             Sélectionnez le type d'appareil à réparer
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Style des cartes de catégorie
-    st.markdown("""
-    <style>
-    .cat-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        margin-bottom: 0.5rem;
-    }
-    .cat-card:hover {
-        border-color: #f97316;
-        transform: translateY(-4px);
-        box-shadow: 0 15px 30px rgba(249, 115, 22, 0.15);
-    }
-    .cat-card .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    .cat-card .title { font-size: 1rem; font-weight: 600; color: #1e293b; }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Grille 2x2 pour les appareils principaux
+    # Grille 2x2 pour les appareils principaux avec emojis
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("""
-        <div class="cat-card">
-            <div class="icon">📱</div>
-            <div class="title">Smartphone</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Sélectionner →", key="cat_smartphone", use_container_width=True, type="primary"):
+        if st.button("📱  Smartphone", key="cat_smartphone", use_container_width=True, type="primary"):
             st.session_state.data["cat"] = "Smartphone"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
     
     with col2:
-        st.markdown("""
-        <div class="cat-card">
-            <div class="icon">📟</div>
-            <div class="title">Tablette</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Sélectionner →", key="cat_tablette", use_container_width=True, type="primary"):
+        if st.button("📟  Tablette", key="cat_tablette", use_container_width=True, type="primary"):
             st.session_state.data["cat"] = "Tablette"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
@@ -4610,26 +4329,14 @@ def client_step1():
     col3, col4 = st.columns(2)
     
     with col3:
-        st.markdown("""
-        <div class="cat-card">
-            <div class="icon">💻</div>
-            <div class="title">PC Portable</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Sélectionner →", key="cat_pc", use_container_width=True, type="primary"):
+        if st.button("💻  PC Portable", key="cat_pc", use_container_width=True, type="primary"):
             st.session_state.data["cat"] = "PC Portable"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
     
     with col4:
-        st.markdown("""
-        <div class="cat-card">
-            <div class="icon">🎮</div>
-            <div class="title">Console</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Sélectionner →", key="cat_console", use_container_width=True, type="primary"):
+        if st.button("🎮  Console", key="cat_console", use_container_width=True, type="primary"):
             st.session_state.data["cat"] = "Console"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
@@ -4637,10 +4344,10 @@ def client_step1():
     
     # Séparateur
     st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0; gap: 1rem;">
-        <div style="height: 1px; width: 80px; background: linear-gradient(90deg, transparent, #e2e8f0);"></div>
-        <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">ou</span>
-        <div style="height: 1px; width: 80px; background: linear-gradient(90deg, #e2e8f0, transparent);"></div>
+    <div style="display:flex;align-items:center;justify-content:center;margin:1.5rem 0;gap:1rem;">
+        <div style="height:1px;width:80px;background:linear-gradient(90deg,transparent,#e2e8f0);"></div>
+        <span style="color:#94a3b8;font-size:0.9rem;font-weight:500;">ou</span>
+        <div style="height:1px;width:80px;background:linear-gradient(90deg,#e2e8f0,transparent);"></div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -4648,33 +4355,21 @@ def client_step1():
     col5, col6 = st.columns(2)
     
     with col5:
-        st.markdown("""
-        <div class="cat-card" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border-color: #fde047;">
-            <div class="icon">📦</div>
-            <div class="title">Commander une pièce</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Commander →", key="cat_commande", use_container_width=True, type="secondary"):
+        if st.button("📦  Commander une pièce", key="cat_commande", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Commande"
             st.session_state.data["is_commande"] = True
             st.session_state.step = 2
             st.rerun()
     
     with col6:
-        st.markdown("""
-        <div class="cat-card" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-color: #cbd5e1;">
-            <div class="icon">🔧</div>
-            <div class="title">Autre appareil</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Continuer →", key="cat_autre", use_container_width=True, type="secondary"):
+        if st.button("🔧  Autre appareil", key="cat_autre", use_container_width=True, type="secondary"):
             st.session_state.data["cat"] = "Autre"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 4
             st.rerun()
 
 def client_step2():
-    """Étape 2: Choix de la marque - Design Premium avec logos"""
+    """Étape 2: Choix de la marque"""
     cat = st.session_state.data.get("cat", "")
     
     # Si c'est une commande, demander directement les infos
@@ -4718,119 +4413,57 @@ def client_step2():
     icon = device_icons.get(cat, "📱")
     
     st.markdown(f"""
-    <div class="step-title" style="margin-bottom: 2rem;">
-        <h2 style="font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
-            {icon} Quelle est la marque ?
-        </h2>
-        <p style="color: #64748b; font-size: 1rem;">Sélectionnez la marque de votre {cat.lower()}</p>
+    <div class="step-title">
+        <h2>{icon} Quelle est la marque ?</h2>
+        <p>Sélectionnez la marque de votre {cat.lower()}</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Bouton retour stylé
+    # Bouton retour
     if st.button("← Retour", key="back2", type="secondary"):
         st.session_state.step = 1
         st.rerun()
     
+    # Logos des marques
+    brand_icons = {
+        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "🔶", "Huawei": "🔴",
+        "OnePlus": "🔵", "Google": "🔍", "Oppo": "🟢", "Sony": "🎮",
+        "Microsoft": "🪟", "Nintendo": "🔴", "HP": "💻", "Dell": "🖥️",
+        "Lenovo": "💼", "Asus": "🎯", "Acer": "🌐", "MSI": "🐉",
+        "Autre": "❓"
+    }
+    
     marques = get_marques(cat)
     
-    # Afficher les marques avec les vrais logos en grille 2x4
-    st.markdown("""
-    <style>
-    .brand-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin: 20px 0;
-    }
-    @media (min-width: 768px) {
-        .brand-grid {
-            grid-template-columns: repeat(4, 1fr);
-        }
-    }
-    .brand-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 20px 16px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .brand-card:hover {
-        border-color: #f97316;
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(249, 115, 22, 0.15);
-    }
-    .brand-card img {
-        width: 40px;
-        height: 40px;
-        object-fit: contain;
-        margin-bottom: 10px;
-    }
-    .brand-card .brand-name {
-        font-weight: 600;
-        font-size: 14px;
-        color: #1e293b;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Grille de marques avec vrais logos (2 colonnes sur mobile, 4 sur desktop)
-    cols = st.columns(2)
+    # Grille de marques (3 colonnes)
+    cols = st.columns(3)
     for i, m in enumerate(marques):
-        with cols[i % 2]:
-            logo_url = BRAND_LOGOS.get(m, "")
-            
-            # Créer le contenu du bouton avec logo
-            if logo_url and m != "Autre":
-                btn_content = f"""
-                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <img src="{logo_url}" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                    <span style="font-weight: 600;">{m}</span>
-                </div>
-                """
-            else:
-                btn_content = f"{'🔧' if m == 'Autre' else '📱'}  {m}"
-            
-            if st.button(btn_content if not logo_url else m, key=f"brand_{m}", use_container_width=True):
+        with cols[i % 3]:
+            icon = brand_icons.get(m, "📱")
+            if st.button(f"{icon}  {m}", key=f"brand_{m}", use_container_width=True):
                 st.session_state.data["marque"] = m
                 st.session_state.step = 3
                 st.rerun()
-            
-            # Afficher le logo en dessous du bouton
-            if logo_url and m != "Autre":
-                st.markdown(f"""
-                <div style="text-align: center; margin-top: -10px; margin-bottom: 15px;">
-                    <img src="{logo_url}" style="width: 28px; height: 28px; opacity: 0.7;">
-                </div>
-                """, unsafe_allow_html=True)
 
 def client_step3():
-    """Étape 3: Choix du modèle - Design Premium"""
+    """Étape 3: Choix du modèle"""
     cat = st.session_state.data.get("cat", "")
     marque = st.session_state.data.get("marque", "")
     
-    # Logo de la marque
-    logo_url = BRAND_LOGOS.get(marque, "")
+    # Icône de la marque
+    brand_icons = {
+        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "🔶", "Huawei": "🔴",
+        "OnePlus": "🔵", "Google": "🔍", "Sony": "🎮", "Nintendo": "🔴",
+        "Microsoft": "🪟", "Autre": "❓"
+    }
+    icon = brand_icons.get(marque, "📱")
     
-    # Titre avec logo de la marque
-    if logo_url and marque != "Autre":
-        st.markdown(f"""
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-            <img src="{logo_url}" style="width: 48px; height: 48px; object-fit: contain; margin-bottom: 12px;">
-            <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
-                Quel modèle {marque} ?
-            </h2>
-            <p style="color: #64748b; font-size: 1rem;">Sélectionnez votre modèle</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="step-title">
-            <h2>🔧 Quel modèle exactement ?</h2>
-            <p>Sélectionnez votre modèle {marque}</p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="step-title">
+        <h2>{icon} Quel modèle exactement ?</h2>
+        <p>Sélectionnez votre modèle {marque}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Bouton retour
     if st.button("← Retour", key="back3", type="secondary"):
@@ -5906,6 +5539,7 @@ def staff_traiter_demande(tid):
             with col_marque:
                 marques_dispo = get_marques(new_cat)
                 new_marque = st.selectbox("Marque", marques_dispo, index=marques_dispo.index(t.get('marque')) if t.get('marque') in marques_dispo else 0, key=f"edit_marque_{tid}")
+                st.markdown(brand_chip(new_marque), unsafe_allow_html=True)
             
             col_mod, col_autre = st.columns(2)
             with col_mod:
@@ -7086,6 +6720,7 @@ def staff_nouvelle_demande():
         cat = st.selectbox("Catégorie", CATEGORIES, key="n_cat")
     with col2:
         marque = st.selectbox("Marque", get_marques(cat), key="n_marque")
+        st.markdown(brand_chip(marque), unsafe_allow_html=True)
     with col3:
         modele = st.selectbox("Modèle", get_modeles(cat, marque), key="n_modele")
     
@@ -7244,6 +6879,7 @@ def staff_config():
         with col1:
             cat_mo = st.selectbox("Catégorie", CATEGORIES, key="cat_modele")
             marque_mo = st.selectbox("Marque", get_marques(cat_mo), key="marque_modele")
+            st.markdown(brand_chip(marque_mo), unsafe_allow_html=True)
             new_mo = st.text_input("Nouveau modèle", key="new_modele")
         with col2:
             if st.button("Ajouter modèle", key="add_modele"):
@@ -8426,137 +8062,67 @@ def afficher_suivi_ticket(t):
 # ÉCRAN D'ACCUEIL
 # =============================================================================
 def ui_home():
-    """Page d'accueil - Design Premium"""
-    
-    # Header premium avec logo
+    # Logo et en-tete
     st.markdown(f"""
-    <div style="text-align: center; padding: 3rem 1rem 2rem; background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);">
-        <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(249, 115, 22, 0.2);">
-            <img src="data:image/png;base64,{LOGO_B64}" style="width: 60px; height: 60px;">
-        </div>
-        <h1 style="font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #f97316 0%, #c2410c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 0.5rem 0; letter-spacing: -2px;">
-            KLIKPHONE
-        </h1>
-        <p style="color: #64748b; font-size: 1.1rem; font-weight: 500; margin-bottom: 0.25rem;">
-            Spécialiste Apple & Multimarque
-        </p>
-        <p style="color: #94a3b8; font-size: 0.9rem;">
-            📍 79 Place Saint Léger, Chambéry • 📞 04 79 60 89 22
-        </p>
+    <div style="text-align:center; padding:2rem 0;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width:80px; height:80px; margin-bottom:1rem;">
+        <div style="background: linear-gradient(135deg, #fb923c, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 3rem; font-weight: 800; letter-spacing: -2px;">KLIKPHONE</div>
+        <p style="color:#6b7280; font-size:0.95rem; margin-top:0.5rem;">Spécialiste Apple - 79 Place Saint Léger, Chambéry</p>
+        <p style="color:#6b7280; font-size:0.9rem;">04 79 60 89 22</p>
     </div>
-    """, unsafe_allow_html=True)
-    
-    # Cards d'accès principal
-    st.markdown("""
-    <style>
-    .home-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 2rem 1.5rem;
-        text-align: center;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        margin-bottom: 1rem;
-    }
-    .home-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 25px 50px rgba(0,0,0,0.1);
-    }
-    .home-card.orange { border-color: #fed7aa; background: linear-gradient(135deg, #fffbf5 0%, #fff7ed 100%); }
-    .home-card.orange:hover { border-color: #f97316; box-shadow: 0 25px 50px rgba(249, 115, 22, 0.2); }
-    .home-card.blue { border-color: #bfdbfe; background: linear-gradient(135deg, #f8faff 0%, #eff6ff 100%); }
-    .home-card.blue:hover { border-color: #3b82f6; box-shadow: 0 25px 50px rgba(59, 130, 246, 0.2); }
-    .home-card.green { border-color: #a7f3d0; background: linear-gradient(135deg, #f0fdf9 0%, #ecfdf5 100%); }
-    .home-card.green:hover { border-color: #10b981; box-shadow: 0 25px 50px rgba(16, 185, 129, 0.2); }
-    .home-card .icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-    .home-card h3 {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-    }
-    .home-card.orange h3 { color: #c2410c; }
-    .home-card.blue h3 { color: #1d4ed8; }
-    .home-card.green h3 { color: #047857; }
-    .home-card p {
-        font-size: 0.9rem;
-        color: #64748b;
-        margin: 0;
-    }
-    </style>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("""
-        <div class="home-card orange">
-            <div class="icon">📱</div>
-            <h3>CLIENT</h3>
-            <p>Déposer un appareil<br>en réparation</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Déposer un appareil →", key="go_client", use_container_width=True, type="primary"):
+        if st.button("CLIENT\n\nDéposer un appareil", key="go_client", use_container_width=True, type="primary"):
             st.session_state.mode = "client"
             st.rerun()
     
     with col2:
-        st.markdown("""
-        <div class="home-card blue">
-            <div class="icon">💼</div>
-            <h3>ACCUEIL</h3>
-            <p>Gestion des demandes<br>et clients</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Espace Accueil →", key="go_accueil", use_container_width=True):
+        if st.button("ACCUEIL\n\nGestion des demandes", key="go_accueil", use_container_width=True):
             st.session_state.mode = "auth_accueil"
             st.rerun()
     
     with col3:
-        st.markdown("""
-        <div class="home-card green">
-            <div class="icon">🔧</div>
-            <h3>TECHNICIEN</h3>
-            <p>Suivi des réparations<br>en cours</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Espace Technicien →", key="go_tech", use_container_width=True):
+        if st.button("TECHNICIEN\n\nSuivi réparations", key="go_tech", use_container_width=True):
             st.session_state.mode = "auth_tech"
             st.rerun()
     
-    # Séparateur
+    # Style pour les gros boutons
     st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: center; margin: 2rem 0; gap: 1rem;">
-        <div style="height: 1px; width: 100px; background: linear-gradient(90deg, transparent, #e2e8f0);"></div>
-        <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">ou</span>
-        <div style="height: 1px; width: 100px; background: linear-gradient(90deg, #e2e8f0, transparent);"></div>
-    </div>
+    <style>
+    div[data-testid="stHorizontalBlock"] > div > div > div > div > button {
+        height: 150px !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        border-radius: 16px !important;
+        white-space: pre-wrap !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+        background: linear-gradient(135deg, #fb923c, #f97316) !important;
+        border: none !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+        border: none !important;
+        color: white !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(3) button {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        border: none !important;
+        color: white !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
     
-    # Bouton suivi réparation
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     col_left, col_center, col_right = st.columns([1, 2, 1])
     with col_center:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
-            <p style="font-size: 1rem; font-weight: 600; color: #475569; margin: 0 0 0.5rem 0;">🔍 Vous avez déjà déposé un appareil ?</p>
-            <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Suivez l'avancement de votre réparation</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("📋 Suivre ma réparation", use_container_width=True, key="go_suivi"):
+        if st.button("Suivre ma réparation", use_container_width=True, key="go_suivi"):
             st.session_state.mode = "suivi"
             st.rerun()
-    
-    # Footer
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">
-            © 2024 Klikphone SAV • Créé par <strong style="color: #64748b;">TkConcept26</strong>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
 def ui_auth(mode):
     titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
