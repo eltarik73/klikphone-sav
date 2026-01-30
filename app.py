@@ -4566,7 +4566,7 @@ def client_step1():
     </style>
     """, unsafe_allow_html=True)
     
-    # Grille 2x2
+    # Grille 2x2 avec icônes modernes
     col1, col2 = st.columns(2)
     with col1:
         if st.button("📱  Smartphone", key="cat_smartphone", use_container_width=True):
@@ -4575,7 +4575,7 @@ def client_step1():
             st.session_state.step = 2
             st.rerun()
     with col2:
-        if st.button("📟  Tablette", key="cat_tablette", use_container_width=True):
+        if st.button("🔲  Tablette", key="cat_tablette", use_container_width=True):
             st.session_state.data["cat"] = "Tablette"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
@@ -4607,7 +4607,7 @@ def client_step1():
             st.session_state.step = 2
             st.rerun()
     with col6:
-        if st.button("🔧  Autre appareil", key="cat_autre", use_container_width=True):
+        if st.button("⚙️  Autre appareil", key="cat_autre", use_container_width=True):
             st.session_state.data["cat"] = "Autre"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 4
@@ -4631,14 +4631,12 @@ def client_step2():
             st.session_state.step = 1
             st.rerun()
         
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
         commande_detail = st.text_area(
             "Description de votre commande", 
             placeholder="Ex: Écran iPhone 12 Pro noir, Coque Samsung Galaxy S21, Chargeur MacBook Pro...",
             height=150, 
             key="commande_detail"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             if commande_detail:
@@ -4673,11 +4671,13 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style uniforme comme la page catégories
+    # Style uniforme pour toutes les marques - hauteur fixe
     st.markdown("""
     <style>
-    div[data-testid="stHorizontalBlock"] button {
+    .brand-grid button {
         height: 50px !important;
+        min-height: 50px !important;
+        max-height: 50px !important;
         font-size: 15px !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
@@ -4685,53 +4685,47 @@ def client_step2():
     </style>
     """, unsafe_allow_html=True)
     
-    # Afficher les marques en grille 2 colonnes avec logos
+    st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
+    
+    # Afficher les marques en grille 2 colonnes - boutons simples avec emojis
+    brand_emojis = {
+        "Apple": "🍎", "Samsung": "📱", "Xiaomi": "📱", "Huawei": "📱",
+        "Google": "📱", "OnePlus": "📱", "Oppo": "📱", "Sony": "🎮",
+        "Nintendo": "🎮", "Microsoft": "🖥️", "HP": "💻", "Dell": "💻",
+        "Lenovo": "💻", "Asus": "💻", "Acer": "💻", "Autre": "🔧"
+    }
+    
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
-            logo_url = BRAND_LOGOS.get(m, "")
-            
-            if logo_url and m != "Autre":
-                # Image superposée au bouton (même position que les emojis)
-                st.markdown(f'''
-                <div style="position:relative; height:0; overflow:visible; z-index:100;">
-                    <img src="{logo_url}" style="position:absolute; top:14px; left:50%; transform:translateX(-55px); width:20px; height:20px; pointer-events:none;">
-                </div>
-                ''', unsafe_allow_html=True)
-                if st.button(f"       {m}", key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
-            else:
-                if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
+            emoji = brand_emojis.get(m, "📱")
+            if st.button(f"{emoji}  {m}", key=f"brand_{m}", use_container_width=True):
+                st.session_state.data["marque"] = m
+                st.session_state.step = 3
+                st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def client_step3():
-    """Étape 3: Choix du modèle - Design Premium"""
+    """Étape 3: Choix du modèle - Simplifié"""
     cat = st.session_state.data.get("cat", "")
     marque = st.session_state.data.get("marque", "")
     
     # Logo de la marque
     logo_url = BRAND_LOGOS.get(marque, "")
     
-    # Titre avec logo de la marque
+    # Titre simple avec logo
     if logo_url and marque != "Autre":
         st.markdown(f"""
         <div style="text-align: center; margin-bottom: 1.5rem;">
-            <img src="{logo_url}" style="width: 48px; height: 48px; object-fit: contain; margin-bottom: 12px;">
-            <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
-                Quel modèle {marque} ?
-            </h2>
-            <p style="color: #64748b; font-size: 1rem;">Sélectionnez votre modèle</p>
+            <img src="{logo_url}" style="width: 32px; height: 32px; object-fit: contain; margin-bottom: 8px;">
+            <h2 style="font-size: 1.3rem; font-weight: 700; color: #1e293b; margin: 0;">Quel modèle {marque} ?</h2>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div class="step-title">
-            <h2>🔧 Quel modèle exactement ?</h2>
-            <p>Sélectionnez votre modèle {marque}</p>
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.3rem; font-weight: 700; color: #1e293b; margin: 0;">🔧 Quel modèle ?</h2>
         </div>
         """, unsafe_allow_html=True)
     
@@ -4742,15 +4736,11 @@ def client_step3():
     
     # Si "Autre" marque, demander directement le modèle
     if marque == "Autre":
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
-        st.markdown("**Précisez la marque et le modèle :**")
         modele_autre = st.text_input(
-            "Modèle", 
+            "Précisez la marque et le modèle", 
             placeholder="Ex: Huawei P30 Pro, OnePlus 9...",
-            key="input_modele_autre", 
-            label_visibility="collapsed"
+            key="input_modele_autre"
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             if modele_autre:
@@ -4766,8 +4756,7 @@ def client_step3():
         modeles_list = [m for m in modeles_db if m != "Autre"]
         modeles_list.append("Autre")
         
-        # Liste déroulante stylée
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        # Liste déroulante simple
         mod = st.selectbox(
             "Sélectionnez votre modèle",
             ["-- Choisir le modèle --"] + modeles_list,
@@ -4782,7 +4771,6 @@ def client_step3():
                 placeholder="Ex: iPhone 14 Pro Max",
                 key="input_autre"
             )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             if mod == "-- Choisir le modèle --":
@@ -4812,7 +4800,6 @@ def client_step4():
             st.session_state.step = 1
             st.rerun()
         
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
         appareil = st.text_input(
             "Votre appareil",
             placeholder="Ex: Montre connectée Garmin, Drone DJI, Enceinte Bose..."
@@ -4822,7 +4809,6 @@ def client_step4():
             placeholder="Décrivez précisément le problème rencontré...",
             height=120
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             if appareil and probleme:
@@ -4890,13 +4876,11 @@ def client_step4():
     # Afficher zone de détail si nécessaire
     if st.session_state.data.get("show_detail"):
         st.markdown("---")
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
         detail = st.text_area(
             "Décrivez le problème en détail",
             placeholder="Expliquez précisément ce qui ne fonctionne pas...",
             height=100
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             st.session_state.data["panne_detail"] = detail
@@ -4954,14 +4938,12 @@ def client_step5():
     # Afficher l'interface selon le choix
     if st.session_state.security_choice == "pin":
         st.markdown("---")
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
         pin = st.text_input(
             "Entrez votre code PIN",
             type="password",
             placeholder="••••••",
             max_chars=10
         )
-        st.markdown('</div>', unsafe_allow_html=True)
         
         if st.button("Continuer →", type="primary", use_container_width=True):
             st.session_state.data["pin"] = pin
@@ -8329,168 +8311,100 @@ def afficher_suivi_ticket(t):
 # ÉCRAN D'ACCUEIL
 # =============================================================================
 def ui_home():
-    """Page d'accueil - Design Premium"""
+    """Page d'accueil - Design simplifié"""
     
-    # Header premium avec logo
+    # Header avec logo
     st.markdown(f"""
-    <div style="text-align: center; padding: 3rem 1rem 2rem; background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);">
-        <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(249, 115, 22, 0.2);">
-            <img src="data:image/png;base64,{LOGO_B64}" style="width: 60px; height: 60px;">
-        </div>
-        <h1 style="font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #f97316 0%, #c2410c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 0.5rem 0; letter-spacing: -2px;">
+    <div style="text-align: center; padding: 2rem 1rem 1.5rem;">
+        <img src="data:image/png;base64,{LOGO_B64}" style="width: 70px; height: 70px; margin-bottom: 1rem;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; color: #f97316; margin: 0 0 0.5rem 0; letter-spacing: -1px;">
             KLIKPHONE
         </h1>
-        <p style="color: #64748b; font-size: 1.1rem; font-weight: 500; margin-bottom: 0.25rem;">
-            Spécialiste Apple & Multimarque
-        </p>
-        <p style="color: #94a3b8; font-size: 0.9rem;">
+        <p style="color: #64748b; font-size: 0.95rem;">
             📍 79 Place Saint Léger, Chambéry • 📞 04 79 60 89 22
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Cards d'accès principal
+    # Style pour boutons uniformes
     st.markdown("""
     <style>
-    .home-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 2rem 1.5rem;
-        text-align: center;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        margin-bottom: 1rem;
-    }
-    .home-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 25px 50px rgba(0,0,0,0.1);
-    }
-    .home-card.orange { border-color: #fed7aa; background: linear-gradient(135deg, #fffbf5 0%, #fff7ed 100%); }
-    .home-card.orange:hover { border-color: #f97316; box-shadow: 0 25px 50px rgba(249, 115, 22, 0.2); }
-    .home-card.blue { border-color: #bfdbfe; background: linear-gradient(135deg, #f8faff 0%, #eff6ff 100%); }
-    .home-card.blue:hover { border-color: #3b82f6; box-shadow: 0 25px 50px rgba(59, 130, 246, 0.2); }
-    .home-card.green { border-color: #a7f3d0; background: linear-gradient(135deg, #f0fdf9 0%, #ecfdf5 100%); }
-    .home-card.green:hover { border-color: #10b981; box-shadow: 0 25px 50px rgba(16, 185, 129, 0.2); }
-    .home-card .icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-    .home-card h3 {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-    }
-    .home-card.orange h3 { color: #c2410c; }
-    .home-card.blue h3 { color: #1d4ed8; }
-    .home-card.green h3 { color: #047857; }
-    .home-card p {
-        font-size: 0.9rem;
-        color: #64748b;
-        margin: 0;
+    div[data-testid="stHorizontalBlock"] button {
+        height: 50px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        border-radius: 10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
+    # Boutons principaux
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("""
-        <div class="home-card orange">
-            <div class="icon">📱</div>
-            <h3>CLIENT</h3>
-            <p>Déposer un appareil<br>en réparation</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Déposer un appareil →", key="go_client", use_container_width=True, type="primary"):
+        if st.button("📱  Client", key="go_client", use_container_width=True, type="primary"):
             st.session_state.mode = "client"
             st.rerun()
     
     with col2:
-        st.markdown("""
-        <div class="home-card blue">
-            <div class="icon">💼</div>
-            <h3>ACCUEIL</h3>
-            <p>Gestion des demandes<br>et clients</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Espace Accueil →", key="go_accueil", use_container_width=True):
+        if st.button("💼  Accueil", key="go_accueil", use_container_width=True):
             st.session_state.mode = "auth_accueil"
             st.rerun()
     
     with col3:
-        st.markdown("""
-        <div class="home-card green">
-            <div class="icon">🔧</div>
-            <h3>TECHNICIEN</h3>
-            <p>Suivi des réparations<br>en cours</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Espace Technicien →", key="go_tech", use_container_width=True):
+        if st.button("🔧  Technicien", key="go_tech", use_container_width=True):
             st.session_state.mode = "auth_tech"
             st.rerun()
     
     # Séparateur
-    st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: center; margin: 2rem 0; gap: 1rem;">
-        <div style="height: 1px; width: 100px; background: linear-gradient(90deg, transparent, #e2e8f0);"></div>
-        <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">ou</span>
-        <div style="height: 1px; width: 100px; background: linear-gradient(90deg, #e2e8f0, transparent);"></div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #94a3b8; margin: 1rem 0;'>─ ou ─</div>", unsafe_allow_html=True)
     
     # Bouton suivi réparation
     col_left, col_center, col_right = st.columns([1, 2, 1])
     with col_center:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
-            <p style="font-size: 1rem; font-weight: 600; color: #475569; margin: 0 0 0.5rem 0;">🔍 Vous avez déjà déposé un appareil ?</p>
-            <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Suivez l'avancement de votre réparation</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("📋 Suivre ma réparation", use_container_width=True, key="go_suivi"):
+        if st.button("🔍  Suivre ma réparation", use_container_width=True, key="go_suivi"):
             st.session_state.mode = "suivi"
             st.rerun()
-    
-    # Footer
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">
-            © 2024 Klikphone SAV • Créé par <strong style="color: #64748b;">TkConcept26</strong>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
 def ui_auth(mode):
     titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
     target = "accueil" if mode == "accueil" else "tech"
     
     st.markdown(f"""
-    <div style="text-align:center; padding:2rem 0;">
-        <img src="data:image/png;base64,{LOGO_B64}" style="width:60px; height:60px; margin-bottom:0.5rem;">
-        <div style="color:#f97316; font-size: 1.8rem; font-weight: 800;">KLIKPHONE</div>
-        <p style="color:#6b7280; font-size:1rem; margin-top:0.5rem;">{titre}</p>
+    <div style="text-align:center; padding:1.5rem 0;">
+        <div style="color:#f97316; font-size: 1.5rem; font-weight: 700;">{titre}</div>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input")
-        
-        st.write("")  # Espace
-        
-        if st.button("✅ Valider", type="primary", use_container_width=True):
-            # PIN unique 2626 pour accueil et technicien
-            if pin == "2626":
-                st.session_state.mode = target
-                st.session_state.auth = True
-                st.rerun()
-            else:
-                st.error("Code PIN incorrect")
-        
-        if st.button("← Retour", use_container_width=True):
-            st.session_state.mode = None
+        # Vérifier si le PIN est déjà mémorisé
+        saved_key = f"saved_pin_{target}"
+        if saved_key in st.session_state and st.session_state[saved_key]:
+            st.session_state.mode = target
+            st.session_state.auth = True
             st.rerun()
+        
+        pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input", label_visibility="collapsed")
+        
+        # Checkbox pour mémoriser
+        remember = st.checkbox("Se souvenir de moi", key="remember_pin")
+        
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("← Retour", use_container_width=True):
+                st.session_state.mode = None
+                st.rerun()
+        with col_btn2:
+            if st.button("Valider →", type="primary", use_container_width=True):
+                if pin == "2626":
+                    st.session_state.mode = target
+                    st.session_state.auth = True
+                    if remember:
+                        st.session_state[saved_key] = True
+                    st.rerun()
+                else:
+                    st.error("❌ Code incorrect")
 
 # =============================================================================
 # MAIN
