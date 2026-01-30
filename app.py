@@ -2804,11 +2804,11 @@ def search_clients(query):
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
 def get_commandes_pieces(ticket_id=None, statut=None):
-    """Récupère les commandes de pièces"""
+    """Récupère les commandes de pièces avec détails du ticket"""
     conn = get_db()
     c = conn.cursor()
-    q = """SELECT cp.*, t.ticket_code, t.marque, t.modele, 
-           c.nom as client_nom, c.prenom as client_prenom
+    q = """SELECT cp.*, t.ticket_code, t.marque, t.modele, t.modele_autre, t.panne_detail, t.categorie,
+           c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel
            FROM commandes_pieces cp
            LEFT JOIN tickets t ON cp.ticket_id = t.id
            LEFT JOIN clients c ON t.client_id = c.id
@@ -2862,6 +2862,7 @@ def delete_commande_piece(commande_id):
     conn.close()
 
 # Fonctions membres équipe
+@st.cache_data(ttl=60)  # Cache pendant 60 secondes
 def get_membres_equipe():
     """Récupère tous les membres de l'équipe"""
     conn = get_db()
@@ -5517,7 +5518,13 @@ def staff_liste_demandes():
             # Données appareil - MODELE VISIBLE
             marque = t.get('marque', '')
             modele = t.get('modele', '')
-            if t.get('modele_autre'): 
+            categorie = t.get('categorie', 'Smartphone')
+            
+            # Pour les commandes pièces, afficher la description
+            if categorie == 'Commande':
+                modele = t.get('modele_autre') or t.get('panne_detail') or 'Commande pièce'
+                marque = '📦'
+            elif t.get('modele_autre'): 
                 modele = t['modele_autre']
             
             # Combiner marque + modèle pour affichage clair
@@ -5526,8 +5533,6 @@ def staff_liste_demandes():
                 appareil_display = appareil_full[:20] + "..."
             else:
                 appareil_display = appareil_full
-            
-            categorie = t.get('categorie', 'Smartphone')
             device_icon = get_device_icon(categorie)
             
             # Technicien
@@ -5672,8 +5677,15 @@ def staff_traiter_demande(tid):
     
     # === HEADER ===
     status_class = get_status_class(t.get('statut', ''))
-    modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
-    if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
+    
+    # Pour les commandes, afficher la description complète
+    if t.get('categorie') == 'Commande':
+        modele_txt = "📦 Commande pièce"
+        if t.get('modele_autre'):
+            modele_txt = t.get('modele_autre')
+    else:
+        modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
+        if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
     
     col_back, col_info = st.columns([1, 6])
     with col_back:
@@ -5837,40 +5849,89 @@ def staff_traiter_demande(tid):
 
         # Notes / commentaires
         st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="detail-card-header">📝 Notes</div>', unsafe_allow_html=True)
+        st.markdown('<div class="detail-card-header">📝 Notes & Historique</div>', unsafe_allow_html=True)
+        
+        # Initialiser les variables avec les valeurs actuelles du ticket
+        notes_internes_val = t.get('notes_internes') or ""
+        commentaire_public_val = t.get('commentaire_client') or ""
+        
+        # === HISTORIQUE GLOBAL ===
+        st.markdown("""
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+            <div style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 10px;">📊 Résumé des communications</div>
+        """, unsafe_allow_html=True)
+        
+        # Indicateurs de communication
+        comm_items = []
+        if t.get('msg_whatsapp'):
+            comm_items.append('<span style="background:#22c55e;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ WhatsApp envoyé</span>')
+        if t.get('msg_sms'):
+            comm_items.append('<span style="background:#3b82f6;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ SMS envoyé</span>')
+        if t.get('msg_email'):
+            comm_items.append('<span style="background:#f59e0b;color:white;padding:4px 10px;border-radius:12px;font-size:11px;margin-right:6px;">✅ Email envoyé</span>')
+        
+        if comm_items:
+            st.markdown(f"<div style='margin-bottom:8px;'>{''.join(comm_items)}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div style='color:#94a3b8;font-size:12px;margin-bottom:8px;'>Aucune communication envoyée</div>", unsafe_allow_html=True)
+        
+        # Notes du client (lors du dépôt)
+        if t.get('notes_client'):
+            st.markdown(f"""
+            <div style="background:white;border-left:3px solid #f97316;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">📋 Note du client (dépôt)</div>
+                <div style="font-size:12px;color:#334155;">{t.get('notes_client')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Détail de panne (si commande pièce ou autre)
+        if t.get('panne_detail') and t.get('categorie') == 'Commande':
+            st.markdown(f"""
+            <div style="background:white;border-left:3px solid #8b5cf6;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">📦 Description commande</div>
+                <div style="font-size:12px;color:#334155;">{t.get('panne_detail')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Notes internes (si existantes)
+        if t.get('notes_internes'):
+            st.markdown(f"""
+            <div style="background:white;border-left:3px solid #3b82f6;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">🔒 Notes internes</div>
+                <div style="font-size:12px;color:#334155;">{t.get('notes_internes')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Commentaire public (si existant)
+        if t.get('commentaire_client'):
+            st.markdown(f"""
+            <div style="background:white;border-left:3px solid #22c55e;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">💬 Commentaire public</div>
+                <div style="font-size:12px;color:#334155;">{t.get('commentaire_client')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # === ÉDITION DES NOTES ===
+        with st.expander("✏️ Modifier les notes", expanded=False):
+            notes_internes_val = st.text_area(
+                "Note interne (réservée équipe)",
+                value=t.get('notes_internes') or "",
+                height=100,
+                key=f"notes_int_{tid}",
+                help="Visible uniquement par l'équipe (accueil/atelier).",
+            )
 
-        notes_internes_val = st.text_area(
-            "Note interne (réservée équipe)",
-            value=t.get('notes_internes') or "",
-            height=110,
-            key=f"notes_int_{tid}",
-            help="Visible uniquement par l'équipe (accueil/atelier).",
-        )
+            commentaire_public_val = st.text_area(
+                "Commentaire public (visible sur le ticket client)",
+                value=t.get('commentaire_client') or "",
+                height=80,
+                key=f"notes_pub_{tid}",
+                help="Ce texte s'imprime sur le ticket/reçu remis au client.",
+            )
 
-        commentaire_public_val = st.text_area(
-            "Commentaire public (visible sur le ticket client)",
-            value=t.get('commentaire_client') or "",
-            height=90,
-            key=f"notes_pub_{tid}",
-            help="Ce texte s'imprime sur le ticket/reçu remis au client.",
-        )
-
-        # Note privée (interne) — placée sous le commentaire public
-        note_privee_val = st.text_area(
-            "Note privée (équipe uniquement)",
-            value=get_param("NOTE_PRIVEE_ACCUEIL") or "",
-            height=80,
-            key=f"note_privee_global_{tid}",
-            help="Non imprimée, non visible client.",
-        )
-        col_np1, col_np2 = st.columns([4, 1], gap="small")
-        with col_np2:
-            if st.button("OK", key=f"save_note_privee_global_{tid}", type="secondary", use_container_width=True):
-                set_param("NOTE_PRIVEE_ACCUEIL", note_privee_val.strip())
-                st.toast("✅ Note privée enregistrée")
-                st.rerun()
-
-        st.caption("💾 Ces notes sont enregistrées via le bouton **ENREGISTRER LES MODIFICATIONS** (colonne droite).")
+            st.caption("💾 Enregistrez via le bouton **ENREGISTRER LES MODIFICATIONS** (colonne droite).")
 
         # === AFFICHAGE DU TICKET DANS COL1 (à gauche) ===
 
@@ -6063,7 +6124,10 @@ def staff_traiter_demande(tid):
         st.markdown("""<div style="height:10px;"></div>""", unsafe_allow_html=True)
         tech_name = technicien if technicien != "-- Non assigné --" else ""
         if st.button("💾 ENREGISTRER LES MODIFICATIONS", type="primary", use_container_width=True, key=f"save_{tid}"):
-            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=notes_internes_val, commentaire_client=commentaire_public_val)
+            # Récupérer les valeurs des notes depuis session_state (text_area avec key)
+            final_notes_internes = st.session_state.get(f"notes_int_{tid}", t.get('notes_internes') or "")
+            final_commentaire_public = st.session_state.get(f"notes_pub_{tid}", t.get('commentaire_client') or "")
+            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=final_notes_internes, commentaire_client=final_commentaire_public)
             if new_statut != statut_actuel:
                 changer_statut(tid, new_statut)
             st.success("✅ Demande mise à jour !")
@@ -6735,13 +6799,31 @@ def staff_commandes_pieces():
                         st.markdown("---")
                 else:
                     with st.container():
-                        col1, col2, col3, col4, col5 = st.columns([2, 1.5, 0.8, 0.8, 0.8])
+                        col1, col2, col3, col4, col5 = st.columns([2.5, 1.5, 0.8, 0.8, 0.6])
                         with col1:
                             ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
-                            st.markdown(f"**{cmd['description']}**")
+                            
+                            # Afficher la vraie description de la commande
+                            description = cmd['description']
+                            # Si c'est une commande pièce du totem, afficher aussi modele_autre/panne_detail
+                            if cmd.get('modele_autre') or cmd.get('panne_detail'):
+                                detail_commande = cmd.get('modele_autre') or cmd.get('panne_detail') or ''
+                                if detail_commande and detail_commande not in description:
+                                    st.markdown(f"**📝 {detail_commande}**")
+                                else:
+                                    st.markdown(f"**{description}**")
+                            else:
+                                st.markdown(f"**{description}**")
+                            
                             st.caption(f"📋 {ticket_info}")
+                            # Afficher appareil
+                            appareil = ""
                             if cmd.get('marque') and cmd.get('modele'):
-                                st.caption(f"📱 {cmd['marque']} {cmd['modele']}")
+                                appareil = f"{cmd['marque']} {cmd['modele']}"
+                            if cmd.get('modele_autre') and cmd.get('categorie') != 'Commande':
+                                appareil = cmd['modele_autre']
+                            if appareil:
+                                st.caption(f"📱 {appareil}")
                         with col2:
                             st.write(f"🏪 {cmd.get('fournisseur', 'N/A')}")
                             if cmd.get('reference'):
