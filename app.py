@@ -6094,7 +6094,8 @@ def staff_traiter_demande(tid):
             """
         
         # Date mise à jour
-        date_maj = t.get('date_maj', '')[:16] if t.get('date_maj') else 'N/A'
+        date_maj_raw = t.get('date_maj') or ''
+        date_maj = date_maj_raw[:16] if date_maj_raw else 'N/A'
         notif_html += f"""
             <div style="text-align: right; font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 8px;">
                 Dernière mise à jour: {date_maj}
