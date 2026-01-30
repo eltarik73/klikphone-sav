@@ -6131,18 +6131,6 @@ def staff_traiter_demande(tid):
 </div>'''
         
         st.markdown(full_html, unsafe_allow_html=True)
-        
-        col_t3, col_t4 = st.columns(2)
-        with col_t3:
-            if st.button("📝 Devis", key=f"show_devis_{tid}", use_container_width=True):
-                st.session_state[f"show_ticket_{tid}"] = "devis"
-                st.rerun()
-        with col_t4:
-            if st.button("🧾 Récap/Facture", key=f"show_facture_{tid}", use_container_width=True):
-                st.session_state[f"show_ticket_{tid}"] = "facture"
-                st.rerun()
-
-        # === AFFICHAGE DU TICKET ===
     
     # === COLONNE DROITE: Actions ===
     with col2:
