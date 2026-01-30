@@ -4542,129 +4542,76 @@ def ui_client():
     elif step == 6: client_step6()
 
 def client_step1():
-    """Étape 1: Choix du type d'appareil - Design Premium"""
+    """Étape 1: Choix du type d'appareil - Design simple"""
     
     # Titre
     st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">
             Quel appareil déposez-vous ?
         </h2>
-        <p style="font-size: 1rem; color: #64748b;">
-            Sélectionnez le type d'appareil à réparer
-        </p>
+        <p style="font-size: 0.95rem; color: #64748b;">Sélectionnez le type d'appareil</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Style pour uniformiser les boutons avec icônes
+    # Style uniforme pour tous les boutons
     st.markdown("""
     <style>
-    .category-grid button {
-        height: 56px !important;
-        min-height: 56px !important;
+    div[data-testid="stHorizontalBlock"] button {
+        height: 50px !important;
         font-size: 15px !important;
-        font-weight: 600 !important;
-    }
-    .cat-icon-overlay {
-        position: relative;
-        height: 0;
-        overflow: visible;
-        z-index: 1000;
-    }
-    .cat-icon-overlay svg {
-        position: absolute;
-        top: 14px;
-        left: 50%;
-        transform: translateX(-70px);
-        width: 26px;
-        height: 26px;
-        pointer-events: none;
+        font-weight: 500 !important;
+        border-radius: 10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Icônes SVG
-    icons = {
-        "smartphone": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>',
-        "tablet": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>',
-        "laptop": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></svg>',
-        "console": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><path d="M6 12h4m-2-2v4"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="14" r="1"/></svg>',
-        "package": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>',
-        "wrench": '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
-    }
-    
-    st.markdown('<div class="category-grid">', unsafe_allow_html=True)
-    
-    # Grille 2x2 pour les appareils principaux
+    # Grille 2x2
     col1, col2 = st.columns(2)
-    
     with col1:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["smartphone"]}</div>', unsafe_allow_html=True)
-        if st.button("      Smartphone", key="cat_smartphone", use_container_width=True, type="primary"):
+        if st.button("📱  Smartphone", key="cat_smartphone", use_container_width=True):
             st.session_state.data["cat"] = "Smartphone"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
-    
     with col2:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["tablet"]}</div>', unsafe_allow_html=True)
-        if st.button("      Tablette", key="cat_tablette", use_container_width=True, type="primary"):
+        if st.button("📟  Tablette", key="cat_tablette", use_container_width=True):
             st.session_state.data["cat"] = "Tablette"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
     
     col3, col4 = st.columns(2)
-    
     with col3:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["laptop"]}</div>', unsafe_allow_html=True)
-        if st.button("      PC Portable", key="cat_pc", use_container_width=True, type="primary"):
+        if st.button("💻  PC Portable", key="cat_pc", use_container_width=True):
             st.session_state.data["cat"] = "PC Portable"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
-    
     with col4:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["console"]}</div>', unsafe_allow_html=True)
-        if st.button("      Console", key="cat_console", use_container_width=True, type="primary"):
+        if st.button("🎮  Console", key="cat_console", use_container_width=True):
             st.session_state.data["cat"] = "Console"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 2
             st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
     # Séparateur
-    st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0; gap: 1rem;">
-        <div style="height: 1px; width: 80px; background: linear-gradient(90deg, transparent, #e2e8f0);"></div>
-        <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">ou</span>
-        <div style="height: 1px; width: 80px; background: linear-gradient(90deg, #e2e8f0, transparent);"></div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('<div class="category-grid">', unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #94a3b8; margin: 1rem 0;'>─ ou ─</div>", unsafe_allow_html=True)
     
     # Options spéciales
     col5, col6 = st.columns(2)
-    
     with col5:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["package"]}</div>', unsafe_allow_html=True)
-        if st.button("      Commander pièce", key="cat_commande", use_container_width=True, type="secondary"):
+        if st.button("📦  Commander pièce", key="cat_commande", use_container_width=True):
             st.session_state.data["cat"] = "Commande"
             st.session_state.data["is_commande"] = True
             st.session_state.step = 2
             st.rerun()
-    
     with col6:
-        st.markdown(f'<div class="cat-icon-overlay">{icons["wrench"]}</div>', unsafe_allow_html=True)
-        if st.button("      Autre appareil", key="cat_autre", use_container_width=True, type="secondary"):
+        if st.button("🔧  Autre appareil", key="cat_autre", use_container_width=True):
             st.session_state.data["cat"] = "Autre"
             st.session_state.data["is_commande"] = False
             st.session_state.step = 4
             st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def client_step2():
     """Étape 2: Choix de la marque - Design Premium avec logos"""
@@ -4726,34 +4673,25 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style pour uniformiser les boutons
+    # Style pour supprimer l'espace entre colonnes et uniformiser
     st.markdown("""
     <style>
-    .brand-grid button {
-        height: 56px !important;
-        min-height: 56px !important;
-        font-size: 15px !important;
-        font-weight: 600 !important;
+    .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 8px;
     }
-    .brand-logo-overlay {
-        position: relative;
-        height: 0;
-        overflow: visible;
-        z-index: 1000;
-    }
-    .brand-logo-overlay img {
-        position: absolute;
-        top: 17px;
-        left: 50%;
-        transform: translateX(-70px);
+    .brand-row img {
         width: 22px;
         height: 22px;
-        pointer-events: none;
+        object-fit: contain;
+    }
+    div[data-testid="stHorizontalBlock"] {
+        gap: 4px !important;
     }
     </style>
     """, unsafe_allow_html=True)
-    
-    st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
     
     # Afficher les marques en grille 2 colonnes
     cols = st.columns(2)
@@ -4762,22 +4700,20 @@ def client_step2():
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # Logo superposé centré à gauche du texte
-                st.markdown(f'''<div class="brand-logo-overlay"><img src="{logo_url}"></div>''', unsafe_allow_html=True)
-                
-                # Bouton avec espace pour le logo (texte centré)
-                if st.button(f"      {m}", key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
+                # 2 colonnes : logo (petit) + bouton (large)
+                c1, c2 = st.columns([0.12, 0.88])
+                with c1:
+                    st.markdown(f'<div style="padding-top:10px;text-align:right;"><img src="{logo_url}" style="width:20px;height:20px;"></div>', unsafe_allow_html=True)
+                with c2:
+                    if st.button(m, key=f"brand_{m}", use_container_width=True):
+                        st.session_state.data["marque"] = m
+                        st.session_state.step = 3
+                        st.rerun()
             else:
-                # Bouton "Autre" avec emoji
-                if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
+                if st.button(f"🔧 {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
                     st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def client_step3():
     """Étape 3: Choix du modèle - Design Premium"""
