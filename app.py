@@ -4731,44 +4731,6 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style pour logo + bouton collés
-    st.markdown("""
-    <style>
-    /* Container pour logo + bouton */
-    .brand-item {
-        margin-bottom: 10px;
-    }
-    .brand-item [data-testid="stHorizontalBlock"] {
-        gap: 0 !important;
-        align-items: stretch !important;
-    }
-    .brand-item [data-testid="stHorizontalBlock"] > div:first-child > div > div {
-        height: 100%;
-    }
-    .logo-box {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 2px solid #e2e8f0;
-        border-right: none;
-        border-radius: 12px 0 0 12px;
-        padding: 10px;
-        height: 48px;
-    }
-    .logo-box img {
-        width: 24px;
-        height: 24px;
-        object-fit: contain;
-    }
-    .brand-item [data-testid="stHorizontalBlock"] > div:last-child button {
-        border-radius: 0 12px 12px 0 !important;
-        height: 48px !important;
-        min-height: 48px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
     # Afficher les marques en grille 2 colonnes
     cols = st.columns(2)
     for i, m in enumerate(marques):
@@ -4776,16 +4738,18 @@ def client_step2():
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                st.markdown('<div class="brand-item">', unsafe_allow_html=True)
-                c1, c2 = st.columns([0.15, 0.85], gap="small")
-                with c1:
-                    st.markdown(f'<div class="logo-box"><img src="{logo_url}"></div>', unsafe_allow_html=True)
-                with c2:
-                    if st.button(m, key=f"brand_{m}", use_container_width=True):
-                        st.session_state.data["marque"] = m
-                        st.session_state.step = 3
-                        st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Image en position absolute (height:0 pour ne pas prendre de place)
+                st.markdown(f'''
+                <div style="position: relative; height: 0; overflow: visible; z-index: 1000;">
+                    <img src="{logo_url}" style="position: absolute; left: 16px; top: 14px; width: 22px; height: 22px; pointer-events: none;">
+                </div>
+                ''', unsafe_allow_html=True)
+                
+                # Bouton avec espaces au début pour laisser la place au logo
+                if st.button(f"        {m}", key=f"brand_{m}", use_container_width=True):
+                    st.session_state.data["marque"] = m
+                    st.session_state.step = 3
+                    st.rerun()
             else:
                 # Bouton "Autre"
                 if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
