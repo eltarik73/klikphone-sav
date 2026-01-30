@@ -9,6 +9,7 @@ import streamlit as st
 import sqlite3
 import os
 from datetime import datetime
+import re
 
 # Option Postgres (Supabase)
 try:
@@ -160,7 +161,7 @@ def load_css():
 
 /* === FORCE LIGHT MODE === */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    background: #f7f8fb !important;
     color: #1e293b !important;
     min-height: 100vh;
 }
@@ -4671,47 +4672,97 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style uniforme (même que catégories)
-    st.markdown("""
-    <style>
-    .brand-grid button {
-        height: 50px !important;
-        min-height: 50px !important;
-        max-height: 50px !important;
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        border-radius: 10px !important;
+    # Style premium: logo + texte alignés (sans hack overlay)
+    def _slugify_brand(s: str) -> str:
+        return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
+
+    brand_css = """<style>
+    .brand-grid{
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
-    </style>
-    """, unsafe_allow_html=True)
-    
+    /* Boutons marques — look SaaS moderne */
+    .brand-grid .stButton>button{
+        height: 64px !important;
+        min-height: 64px !important;
+        max-height: 64px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(226,232,240,1) !important;
+        background: rgba(255,255,255,0.92) !important;
+        box-shadow: 0 10px 24px rgba(16,24,40,0.06) !important;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 0 18px !important;
+        text-align: left !important;
+    }
+    .brand-grid .stButton>button:hover{
+        transform: translateY(-1px) !important;
+        box-shadow: 0 16px 36px rgba(16,24,40,0.10) !important;
+        border-color: rgba(255,106,0,0.35) !important;
+        background: rgba(255,255,255,1) !important;
+    }
+    .brand-grid .stButton>button:active{
+        transform: translateY(0px) !important;
+        box-shadow: 0 10px 24px rgba(16,24,40,0.08) !important;
+    }
+    /* Logo à gauche du texte (aligné comme page Modèles) */
+    .brand-item button::before{
+        content: "";
+        width: 22px;
+        height: 22px;
+        margin-right: 12px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        display: inline-block;
+        flex: 0 0 22px;
+        border-radius: 6px;
+    }
+    .brand-autre button::before{
+        content: "🔧";
+        width: auto;
+        height: auto;
+        margin-right: 12px;
+        background: none;
+        display: inline-block;
+        font-size: 18px;
+        line-height: 1;
+    }
+    """
+
+    # Règles par marque (SVG officiels via SimpleIcons) — injectées en CSS-only
+    for _b, _url in BRAND_LOGOS.items():
+        if not _url or _b == "Autre":
+            continue
+        brand_css += f".brand-{_slugify_brand(_b)} button::before{{background-image:url('{_url}');}}\n"
+
+    brand_css += """</style>"""
+    st.markdown(brand_css, unsafe_allow_html=True)
+
     st.markdown('<div class="brand-grid">', unsafe_allow_html=True)
-    
+
     # Afficher les marques en grille 2 colonnes
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
-            logo_url = BRAND_LOGOS.get(m, "")
-            
-            if logo_url and m != "Autre":
-                # Bouton avec espaces puis logo superposé
-                if st.button(f"       {m}", key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
-                # Logo superposé - remonte sur le bouton
-                offset = len(m) * 4 + 18
-                st.markdown(f'''
-                <div style="margin-top: -37px; margin-bottom: 21px; pointer-events: none; text-align: center;">
-                    <img src="{logo_url}" style="width: 18px; height: 18px; margin-right: {offset}px;">
-                </div>
-                ''', unsafe_allow_html=True)
-            else:
-                if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
-                    st.session_state.data["marque"] = m
-                    st.session_state.step = 3
-                    st.rerun()
-    
+            # Wrapper pour cibler le bouton via CSS (logo à gauche)
+            slug = _slugify_brand(m)
+            wrapper_cls = f"brand-item brand-{slug}" if m != "Autre" else "brand-item brand-autre"
+            st.markdown(f'<div class="{wrapper_cls}">', unsafe_allow_html=True)
+
+            label = m if m != "Autre" else "Autre"
+            if st.button(label, key=f"brand_{m}", use_container_width=True):
+                st.session_state.data["marque"] = m
+                st.session_state.step = 3
+                st.rerun()
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 def client_step3():
