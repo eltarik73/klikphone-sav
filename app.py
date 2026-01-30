@@ -4673,44 +4673,37 @@ def client_step2():
     
     marques = get_marques(cat)
     
-    # Style pour supprimer l'espace entre colonnes et uniformiser
+    # Style uniforme comme la page catégories
     st.markdown("""
     <style>
-    .brand-row {
-        display: flex;
-        align-items: center;
-        gap: 0;
-        margin-bottom: 8px;
-    }
-    .brand-row img {
-        width: 22px;
-        height: 22px;
-        object-fit: contain;
-    }
-    div[data-testid="stHorizontalBlock"] {
-        gap: 4px !important;
+    div[data-testid="stHorizontalBlock"] button {
+        height: 50px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        border-radius: 10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Afficher les marques en grille 2 colonnes
+    # Afficher les marques en grille 2 colonnes avec logos
     cols = st.columns(2)
     for i, m in enumerate(marques):
         with cols[i % 2]:
             logo_url = BRAND_LOGOS.get(m, "")
             
             if logo_url and m != "Autre":
-                # 2 colonnes : logo (petit) + bouton (large)
-                c1, c2 = st.columns([0.12, 0.88])
-                with c1:
-                    st.markdown(f'<div style="padding-top:10px;text-align:right;"><img src="{logo_url}" style="width:20px;height:20px;"></div>', unsafe_allow_html=True)
-                with c2:
-                    if st.button(m, key=f"brand_{m}", use_container_width=True):
-                        st.session_state.data["marque"] = m
-                        st.session_state.step = 3
-                        st.rerun()
+                # Image superposée au bouton (même position que les emojis)
+                st.markdown(f'''
+                <div style="position:relative; height:0; overflow:visible; z-index:100;">
+                    <img src="{logo_url}" style="position:absolute; top:14px; left:50%; transform:translateX(-55px); width:20px; height:20px; pointer-events:none;">
+                </div>
+                ''', unsafe_allow_html=True)
+                if st.button(f"       {m}", key=f"brand_{m}", use_container_width=True):
+                    st.session_state.data["marque"] = m
+                    st.session_state.step = 3
+                    st.rerun()
             else:
-                if st.button(f"🔧 {m}", key=f"brand_{m}", use_container_width=True):
+                if st.button(f"🔧  {m}", key=f"brand_{m}", use_container_width=True):
                     st.session_state.data["marque"] = m
                     st.session_state.step = 3
                     st.rerun()
