@@ -3057,8 +3057,16 @@ def ajouter_note(tid, note):
 # =============================================================================
 def fmt_date(d):
     if not d: return "N/A"
-    try: return datetime.strptime(d[:19], "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y %H:%M")
-    except: return d
+    try:
+        # Gérer les microsecondes si présentes
+        d_str = str(d)[:19]  # Couper les microsecondes
+        return datetime.strptime(d_str, "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y %H:%M")
+    except:
+        try:
+            # Essayer format date seule
+            return datetime.strptime(str(d)[:10], "%Y-%m-%d").strftime("%d/%m/%Y")
+        except:
+            return str(d)[:16] if d else "N/A"
 
 def fmt_prix(p):
     return f"{p:.2f} €" if p else "N/A"
@@ -3459,6 +3467,15 @@ def ticket_client_html(t, for_email=False):
     type_ecran = (t.get('type_ecran') or '').strip()
     comment_public = (t.get("commentaire_client") or "").strip()
     
+    # Label dynamique selon la panne
+    panne_base = t.get("panne", "")
+    if panne_base == "Écran casse":
+        precision_label = "Type écran"
+        precision_icon = "📱"
+    else:
+        precision_label = "Précision"
+        precision_icon = "📝"
+    
     # Tarifs avec réparation supplémentaire
     devis = t.get('devis_estime') or 0
     acompte = t.get('acompte') or 0
@@ -3474,13 +3491,13 @@ def ticket_client_html(t, for_email=False):
     qr_url_val = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
     
     # HTML conditionnel
-    type_ecran_html = f'<div class="info-row"><span class="label">Type écran</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
+    type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
     rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
     comment_html = f'<div class="notes-box"><div class="notes-title">💬 Commentaire</div>{comment_public}</div>' if comment_public else ""
     
     # Version EMAIL (colorée)
     if for_email:
-        type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">📱 Type écran: {type_ecran}</div>' if type_ecran else ""
+        type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">{precision_icon} {precision_label}: {type_ecran}</div>' if type_ecran else ""
         rep_supp_email = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
         comment_section = f"""
         <div style="background:#fff7ed;border-radius:8px;padding:12px;margin:15px 0;">
@@ -3653,6 +3670,13 @@ def ticket_staff_html(t):
     panne = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
     type_ecran = (t.get('type_ecran') or '').strip()
     
+    # Label dynamique selon la panne
+    panne_base = t.get("panne", "")
+    if panne_base == "Écran casse":
+        precision_label = "Type écran"
+    else:
+        precision_label = "Précision"
+    
     notes_publiques = (t.get('commentaire_client') or '').strip()
     notes_privees = (t.get('notes_internes') or '').strip()
     notes_client = (t.get('notes_client') or '').strip()
@@ -3668,8 +3692,8 @@ def ticket_staff_html(t):
     # Ligne réparation supplémentaire
     rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
     
-    # Type écran dans section appareil
-    type_ecran_html = f'<div class="info-row"><span class="label">Type écran</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
+    # Précision dans section appareil
+    type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
     
     # Notes
     notes_client_html = f'<div class="notes-box"><div class="notes-title">📋 Note client</div>{notes_client}</div>' if notes_client else ""
@@ -5663,8 +5687,15 @@ def staff_traiter_demande(tid):
         panne = t.get('panne', '')
         if t.get('panne_detail'): panne += f" ({t['panne_detail']})"
         
+        # Label dynamique pour la précision
+        panne_base = t.get('panne', '')
+        if panne_base == "Écran casse":
+            precision_label = "📱 Type écran"
+        else:
+            precision_label = "📝 Précision"
+        
         camby_html = ' <span style="background:#22c55e;color:white;padding:2px 8px;border-radius:10px;font-size:11px;">🎫 CAMBY</span>' if t.get('client_carte_camby') else ''
-        type_ecran_html = f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">📱 Type écran</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>' if t.get('type_ecran') else ''
+        type_ecran_html = f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">{precision_label}</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>' if t.get('type_ecran') else ''
         recup_html = f'<div class="detail-row" style="background:#dcfce7;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#166534;">📅 Récupération</span><span class="detail-value" style="color:#166534;font-weight:600;">{t.get("date_recuperation")}</span></div>' if t.get('date_recuperation') else ''
         
         st.markdown(f'''
@@ -5778,12 +5809,18 @@ def staff_traiter_demande(tid):
             if new_panne_detail != panne_detail:
                 update_ticket(tid, panne_detail=new_panne_detail)
         
-        # Type d'écran (si écran cassé)
-        if new_panne == "Écran casse" or t.get('type_ecran'):
-            type_ecran_actuel = t.get('type_ecran') or ""
-            new_type_ecran = st.text_input("📱 Type d'écran", value=type_ecran_actuel, placeholder="Ex: Original, OLED, Incell...", key=f"type_ecran_{tid}")
-            if new_type_ecran != type_ecran_actuel:
-                update_ticket(tid, type_ecran=new_type_ecran)
+        # Précision sur la réparation (pour toutes les pannes)
+        type_ecran_actuel = t.get('type_ecran') or ""
+        if new_panne == "Écran casse":
+            label_precision = "📱 Type d'écran"
+            placeholder_precision = "Ex: Original, OLED, Incell, Premium..."
+        else:
+            label_precision = "📝 Précision sur la réparation"
+            placeholder_precision = "Ex: Marque pièce, spécificité, remarque..."
+        
+        new_type_ecran = st.text_input(label_precision, value=type_ecran_actuel, placeholder=placeholder_precision, key=f"type_ecran_{tid}")
+        if new_type_ecran != type_ecran_actuel:
+            update_ticket(tid, type_ecran=new_type_ecran)
         
         # Technicien
         membres = get_membres_equipe()
@@ -8273,7 +8310,32 @@ def ui_auth(mode):
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Vérifier si le PIN est déjà mémorisé
+        # Script pour gérer les cookies
+        st.markdown("""
+        <script>
+        function setCookie(name, value, days) {
+            var expires = "";
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days*24*60*60*1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+        function getCookie(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            }
+            return null;
+        }
+        </script>
+        """, unsafe_allow_html=True)
+        
+        # Vérifier si le PIN est déjà mémorisé dans session_state
         saved_key = f"saved_pin_{target}"
         if saved_key in st.session_state and st.session_state[saved_key]:
             st.session_state.mode = target
@@ -8283,7 +8345,7 @@ def ui_auth(mode):
         pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input", label_visibility="collapsed")
         
         # Checkbox pour mémoriser
-        remember = st.checkbox("Se souvenir de moi", key="remember_pin")
+        remember = st.checkbox("Se souvenir de moi (cette session)", key="remember_pin", value=True)
         
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
@@ -8297,6 +8359,8 @@ def ui_auth(mode):
                     st.session_state.auth = True
                     if remember:
                         st.session_state[saved_key] = True
+                        # Marquer l'authentification globale
+                        st.session_state.global_auth = True
                     st.rerun()
                 else:
                     st.error("❌ Code incorrect")
