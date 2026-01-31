@@ -3285,7 +3285,7 @@ def html_to_pdf(html_content):
     except Exception as e:
         return None
 
-def envoyer_vers_caisse(ticket, payment_override=None):
+def envoyer_vers_caisse(ticket, payment_override=None, send_email=False):
     """Envoie un ticket de réparation vers caisse.enregistreuse.fr"""
     try:
         import requests
@@ -3331,6 +3331,12 @@ def envoyer_vers_caisse(ticket, payment_override=None):
             ("deliveryMethod", delivery_method),
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
         ]
+        
+        # Option envoi email/facture au client
+        if send_email:
+            post_data.append(("sendEmail", "1"))
+            post_data.append(("sendInvoice", "1"))
+            post_data.append(("emailInvoice", "1"))
         
         # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
@@ -6230,29 +6236,54 @@ Merci de nous confirmer votre accord.
         elif total_ticket <= 0:
             st.info("💡 Renseignez un devis pour envoyer vers la caisse")
         else:
-            # Choix du mode de paiement au moment de l'envoi
-            mode_envoi = st.radio(
-                "Mode de paiement",
-                ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée (à encaisser)"],
-                index=0,
-                key=f"mode_paiement_envoi_{tid}",
-                horizontal=True
-            )
+            # Récupérer les IDs de modes de paiement configurés
+            cb_id = get_param("CAISSE_CB_ID") or ""
+            esp_id = get_param("CAISSE_ESP_ID") or ""
             
-            # Mapper le choix vers la valeur API
-            mode_map = {
-                "💳 Carte bancaire": "2",
-                "💵 Espèces": "1",
-                "📝 Non payée (à encaisser)": "-1"
-            }
-            mode_val = mode_map.get(mode_envoi, "2")
-            
-            if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
-                success, message = envoyer_vers_caisse(t, payment_override=mode_val)
-                if success:
-                    st.success(f"✅ {message}")
+            if not cb_id and not esp_id:
+                st.warning("⚠️ Configurez vos modes de paiement dans ⚙️ Config > 💳 Caisse")
+                st.caption("Cliquez sur 'Récupérer mes modes de paiement'")
+            else:
+                # Choix du mode de paiement au moment de l'envoi
+                payment_choices = ["📝 Non payée (à encaisser)"]
+                payment_values = ["-1"]
+                
+                if cb_id:
+                    payment_choices.insert(0, "💳 Carte bancaire")
+                    payment_values.insert(0, cb_id)
+                if esp_id:
+                    idx = 1 if cb_id else 0
+                    payment_choices.insert(idx, "💵 Espèces")
+                    payment_values.insert(idx, esp_id)
+                
+                mode_envoi = st.radio(
+                    "Mode de paiement",
+                    payment_choices,
+                    index=0,
+                    key=f"mode_paiement_envoi_{tid}",
+                    horizontal=True
+                )
+                
+                # Mapper le choix vers la valeur API
+                mode_idx = payment_choices.index(mode_envoi)
+                mode_val = payment_values[mode_idx]
+                
+                # Option envoi facture par email
+                client_email = t.get('client_email', '')
+                if client_email:
+                    send_facture = st.checkbox(f"📧 Envoyer facture à {client_email}", value=True, key=f"send_facture_{tid}")
                 else:
-                    st.error(f"❌ {message}")
+                    send_facture = False
+                    st.caption("💡 Ajoutez l'email du client pour envoyer la facture")
+                
+                if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
+                    success, message = envoyer_vers_caisse(t, payment_override=mode_val, send_email=send_facture)
+                    if success:
+                        st.success(f"✅ {message}")
+                        if send_facture:
+                            st.info("📧 Facture envoyée au client (si activé dans caisse.enregistreuse.fr)")
+                    else:
+                        st.error(f"❌ {message}")
     
     # =================================================================
     # ZONE BAS: Notes (gauche) + Notifications (droite)
@@ -7745,31 +7776,79 @@ def staff_config():
                 st.success("✅ Configuration enregistrée!")
                 st.rerun()
         
-        # Mode de paiement par défaut
+        # Récupérer les modes de paiement de la caisse
         st.markdown("---")
-        st.markdown("#### Paramètres d'envoi")
+        st.markdown("#### 💳 Modes de paiement de votre caisse")
         
-        payment_options = ["-2 (Non payée, non validée)", "-1 (Non payée, validée)", "1 (Espèces)", "2 (Carte bancaire)", "3 (Chèque)"]
-        payment_values = ["-2", "-1", "1", "2", "3"]
-        current_payment = get_param("CAISSE_PAYMENT_MODE") or "-1"
-        payment_index = payment_values.index(current_payment) if current_payment in payment_values else 1
+        # Récupérer les modes sauvegardés
+        saved_payment_modes = get_param("CAISSE_PAYMENT_MODES") or ""
         
-        caisse_payment_mode = st.selectbox(
-            "Mode de paiement par défaut",
-            payment_options,
-            index=payment_index,
-            key="caisse_payment_mode"
-        )
-        payment_val = caisse_payment_mode.split(" ")[0]
+        if st.button("🔄 Récupérer mes modes de paiement", use_container_width=True):
+            apikey = get_param("CAISSE_APIKEY")
+            shopid = get_param("CAISSE_SHOPID")
+            if apikey and shopid:
+                try:
+                    import requests
+                    response = requests.get(
+                        f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        if isinstance(data, list) and len(data) > 0:
+                            # Sauvegarder les modes au format "id:nom,id:nom,..."
+                            modes_str = ",".join([f"{m.get('id', '')}:{m.get('nom', m.get('name', 'Mode'))}" for m in data])
+                            set_param("CAISSE_PAYMENT_MODES", modes_str)
+                            st.success(f"✅ {len(data)} modes de paiement récupérés !")
+                            for m in data:
+                                st.write(f"- ID **{m.get('id')}** : {m.get('nom', m.get('name', ''))}")
+                            st.rerun()
+                        else:
+                            st.warning(f"⚠️ Réponse: {data}")
+                    else:
+                        st.error(f"❌ Erreur HTTP: {response.status_code}")
+                except Exception as e:
+                    st.error(f"❌ Erreur: {str(e)}")
+            else:
+                st.warning("⚠️ Configurez d'abord l'API")
         
-        # Sauvegarder si changé
-        if payment_val != current_payment:
-            set_param("CAISSE_PAYMENT_MODE", payment_val)
-            st.success(f"✅ Mode de paiement changé: {caisse_payment_mode}")
+        # Afficher les modes sauvegardés et permettre de choisir
+        if saved_payment_modes:
+            st.success("✅ Modes de paiement configurés")
+            modes_list = saved_payment_modes.split(",")
+            for m in modes_list:
+                if ":" in m:
+                    mid, mname = m.split(":", 1)
+                    st.caption(f"• ID {mid} : {mname}")
+            
+            # Sélectionner l'ID pour CB
+            st.markdown("##### Associer les modes")
+            
+            mode_ids = [m.split(":")[0] for m in modes_list if ":" in m]
+            mode_names = [m.split(":")[1] if ":" in m else m for m in modes_list]
+            mode_options = [f"{mode_ids[i]} ({mode_names[i]})" for i in range(len(mode_ids))]
+            
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                current_cb = get_param("CAISSE_CB_ID") or ""
+                cb_index = mode_ids.index(current_cb) if current_cb in mode_ids else 0
+                selected_cb = st.selectbox("💳 Carte bancaire", mode_options, index=cb_index, key="sel_cb")
+                cb_id = selected_cb.split(" ")[0]
+                if cb_id != current_cb:
+                    set_param("CAISSE_CB_ID", cb_id)
+            
+            with col_m2:
+                current_esp = get_param("CAISSE_ESP_ID") or ""
+                esp_index = mode_ids.index(current_esp) if current_esp in mode_ids else 0
+                selected_esp = st.selectbox("💵 Espèces", mode_options, index=esp_index, key="sel_esp")
+                esp_id = selected_esp.split(" ")[0]
+                if esp_id != current_esp:
+                    set_param("CAISSE_ESP_ID", esp_id)
+        else:
+            st.info("👆 Cliquez sur 'Récupérer mes modes de paiement' pour configurer")
         
-        # Afficher le mode actuel
-        st.caption(f"📌 Mode actuel en BDD: {current_payment}")
-        
+        # Méthode de livraison
+        st.markdown("---")
         delivery_options = ["4 (Vente au comptoir)", "0 (À emporter)", "2 (Sur place)"]
         delivery_values = ["4", "0", "2"]
         current_delivery = get_param("CAISSE_DELIVERY_METHOD") or "4"
