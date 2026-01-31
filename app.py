@@ -6123,12 +6123,23 @@ def staff_traiter_demande(tid):
         reste = max(0, total_ttc - float(acompte))
         
         if paye:
-            st.success("✅ PAYÉ")
+            col_paye1, col_paye2 = st.columns([2, 1])
+            with col_paye1:
+                st.success("✅ PAYÉ")
+            with col_paye2:
+                if st.button("↩️", key=f"btn_unpaye_{tid}", help="Annuler le paiement"):
+                    update_ticket(tid, paye=0)
+                    clear_tickets_cache()
+                    clear_ticket_full_cache()
+                    st.rerun()
         else:
             if reste > 0:
                 st.markdown(f'<div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center;margin-top:8px;"><strong style="color:#92400e;">💳 Reste à payer: {reste:.2f} €</strong></div>', unsafe_allow_html=True)
             if st.button("✅ MARQUER PAYÉ", key=f"btn_paye_{tid}", type="primary", use_container_width=True):
                 update_ticket(tid, paye=1, acompte=total_ttc)
+                # Forcer l'invalidation du cache
+                clear_tickets_cache()
+                clear_ticket_full_cache()
                 st.rerun()
         
         # Statut
@@ -6196,23 +6207,24 @@ Merci de nous confirmer votre accord.
                         update_ticket(tid, msg_email=1)
                         st.success("✅ Envoyé!")
         
-        # --- INTÉGRATION CAISSE ---
-        if get_param("CAISSE_ENABLED") == "1" and get_param("CAISSE_APIKEY"):
-            st.markdown("---")
-            st.markdown("##### 💳 Caisse Enregistreuse")
-            
-            # Calculer le total
-            total_ticket = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
-            
-            if total_ticket > 0:
-                if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
-                    success, message = envoyer_vers_caisse(t)
-                    if success:
-                        st.success(f"✅ {message}")
-                    else:
-                        st.error(f"❌ {message}")
-            else:
-                st.info("💡 Renseignez un devis pour pouvoir envoyer vers la caisse")
+        # --- INTÉGRATION CAISSE --- (Toujours visible)
+        st.markdown("---")
+        st.markdown("##### 💳 Caisse Enregistreuse")
+        
+        caisse_configured = get_param("CAISSE_ENABLED") == "1" and get_param("CAISSE_APIKEY")
+        total_ticket = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
+        
+        if not caisse_configured:
+            st.warning("⚠️ Configurez l'API dans ⚙️ Config > 💳 Caisse")
+        elif total_ticket <= 0:
+            st.info("💡 Renseignez un devis pour envoyer vers la caisse")
+        else:
+            if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
+                success, message = envoyer_vers_caisse(t)
+                if success:
+                    st.success(f"✅ {message}")
+                else:
+                    st.error(f"❌ {message}")
     
     # =================================================================
     # ZONE BAS: Notes (gauche) + Notifications (droite)
