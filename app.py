@@ -2614,7 +2614,7 @@ def init_db():
         couleur TEXT,
         actif INTEGER DEFAULT 1)""")
     
-    # Migrations diverses
+    # Migrations diverses - commit après chaque pour PostgreSQL
     migrations = [
         "ALTER TABLE tickets ADD COLUMN commentaire_client TEXT",
         "ALTER TABLE tickets ADD COLUMN imei TEXT",
@@ -2636,10 +2636,12 @@ def init_db():
     for sql in migrations:
         try:
             c.execute(sql)
-        except:
-            pass
-    
-    conn.commit()
+            conn.commit()  # Commit après chaque migration réussie
+        except Exception as e:
+            try:
+                conn.rollback()  # Rollback si erreur (colonne existe déjà)
+            except:
+                pass
     
     # Initialiser les membres équipe par défaut
     c.execute("SELECT COUNT(*) FROM membres_equipe")
@@ -2853,6 +2855,18 @@ def supprimer_client(client_id):
     c.execute("DELETE FROM tickets WHERE client_id=?", (client_id,))
     # Puis supprimer le client
     c.execute("DELETE FROM clients WHERE id=?", (client_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def supprimer_ticket(ticket_id):
+    """Supprime une réparation (ticket) tout en conservant le client"""
+    conn = get_db()
+    c = conn.cursor()
+    # Supprimer les commandes de pièces associées
+    c.execute("DELETE FROM commandes_pieces WHERE ticket_id=?", (ticket_id,))
+    # Supprimer le ticket
+    c.execute("DELETE FROM tickets WHERE id=?", (ticket_id,))
     conn.commit()
     conn.close()
     return True
@@ -5660,10 +5674,44 @@ def staff_traiter_demande(tid):
         modele_txt = f"{t.get('marque','')} {t.get('modele','')}"
         if t.get('modele_autre'): modele_txt += f" ({t['modele_autre']})"
     
-    col_back, col_info = st.columns([1, 6])
+    # Vérifier si on est en mode suppression
+    if st.session_state.get(f"delete_ticket_{tid}"):
+        st.markdown(f"""
+        <div style="background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+            <h3 style="color:#dc2626;margin:0 0 1rem 0;">⚠️ Supprimer cette réparation ?</h3>
+            <p><strong>{t['ticket_code']}</strong> - {t.get('client_nom','')} {t.get('client_prenom','')}</p>
+            <p>📱 {modele_txt}</p>
+            <p style="color:#dc2626;font-size:0.9rem;">Le client sera conservé, seule la réparation sera supprimée.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        pin_delete = st.text_input("🔐 Code PIN pour confirmer", type="password", key=f"pin_del_ticket_{tid}")
+        
+        col_del1, col_del2 = st.columns(2)
+        with col_del1:
+            if st.button("🗑️ Confirmer la suppression", type="primary", use_container_width=True, key=f"confirm_del_{tid}"):
+                if pin_delete == "2626":
+                    supprimer_ticket(tid)
+                    st.success("✅ Réparation supprimée!")
+                    st.session_state.edit_id = None
+                    st.session_state[f"delete_ticket_{tid}"] = False
+                    st.rerun()
+                else:
+                    st.error("❌ Code PIN incorrect!")
+        with col_del2:
+            if st.button("❌ Annuler", use_container_width=True, key=f"cancel_del_{tid}"):
+                st.session_state[f"delete_ticket_{tid}"] = False
+                st.rerun()
+        return
+    
+    col_back, col_del, col_space = st.columns([1, 1, 5])
     with col_back:
         if st.button("← Retour", key="close_process", type="secondary", use_container_width=True):
             st.session_state.edit_id = None
+            st.rerun()
+    with col_del:
+        if st.button("🗑️ Supprimer", key=f"del_ticket_btn_{tid}", type="secondary", use_container_width=True):
+            st.session_state[f"delete_ticket_{tid}"] = True
             st.rerun()
     
     st.markdown(f"""
@@ -5827,8 +5875,7 @@ def staff_traiter_demande(tid):
             placeholder_precision = "Ex: Marque pièce, spécificité, remarque..."
         
         new_type_ecran = st.text_input(label_precision, value=type_ecran_actuel, placeholder=placeholder_precision, key=f"type_ecran_{tid}")
-        if new_type_ecran != type_ecran_actuel:
-            update_ticket(tid, type_ecran=new_type_ecran)
+        # Note: type_ecran sera sauvegardé avec les notes pour éviter erreur si colonne absente
         
         # Technicien
         membres = get_membres_equipe()
@@ -6020,10 +6067,16 @@ Merci de nous confirmer votre accord.
         note_int_actuelle = t.get('notes_internes') or ""
         new_note_int = st.text_area("Note privée", value=note_int_actuelle, height=80, key=f"notes_int_{tid}", label_visibility="collapsed")
         
-        # Bouton enregistrer notes
-        if st.button("💾 Enregistrer les notes", key=f"save_notes_{tid}", type="secondary", use_container_width=True):
-            update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int)
-            st.success("✅ Notes enregistrées!")
+        # Bouton enregistrer notes + précision
+        if st.button("💾 Enregistrer", key=f"save_notes_{tid}", type="primary", use_container_width=True):
+            # Récupérer type_ecran depuis session_state
+            final_type_ecran = st.session_state.get(f"type_ecran_{tid}", t.get('type_ecran') or "")
+            try:
+                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int, type_ecran=final_type_ecran)
+            except:
+                # Si erreur (colonne type_ecran n'existe pas), sauvegarder sans
+                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int)
+            st.success("✅ Enregistré!")
     
     with col_notifs:
         st.markdown("""<div class="detail-card-header">📊 Centre de notifications</div>""", unsafe_allow_html=True)
