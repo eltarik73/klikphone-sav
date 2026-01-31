@@ -3297,12 +3297,9 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         if not apikey or not shopid:
             return False, "Configuration API manquante (APIKEY ou SHOPID)"
         
-        # Préparer les données
-        payment_mode = payment_override or get_param("CAISSE_PAYMENT_MODE") or "-1"
+        # Préparer les données - IMPORTANT: payment_override est utilisé directement
+        payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        
-        # Log pour debug
-        print(f"[CAISSE] Payment mode envoyé: {payment_mode}")
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
@@ -3362,23 +3359,26 @@ def envoyer_vers_caisse(ticket, payment_override=None):
             timeout=15
         )
         
+        # Debug: afficher ce qui a été envoyé
+        payment_sent = payment_mode
+        
         if response.status_code == 200:
             try:
                 result = response.json()
                 if result.get("result") == "OK":
-                    return True, f"Vente enregistrée ! (mode paiement: {payment_mode})"
+                    return True, f"✅ Vente créée ! (payment={payment_sent})"
                 elif "id" in str(result).lower():
-                    return True, f"Vente enregistrée ! {result}"
+                    return True, f"✅ Vente créée ! ID: {result} (payment={payment_sent})"
                 else:
-                    return False, f"{result.get('errorMessage', result)}"
+                    return False, f"Erreur API: {result.get('errorMessage', result)} (payment envoyé: {payment_sent})"
             except:
                 # Si pas JSON, vérifier si c'est un succès (nombre = ID de vente)
                 text = response.text.strip()
                 if text.isdigit():
-                    return True, f"Vente enregistrée ! ID: {text}"
+                    return True, f"✅ Vente créée ! ID: {text} (payment={payment_sent})"
                 elif "OK" in text:
-                    return True, "Vente enregistrée !"
-                return False, f"Réponse: {text[:200]}"
+                    return True, f"✅ Vente créée ! (payment={payment_sent})"
+                return False, f"Réponse inattendue: {text[:100]} (payment={payment_sent})"
         else:
             return False, f"Erreur HTTP {response.status_code}: {response.text[:100]}"
             
@@ -6233,50 +6233,36 @@ Merci de nous confirmer votre accord.
         elif total_ticket <= 0:
             st.info("💡 Renseignez un devis pour envoyer vers la caisse")
         else:
-            # Récupérer les IDs de modes de paiement configurés
-            cb_id = get_param("CAISSE_CB_ID") or ""
-            esp_id = get_param("CAISSE_ESP_ID") or ""
+            # Récupérer les IDs configurés
+            cb_id = get_param("CAISSE_CB_ID") or "2"
+            esp_id = get_param("CAISSE_ESP_ID") or "1"
             
-            if not cb_id and not esp_id:
-                st.warning("⚠️ Configurez vos modes de paiement dans ⚙️ Config > 💳 Caisse")
-                st.caption("Cliquez sur 'Récupérer mes modes de paiement'")
-            else:
-                # Construire les options de paiement
-                payment_options = []
-                if cb_id:
-                    payment_options.append(("💳 Carte bancaire", cb_id))
-                if esp_id:
-                    payment_options.append(("💵 Espèces", esp_id))
-                payment_options.append(("📝 Non payée", "-1"))
-                
-                payment_labels = [p[0] for p in payment_options]
-                
-                mode_envoi = st.radio(
-                    "Mode de paiement",
-                    payment_labels,
-                    index=0,
-                    key=f"mode_paiement_envoi_{tid}",
-                    horizontal=True
-                )
-                
-                # Trouver l'ID correspondant
-                mode_val = next((p[1] for p in payment_options if p[0] == mode_envoi), "-1")
-                
-                # Afficher l'ID pour debug
-                st.caption(f"🔧 ID mode: {mode_val} | CB={cb_id} | ESP={esp_id}")
-                
-                # Note sur l'envoi facture
-                client_email = t.get('client_email', '')
-                if client_email:
-                    st.caption(f"📧 Email client: {client_email}")
-                    st.caption("💡 Pour envoyer la facture, activez l'envoi auto dans caisse.enregistreuse.fr")
-                
-                if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
-                    success, message = envoyer_vers_caisse(t, payment_override=mode_val)
-                    if success:
-                        st.success(f"✅ {message}")
-                    else:
-                        st.error(f"❌ {message}")
+            # Mode de paiement
+            mode_envoi = st.radio(
+                "Mode de paiement",
+                ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
+                index=0,
+                key=f"mode_paiement_envoi_{tid}",
+                horizontal=True
+            )
+            
+            # Mapper vers les IDs configurés
+            mode_map = {
+                "💳 Carte bancaire": cb_id,
+                "💵 Espèces": esp_id,
+                "📝 Non payée": "-1"
+            }
+            mode_val = mode_map[mode_envoi]
+            
+            # Debug
+            st.caption(f"🔧 ID envoyé: **{mode_val}** (CB={cb_id}, ESP={esp_id})")
+            
+            if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
+                success, message = envoyer_vers_caisse(t, payment_override=mode_val)
+                if success:
+                    st.success(f"✅ {message}")
+                else:
+                    st.error(f"❌ {message}")
     
     # =================================================================
     # ZONE BAS: Notes (gauche) + Notifications (droite)
@@ -7769,116 +7755,60 @@ def staff_config():
                 st.success("✅ Configuration enregistrée!")
                 st.rerun()
         
-        # Récupérer les modes de paiement de la caisse
+        # Récupérer les modes de paiement de votre caisse
         st.markdown("---")
-        st.markdown("#### 💳 Modes de paiement de votre caisse")
+        st.markdown("#### 💳 Vos modes de paiement")
         
-        # Récupérer les modes sauvegardés
-        saved_payment_modes = get_param("CAISSE_PAYMENT_MODES") or ""
-        
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button("🔄 Récupérer auto (modes de paiement)", use_container_width=True):
-                apikey = get_param("CAISSE_APIKEY")
-                shopid = get_param("CAISSE_SHOPID")
-                if apikey and shopid:
-                    try:
-                        import requests
-                        response = requests.get(
-                            f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
-                            timeout=10
-                        )
-                        if response.status_code == 200:
+        if st.button("🔄 Récupérer mes modes de paiement depuis la caisse", use_container_width=True):
+            apikey = get_param("CAISSE_APIKEY")
+            shopid = get_param("CAISSE_SHOPID")
+            if apikey and shopid:
+                try:
+                    import requests
+                    response = requests.get(
+                        f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
+                        timeout=10
+                    )
+                    st.write(f"**Status:** {response.status_code}")
+                    st.write(f"**Réponse brute:** {response.text[:500]}")
+                    
+                    if response.status_code == 200:
+                        try:
                             data = response.json()
                             if isinstance(data, list) and len(data) > 0:
-                                modes_str = ",".join([f"{m.get('id', '')}:{m.get('nom', m.get('name', 'Mode'))}" for m in data])
-                                set_param("CAISSE_PAYMENT_MODES", modes_str)
-                                st.success(f"✅ {len(data)} modes récupérés !")
+                                st.success(f"✅ {len(data)} modes de paiement trouvés !")
                                 for m in data:
-                                    st.write(f"- ID **{m.get('id')}** : {m.get('nom', m.get('name', ''))}")
-                                st.rerun()
+                                    st.write(f"- **ID {m.get('id')}** : {m.get('nom', m.get('name', m))}")
+                            elif isinstance(data, dict):
+                                st.info("Réponse JSON (dict):")
+                                st.json(data)
                             else:
-                                st.warning(f"⚠️ Réponse: {data}")
-                                st.info("💡 Utilisez le test automatique ci-dessous")
-                        else:
-                            st.error(f"❌ Erreur HTTP: {response.status_code}")
-                            st.info("💡 Utilisez le test automatique ci-dessous")
-                    except Exception as e:
-                        st.error(f"❌ Erreur: {str(e)}")
-                        st.info("💡 Utilisez le test automatique ci-dessous")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
-        
-        with col_r2:
-            if st.button("🧪 Tester les IDs (1 à 20)", use_container_width=True):
-                apikey = get_param("CAISSE_APIKEY")
-                shopid = get_param("CAISSE_SHOPID")
-                if apikey and shopid:
-                    import requests
-                    st.info("⏳ Test des IDs de paiement en cours...")
-                    valid_ids = []
-                    for test_id in range(1, 21):
-                        try:
-                            # Tester avec une vente à 0€ (qui sera rejetée mais on verra si l'ID est valide)
-                            test_data = [
-                                ("idboutique", shopid),
-                                ("key", apikey),
-                                ("payment", str(test_id)),
-                                ("deliveryMethod", "4"),
-                                ("itemsList[]", "Free_0.01_Test"),
-                            ]
-                            response = requests.post(
-                                "https://caisse.enregistreuse.fr/workers/webapp.php",
-                                data=test_data,
-                                timeout=5
-                            )
-                            if response.status_code == 200:
-                                result = response.text
-                                # Si pas d'erreur "Payment not found", l'ID est valide
-                                if "Payment not found" not in result and "error" not in result.lower():
-                                    valid_ids.append(test_id)
-                                    st.write(f"✅ ID **{test_id}** valide ! (Réponse: {result[:50]})")
-                        except:
-                            pass
-                    
-                    if valid_ids:
-                        st.success(f"🎉 IDs valides trouvés: {valid_ids}")
-                        st.info("👆 Utilisez ces IDs ci-dessous")
-                    else:
-                        st.warning("Aucun ID trouvé. Vérifiez votre configuration caisse.")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
+                                st.warning(f"Format inattendu: {type(data)}")
+                        except Exception as e:
+                            st.error(f"Erreur JSON: {e}")
+                except Exception as e:
+                    st.error(f"❌ Erreur: {str(e)}")
+            else:
+                st.warning("⚠️ Configurez d'abord l'API")
         
         # Saisie manuelle des IDs
-        st.markdown("##### 📝 Saisie des IDs")
-        st.caption("Entrez les IDs trouvés ci-dessus ou dans caisse.enregistreuse.fr > Configuration > Actions/Modes de paiement")
-        
-        current_cb = get_param("CAISSE_CB_ID") or ""
-        current_esp = get_param("CAISSE_ESP_ID") or ""
+        st.markdown("##### 📝 Configurer les IDs manuellement")
+        current_cb = get_param("CAISSE_CB_ID") or "2"
+        current_esp = get_param("CAISSE_ESP_ID") or "1"
         
         col_id1, col_id2 = st.columns(2)
         with col_id1:
-            new_cb_id = st.text_input("ID Carte bancaire", value=current_cb, placeholder="Ex: 5", key="manual_cb_id")
+            new_cb_id = st.text_input("ID pour Carte bancaire", value=current_cb, key="manual_cb_id")
         with col_id2:
-            new_esp_id = st.text_input("ID Espèces", value=current_esp, placeholder="Ex: 6", key="manual_esp_id")
+            new_esp_id = st.text_input("ID pour Espèces", value=current_esp, key="manual_esp_id")
         
         if st.button("💾 Sauvegarder les IDs", type="primary", use_container_width=True):
-            if new_cb_id or new_esp_id:
-                set_param("CAISSE_CB_ID", new_cb_id.strip())
-                set_param("CAISSE_ESP_ID", new_esp_id.strip())
-                st.success(f"✅ Sauvegardé ! CB = {new_cb_id} | Espèces = {new_esp_id}")
-                st.rerun()
-            else:
-                st.warning("Entrez au moins un ID")
+            set_param("CAISSE_CB_ID", new_cb_id.strip())
+            set_param("CAISSE_ESP_ID", new_esp_id.strip())
+            st.success(f"✅ Sauvegardé ! CB = {new_cb_id} | Espèces = {new_esp_id}")
+            st.rerun()
         
-        # Afficher les modes sauvegardés si récupération auto a fonctionné
-        if saved_payment_modes:
-            with st.expander("📋 Modes récupérés automatiquement"):
-                modes_list = saved_payment_modes.split(",")
-                for m in modes_list:
-                    if ":" in m:
-                        mid, mname = m.split(":", 1)
-                        st.caption(f"• ID {mid} : {mname}")
+        st.caption(f"📌 Valeurs actuelles : CB = **{current_cb}** | Espèces = **{current_esp}**")
         
         # Méthode de livraison
         st.markdown("---")
