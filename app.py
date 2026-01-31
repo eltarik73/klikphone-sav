@@ -3450,35 +3450,38 @@ L'équipe {nom_boutique}
 # TICKETS HTML
 # =============================================================================
 def ticket_client_html(t, for_email=False):
-    """Ticket client - VERSION AMÉLIORÉE - Style moderne comme le devis"""
+    """Ticket client - NOIR SUR BLANC pour impression"""
     panne = t.get("panne", "")
     if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
     
-    # Type d'écran si renseigné
     type_ecran = (t.get('type_ecran') or '').strip()
-    
-    # Commentaire public (imprimé sur le document)
     comment_public = (t.get("commentaire_client") or "").strip()
     
-    # Tarifs
+    # Tarifs avec réparation supplémentaire
     devis = t.get('devis_estime') or 0
     acompte = t.get('acompte') or 0
-    tarif = t.get('tarif_final') or devis
+    rep_supp = t.get('reparation_supp') or ''
+    prix_supp = t.get('prix_supp') or 0
+    tarif = t.get('tarif_final') or (devis + prix_supp)
     reste = max(0, tarif - acompte)
     
     # URL de suivi
     url_suivi = get_param("URL_SUIVI") or "https://klikphone-sav.streamlit.app"
     ticket_code = t.get('ticket_code', '')
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
+    qr_url_val = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
     
-    # HTML pour type écran
-    type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">📱 Type écran: {type_ecran}</div>' if type_ecran else ""
+    # HTML conditionnel
+    type_ecran_html = f'<div class="info-row"><span class="label">Type écran</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
+    rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
+    comment_html = f'<div class="notes-box"><div class="notes-title">💬 Commentaire</div>{comment_public}</div>' if comment_public else ""
     
     # Version EMAIL (colorée)
     if for_email:
+        type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">📱 Type écran: {type_ecran}</div>' if type_ecran else ""
+        rep_supp_email = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
         comment_section = f"""
         <div style="background:#fff7ed;border-radius:8px;padding:12px;margin:15px 0;">
             <div style="font-weight:600;color:#ea580c;font-size:12px;margin-bottom:5px;">💬 Commentaire</div>
@@ -3501,7 +3504,6 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 .section {{ margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }}
 .section:last-child {{ border-bottom: none; }}
 .section-title {{ font-weight: bold; color: #f97316; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }}
-.info-row {{ display: flex; justify-content: space-between; margin: 8px 0; }}
 .tarif-box {{ background: #f8fafc; border-radius: 8px; padding: 15px; margin: 15px 0; }}
 .tarif-row {{ display: flex; justify-content: space-between; margin: 5px 0; }}
 .tarif-row.total {{ font-weight: bold; font-size: 16px; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px; }}
@@ -3531,13 +3533,14 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </div>
 <div class="tarif-box">
 <div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
+{rep_supp_email}
 <div class="tarif-row"><span>Acompte versé</span><span>- {acompte:.2f} €</span></div>
 <div class="tarif-row total"><span>Reste à payer</span><span>{reste:.2f} €</span></div>
 </div>
 {comment_section}
 </div>
 <div class="qr-section">
-<img src="{qr_url}" alt="QR Code">
+<img src="{qr_url_val}" alt="QR Code">
 <p style="color:#64748b;font-size:11px;margin-top:8px;">Scannez pour suivre votre réparation</p>
 </div>
 <div class="footer">
@@ -3548,193 +3551,43 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </body>
 </html>"""
     
-    # Type écran pour impression
-    type_ecran_print = f'<div class="info-row"><span class="label">Type écran</span><span class="value" style="color:#3b82f6;">{type_ecran}</span></div>' if type_ecran else ""
-    
-    # Version IMPRESSION - 80mm - Style moderne
-    comment_section_thermal = f"""
-    <div class="notes-box">
-        <div class="notes-title">💬 Commentaire</div>
-        {comment_public}
-    </div>
-    """ if comment_public else ""
-    
+    # Version IMPRESSION - 80mm - NOIR SUR BLANC
     return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket Client - Klikphone</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Ticket Client - {t['ticket_code']}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-        }}
-        .ticket {{
-            background: #fff;
-            width: 80mm;
-            max-width: 80mm;
-            min-height: 180mm;
-            overflow: hidden;
-            padding: 4mm;
-            border: 1px solid #ccc;
-            border-radius: 2px;
-            font-size: 11px;
-            line-height: 1.4;
-            color: #000;
-        }}
-        .header {{
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 3mm;
-            margin-bottom: 3mm;
-        }}
-        .header img {{
-            width: 16mm;
-            height: 16mm;
-            margin-bottom: 2mm;
-        }}
-        .header h1 {{
-            font-size: 14px;
-            font-weight: 900;
-            margin: 0;
-        }}
-        .header .contact {{
-            font-size: 9px;
-            margin-top: 1mm;
-            color: #333;
-        }}
-        .header .phone {{
-            font-size: 12px;
-            font-weight: 800;
-        }}
-        .ticket-num {{
-            background: #000;
-            color: #fff;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 900;
-            padding: 3mm;
-            margin: 3mm 0;
-            letter-spacing: 1px;
-        }}
-        .section {{
-            margin: 3mm 0;
-            padding: 2mm 0;
-            border-bottom: 1px dashed #ccc;
-        }}
-        .section-title {{
-            font-size: 10px;
-            font-weight: 800;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 2mm;
-        }}
-        .info-row {{
-            display: flex;
-            justify-content: space-between;
-            margin: 1.5mm 0;
-            font-size: 11px;
-        }}
-        .info-row .label {{
-            color: #555;
-        }}
-        .info-row .value {{
-            font-weight: 700;
-            text-align: right;
-        }}
-        .big-info {{
-            font-size: 12px;
-            font-weight: 700;
-            margin: 1mm 0;
-        }}
-        .tarif-box {{
-            background: #f5f5f5;
-            padding: 3mm;
-            margin: 3mm 0;
-            border: 1px solid #ddd;
-        }}
-        .tarif-row {{
-            display: flex;
-            justify-content: space-between;
-            margin: 1mm 0;
-            font-size: 10px;
-        }}
-        .tarif-row.total {{
-            font-size: 13px;
-            font-weight: 900;
-            border-top: 1px solid #999;
-            padding-top: 2mm;
-            margin-top: 2mm;
-        }}
-        .notes-box {{
-            background: #fff7ed;
-            border-left: 3px solid #f97316;
-            padding: 2mm 3mm;
-            margin: 3mm 0;
-            font-size: 10px;
-        }}
-        .notes-title {{
-            font-weight: 700;
-            font-size: 9px;
-            margin-bottom: 1mm;
-        }}
-        .qr-box {{
-            text-align: center;
-            padding: 3mm;
-            margin: 3mm 0;
-            background: #f8f8f8;
-            border-radius: 2mm;
-        }}
-        .qr-box img {{
-            width: 25mm;
-            height: 25mm;
-        }}
-        .qr-box p {{
-            font-size: 8px;
-            margin-top: 1mm;
-            color: #666;
-        }}
-        .disclaimer {{
-            font-size: 7px;
-            color: #666;
-            border-top: 1px dashed #ccc;
-            padding-top: 2mm;
-            margin-top: 2mm;
-            line-height: 1.3;
-        }}
-        .footer {{
-            text-align: center;
-            font-weight: 700;
-            font-size: 11px;
-            margin-top: 3mm;
-            padding-top: 2mm;
-            border-top: 1px solid #000;
-        }}
-        .print-btn {{
-            display: block;
-            width: 100%;
-            margin-top: 3mm;
-            background: #000;
-            color: #fff;
-            padding: 3mm;
-            border: none;
-            border-radius: 2mm;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-        }}
-        .print-btn:hover {{ background: #333; }}
-
+        body {{ font-family: Arial, sans-serif; background: #fff; padding: 10px; color: #000; }}
+        .ticket {{ background: #fff; width: 80mm; max-width: 80mm; margin: 0 auto; border: 2px solid #000; }}
+        .header {{ text-align: center; border-bottom: 2px solid #000; padding: 8px; }}
+        .header img {{ width: 14mm; height: 14mm; margin-bottom: 2mm; }}
+        .header h1 {{ font-size: 14px; font-weight: 900; margin: 0; color: #000; }}
+        .header .contact {{ font-size: 9px; color: #333; margin-top: 2px; }}
+        .header .phone {{ font-size: 11px; font-weight: 800; color: #000; }}
+        .ticket-num {{ background: #000; color: #fff; text-align: center; font-size: 14px; font-weight: 900; padding: 8px; letter-spacing: 1px; }}
+        .section {{ margin: 6px 8px; padding-bottom: 6px; border-bottom: 1px dashed #999; }}
+        .section:last-child {{ border-bottom: none; }}
+        .section-title {{ font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid #000; padding-bottom: 2px; }}
+        .info-row {{ display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; color: #000; }}
+        .info-row .label {{ color: #333; }}
+        .info-row .value {{ font-weight: 700; color: #000; text-align: right; max-width: 55%; }}
+        .big-name {{ font-size: 13px; font-weight: 800; margin-bottom: 2px; color: #000; }}
+        .tarif-box {{ background: #f5f5f5; border: 2px solid #000; padding: 8px; margin: 6px 8px; }}
+        .tarif-row {{ display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; color: #000; }}
+        .tarif-row.total {{ font-size: 14px; font-weight: 900; border-top: 2px solid #000; padding-top: 6px; margin-top: 6px; color: #000; }}
+        .qr-box {{ text-align: center; padding: 8px; margin: 6px 8px; background: #f9f9f9; border: 1px solid #ccc; }}
+        .qr-box img {{ width: 22mm; height: 22mm; }}
+        .qr-box p {{ font-size: 8px; margin-top: 2px; color: #333; }}
+        .notes-box {{ background: #f9f9f9; border-left: 3px solid #000; padding: 6px; margin: 6px 8px; font-size: 9px; color: #000; }}
+        .notes-title {{ font-weight: 800; font-size: 8px; margin-bottom: 2px; text-transform: uppercase; }}
+        .disclaimer {{ font-size: 7px; color: #333; border-top: 1px dashed #999; padding: 6px 8px; margin-top: 4px; line-height: 1.3; }}
+        .footer {{ text-align: center; font-weight: 800; font-size: 11px; padding: 8px; border-top: 1px solid #000; color: #000; }}
+        .print-btn {{ display: block; width: calc(100% - 16px); margin: 8px; background: #000; color: #fff; padding: 10px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; }}
         @media print {{
-            body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; min-height: auto; }}
+            body {{ padding: 0; }}
+            .ticket {{ border: 1px solid #000; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3749,88 +3602,79 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
             <div>79 Pl. Saint Léger, 73000 Chambéry</div>
         </div>
     </div>
-
     <div class="ticket-num">N° {t['ticket_code']}</div>
-
     <div class="section">
         <div class="section-title">👤 Client</div>
-        <div class="big-info">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+        <div class="big-name">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
         <div class="info-row">
             <span class="label">Téléphone</span>
             <span class="value">{t.get('client_tel','')}</span>
         </div>
     </div>
-
     <div class="section">
         <div class="section-title">📱 Appareil</div>
-        <div class="big-info">{t.get('marque','')} {modele_txt}</div>
+        <div class="big-name">{t.get('marque','')} {modele_txt}</div>
         <div class="info-row">
             <span class="label">Motif</span>
             <span class="value">{panne}</span>
         </div>
-        {type_ecran_print}
+        {type_ecran_html}
         <div class="info-row">
             <span class="label">Date dépôt</span>
             <span class="value">{fmt_date(t.get('date_depot',''))}</span>
         </div>
     </div>
-
     <div class="tarif-box">
-        <div class="tarif-row">
-            <span>Devis estimé</span>
-            <span>{devis:.2f} €</span>
-        </div>
-        <div class="tarif-row">
-            <span>Acompte versé</span>
-            <span>- {acompte:.2f} €</span>
-        </div>
-        <div class="tarif-row total">
-            <span>RESTE À PAYER</span>
-            <span>{reste:.2f} €</span>
-        </div>
+        <div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
+        {rep_supp_html}
+        <div class="tarif-row"><span>Acompte versé</span><span>- {acompte:.2f} €</span></div>
+        <div class="tarif-row total"><span>RESTE À PAYER</span><span>{reste:.2f} €</span></div>
     </div>
-
-    {comment_section_thermal}
-
+    {comment_html}
     <div class="qr-box">
-        <img src="{qr_url}" alt="QR Code">
+        <img src="{qr_url_val}" alt="QR Code">
         <p>Scannez pour suivre votre réparation</p>
     </div>
-
     <div class="disclaimer">
         • Klikphone ne consulte pas vos données personnelles<br>
         • Pensez à sauvegarder vos données avant dépôt<br>
         • Garantie 3 mois sur les réparations
     </div>
-
     <div class="footer">Merci de votre confiance !</div>
-
     <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
 
+
 def ticket_staff_html(t):
-    """Génère un ticket STAFF HTML pour impression 80mm - Style moderne orange"""
+    """Génère un ticket STAFF HTML pour impression 80mm - NOIR SUR BLANC"""
     modele = t.get('modele_autre') or f"{t.get('modele', '')}"
     panne = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
+    type_ecran = (t.get('type_ecran') or '').strip()
     
     notes_publiques = (t.get('commentaire_client') or '').strip()
     notes_privees = (t.get('notes_internes') or '').strip()
     notes_client = (t.get('notes_client') or '').strip()
-    type_ecran = (t.get('type_ecran') or '').strip()
     
-    # Calcul reste à payer
+    # Calcul reste à payer AVEC réparation supplémentaire
     devis = t.get('devis_estime') or 0
     acompte = t.get('acompte') or 0
-    tarif_final = t.get('tarif_final') or devis
+    rep_supp = t.get('reparation_supp') or ''
+    prix_supp = t.get('prix_supp') or 0
+    tarif_final = t.get('tarif_final') or (devis + prix_supp)
     reste = max(0, tarif_final - acompte)
     
-    # Sections conditionnelles
-    type_ecran_html = f'<div class="info-detail"><strong>📱 Type écran:</strong> {type_ecran}</div>' if type_ecran else ""
-    notes_client_html = f'<div class="notes-box client"><div class="notes-title">📋 Note client (dépôt)</div>{notes_client}</div>' if notes_client else ""
-    notes_pub_html = f'<div class="notes-box public"><div class="notes-title">💬 Note publique</div>{notes_publiques}</div>' if notes_publiques else ""
-    notes_priv_html = f'<div class="notes-box private"><div class="notes-title">🔒 Note privée (équipe)</div>{notes_privees}</div>' if notes_privees else ""
+    # Ligne réparation supplémentaire
+    rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
+    
+    # Type écran dans section appareil
+    type_ecran_html = f'<div class="info-row"><span class="label">Type écran</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
+    
+    # Notes
+    notes_client_html = f'<div class="notes-box"><div class="notes-title">📋 Note client</div>{notes_client}</div>' if notes_client else ""
+    notes_pub_html = f'<div class="notes-box"><div class="notes-title">💬 Note publique</div>{notes_publiques}</div>' if notes_publiques else ""
+    notes_priv_html = f'<div class="notes-box private"><div class="notes-title">🔒 Note privée</div>{notes_privees}</div>' if notes_privees else ""
     
     return f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3839,40 +3683,36 @@ def ticket_staff_html(t):
     <title>Ticket Staff - {t['ticket_code']}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: Arial, sans-serif; background: #f5f5f5; padding: 10px; }}
-        .ticket {{ background: #fff; width: 80mm; max-width: 80mm; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-        .header {{ background: linear-gradient(135deg, #6b7280, #4b5563); color: white; padding: 12px; text-align: center; }}
-        .header img {{ width: 40px; height: 40px; margin-bottom: 6px; }}
-        .header h1 {{ font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 1px; }}
-        .header p {{ font-size: 10px; opacity: 0.9; margin-top: 2px; }}
-        .ticket-num {{ background: #1e293b; color: white; text-align: center; padding: 10px; font-size: 18px; font-weight: 800; letter-spacing: 2px; }}
-        .status {{ background: #f97316; color: white; text-align: center; padding: 8px; font-size: 11px; font-weight: 700; }}
-        .content {{ padding: 10px; }}
-        .section {{ margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e5e7eb; }}
+        body {{ font-family: Arial, sans-serif; background: #fff; padding: 10px; color: #000; }}
+        .ticket {{ background: #fff; width: 80mm; max-width: 80mm; margin: 0 auto; border: 2px solid #000; }}
+        .header {{ background: #f5f5f5; border-bottom: 2px solid #000; padding: 10px; text-align: center; }}
+        .header img {{ width: 35px; height: 35px; margin-bottom: 4px; }}
+        .header h1 {{ font-size: 14px; font-weight: 900; margin: 0; color: #000; }}
+        .header p {{ font-size: 9px; color: #333; margin-top: 2px; }}
+        .ticket-num {{ background: #000; color: #fff; text-align: center; padding: 8px; font-size: 16px; font-weight: 900; letter-spacing: 2px; }}
+        .status {{ background: #f5f5f5; border-bottom: 1px solid #000; text-align: center; padding: 6px; font-size: 11px; font-weight: 700; color: #000; }}
+        .content {{ padding: 8px; }}
+        .section {{ margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #999; }}
         .section:last-child {{ border-bottom: none; }}
-        .section-title {{ font-weight: 700; color: #f97316; font-size: 10px; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }}
-        .info-row {{ display: flex; justify-content: space-between; margin: 4px 0; font-size: 11px; }}
-        .info-row .label {{ color: #6b7280; }}
-        .info-row .value {{ font-weight: 600; text-align: right; max-width: 55%; }}
-        .info-detail {{ font-size: 11px; margin: 4px 0; padding: 4px 8px; background: #f3f4f6; border-radius: 4px; }}
-        .big-name {{ font-size: 14px; font-weight: 700; margin-bottom: 4px; }}
-        .security-box {{ background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: center; }}
-        .security-box .title {{ font-weight: 800; font-size: 11px; color: #92400e; margin-bottom: 6px; }}
-        .security-box .codes {{ font-size: 16px; font-weight: 800; font-family: monospace; color: #1e293b; letter-spacing: 1px; }}
-        .tarif-box {{ background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 12px; margin: 10px 0; border-radius: 8px; }}
-        .tarif-row {{ display: flex; justify-content: space-between; margin: 4px 0; font-size: 12px; }}
-        .tarif-row.total {{ font-size: 18px; font-weight: 800; border-top: 2px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px; }}
-        .notes-box {{ border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 10px; }}
-        .notes-box.client {{ background: #fff7ed; border-left: 3px solid #f97316; }}
-        .notes-box.public {{ background: #f0fdf4; border-left: 3px solid #22c55e; }}
-        .notes-box.private {{ background: #fef2f2; border-left: 3px solid #ef4444; }}
-        .notes-title {{ font-weight: 700; font-size: 9px; margin-bottom: 4px; text-transform: uppercase; }}
-        .footer {{ background: #f8fafc; padding: 10px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e5e7eb; }}
-        .print-btn {{ display: block; width: calc(100% - 20px); margin: 10px; background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }}
-        .print-btn:hover {{ opacity: 0.9; }}
+        .section-title {{ font-weight: 800; color: #000; font-size: 10px; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid #000; padding-bottom: 2px; }}
+        .info-row {{ display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; color: #000; }}
+        .info-row .label {{ color: #333; }}
+        .info-row .value {{ font-weight: 700; color: #000; text-align: right; max-width: 55%; }}
+        .big-name {{ font-size: 13px; font-weight: 800; margin-bottom: 3px; color: #000; }}
+        .security-box {{ background: #fff; border: 3px solid #000; padding: 8px; margin: 8px 0; text-align: center; }}
+        .security-box .title {{ font-weight: 900; font-size: 10px; color: #000; margin-bottom: 4px; }}
+        .security-box .codes {{ font-size: 14px; font-weight: 900; font-family: monospace; color: #000; }}
+        .tarif-box {{ background: #f5f5f5; border: 2px solid #000; padding: 10px; margin: 8px 0; }}
+        .tarif-row {{ display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; color: #000; }}
+        .tarif-row.total {{ font-size: 16px; font-weight: 900; border-top: 2px solid #000; padding-top: 6px; margin-top: 6px; color: #000; }}
+        .notes-box {{ background: #f9f9f9; border-left: 3px solid #000; padding: 6px; margin: 5px 0; font-size: 9px; color: #000; }}
+        .notes-box.private {{ border-color: #666; background: #f0f0f0; }}
+        .notes-title {{ font-weight: 800; font-size: 8px; margin-bottom: 3px; text-transform: uppercase; color: #000; }}
+        .footer {{ background: #f5f5f5; padding: 8px; text-align: center; font-size: 10px; color: #000; border-top: 1px solid #000; }}
+        .print-btn {{ display: block; width: calc(100% - 16px); margin: 8px; background: #000; color: #fff; padding: 10px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; }}
         @media print {{
-            body {{ background: #fff; padding: 0; }}
-            .ticket {{ box-shadow: none; border-radius: 0; }}
+            body {{ padding: 0; }}
+            .ticket {{ border: 1px solid #000; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3881,8 +3721,8 @@ def ticket_staff_html(t):
 <div class="ticket">
     <div class="header">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-        <h1>📋 TICKET STAFF</h1>
-        <p>Document interne</p>
+        <h1>TICKET STAFF</h1>
+        <p>Document interne - Ne pas remettre au client</p>
     </div>
     <div class="ticket-num">{t['ticket_code']}</div>
     <div class="status">📍 {t.get('statut','En attente')}</div>
@@ -3892,7 +3732,7 @@ def ticket_staff_html(t):
             <div class="big-name">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
             <div class="info-row">
                 <span class="label">Téléphone</span>
-                <span class="value" style="font-family:monospace;font-size:13px;">{t.get('client_tel','')}</span>
+                <span class="value" style="font-family:monospace;">{t.get('client_tel','')}</span>
             </div>
         </div>
         <div class="section">
@@ -3909,20 +3749,21 @@ def ticket_staff_html(t):
             <div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
         </div>
         <div class="tarif-box">
-            <div class="tarif-row"><span>Devis</span><span>{devis:.2f} €</span></div>
-            <div class="tarif-row"><span>Acompte</span><span>- {acompte:.2f} €</span></div>
-            <div class="tarif-row total"><span>RESTE</span><span>{reste:.2f} €</span></div>
+            <div class="tarif-row"><span>Devis initial</span><span>{devis:.2f} €</span></div>
+            {rep_supp_html}
+            <div class="tarif-row"><span>Acompte versé</span><span>- {acompte:.2f} €</span></div>
+            <div class="tarif-row total"><span>RESTE À PAYER</span><span>{reste:.2f} €</span></div>
         </div>
         <div class="section">
             <div class="section-title">📅 Dates</div>
             <div class="info-row"><span class="label">Dépôt</span><span class="value">{fmt_date(t.get('date_depot',''))}</span></div>
-            <div class="info-row"><span class="label">Récup.</span><span class="value">{t.get('date_recuperation') or 'À définir'}</span></div>
+            <div class="info-row"><span class="label">Récupération</span><span class="value">{t.get('date_recuperation') or 'À définir'}</span></div>
         </div>
         {notes_client_html}
         {notes_pub_html}
         {notes_priv_html}
     </div>
-    <div class="footer"><strong>Tech:</strong> {t.get('technicien_assigne') or 'Non assigné'}</div>
+    <div class="footer"><strong>Technicien:</strong> {t.get('technicien_assigne') or 'Non assigné'}</div>
     <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
@@ -5873,6 +5714,15 @@ def staff_traiter_demande(tid):
                 <span class="detail-value" style="color:#166534;font-weight:600;">{t.get('date_recuperation')}</span>
             </div>'''
         
+        # Type d'écran si défini
+        type_ecran_html = ''
+        if t.get('type_ecran'):
+            type_ecran_html = f'''
+            <div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;">
+                <span class="detail-label" style="color:#1d4ed8;">📱 Type écran</span>
+                <span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get('type_ecran')}</span>
+            </div>'''
+        
         st.markdown(f'''
         <div class="detail-card">
             <div class="detail-row">
@@ -5894,7 +5744,7 @@ def staff_traiter_demande(tid):
             <div class="detail-row">
                 <span class="detail-label">Motif</span>
                 <span class="detail-value">{panne}</span>
-            </div>
+            </div>{type_ecran_html}
             <div class="detail-row">
                 <span class="detail-label">Déposé le</span>
                 <span class="detail-value">{fmt_date(t.get('date_depot',''))}</span>
@@ -6112,17 +5962,6 @@ def staff_traiter_demande(tid):
                                          placeholder="Ex: Remplacement connecteur...",
                                          key=f"panne_detail_{tid}")
         
-        # Type d'écran (visible si écran cassé ou toujours pour info)
-        type_ecran_val = t.get('type_ecran') or ""
-        if new_panne == "Écran casse" or type_ecran_val:
-            type_ecran_new = st.text_input("📱 Type d'écran choisi", 
-                                           value=type_ecran_val,
-                                           placeholder="Ex: Original, OLED, Incell, Premium...",
-                                           key=f"type_ecran_{tid}",
-                                           help="Type d'écran commandé/installé")
-        else:
-            type_ecran_new = type_ecran_val
-        
         # Technicien assigné
         membres = get_membres_equipe()
         membres_options = ["-- Non assigné --"] + [f"{m['nom']} ({m['role']})" for m in membres]
@@ -6206,10 +6045,20 @@ def staff_traiter_demande(tid):
         with col_b:
             acompte = st.number_input("Acompte (€)", value=float(t.get('acompte') or 0), min_value=0.0, step=5.0, key=f"acompte_{tid}")
         
+        # Réparation supplémentaire
+        st.markdown('<div style="margin-top:8px;padding:8px;background:#f8fafc;border-radius:8px;border:1px dashed #94a3b8;">', unsafe_allow_html=True)
+        st.markdown('<span style="font-size:12px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
+        col_rep1, col_rep2 = st.columns([2, 1])
+        with col_rep1:
+            rep_supp_val = st.text_input("Description", value=t.get('reparation_supp') or "", placeholder="Ex: Nappe Face ID, Batterie...", key=f"rep_supp_{tid}", label_visibility="collapsed")
+        with col_rep2:
+            prix_supp_val = st.number_input("Prix €", value=float(t.get('prix_supp') or 0), min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         # Bouton paiement reçu
         paye = t.get('paye', 0)
-        total_ttc = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
-        reste = max(0, total_ttc - float(t.get('acompte') or 0))
+        total_ttc = float(devis) + float(prix_supp_val)
+        reste = max(0, total_ttc - float(acompte))
         
         if paye:
             st.success("✅ PAIEMENT REÇU - Solde: 0.00 €")
@@ -6272,8 +6121,12 @@ def staff_traiter_demande(tid):
             # Récupérer les valeurs des notes depuis session_state (text_area avec key)
             final_notes_internes = st.session_state.get(f"notes_int_{tid}", t.get('notes_internes') or "")
             final_commentaire_public = st.session_state.get(f"notes_pub_{tid}", t.get('commentaire_client') or "")
-            final_type_ecran = st.session_state.get(f"type_ecran_{tid}", t.get('type_ecran') or "")
-            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, type_ecran=final_type_ecran, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=final_notes_internes, commentaire_client=final_commentaire_public)
+            final_rep_supp = st.session_state.get(f"rep_supp_{tid}", t.get('reparation_supp') or "")
+            final_prix_supp = st.session_state.get(f"prix_supp_{tid}", t.get('prix_supp') or 0)
+            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, devis_estime=devis, acompte=acompte, 
+                         reparation_supp=final_rep_supp, prix_supp=final_prix_supp,
+                         technicien_assigne=tech_name, date_recuperation=date_recup, 
+                         notes_internes=final_notes_internes, commentaire_client=final_commentaire_public)
             # Clear cache pour rafraîchir les données
             get_all_clients.clear()
             if new_statut != statut_actuel:
@@ -7041,8 +6894,25 @@ def staff_commandes_pieces():
             
             for cmd in commandes:
                 cmd_id = cmd['id']
+                client_tel = cmd.get('client_tel', '')
+                client_prenom = cmd.get('client_prenom', '')
+                ticket_code = cmd.get('ticket_code', '')
+                
+                # Message pré-rempli
+                msg_cmd = f"""Bonjour {client_prenom},
+
+Votre commande est bien arrivée ! 📦
+
+Réf: {ticket_code}
+{cmd['description']}
+
+Vous pouvez passer à la boutique.
+
+{get_param("NOM_BOUTIQUE") or "Klikphone"}
+📞 {get_param("TEL_BOUTIQUE") or "04 79 60 89 22"}"""
+                
                 with st.container():
-                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1.2])
+                    col1, col2, col3, col4, col5 = st.columns([2, 1.2, 0.8, 1.3, 0.7])
                     with col1:
                         ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
                         st.markdown(f"**{cmd['description']}**")
@@ -7056,64 +6926,20 @@ def staff_commandes_pieces():
                             st.write(f"💰 {cmd['prix']:.2f} €")
                     with col4:
                         if st.button("📦 Reçue", key=f"cmd_recv_{cmd_id}", type="primary", use_container_width=True):
-                            st.session_state[f"notif_cmd_{cmd_id}"] = True
                             from datetime import datetime
                             update_commande_piece(cmd_id, statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
                             st.rerun()
-                    
-                    # Section notification client si activée
-                    if st.session_state.get(f"notif_cmd_{cmd_id}"):
-                        st.markdown("---")
-                        st.success("✅ Pièce marquée comme reçue!")
-                        
-                        # Préparer le message
-                        client_prenom = cmd.get('client_prenom', '')
-                        client_nom = cmd.get('client_nom', '')
-                        client_tel = cmd.get('client_tel', '')
-                        ticket_code = cmd.get('ticket_code', '')
-                        nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
-                        tel_boutique = get_param("TEL_BOUTIQUE") or "04 79 60 89 22"
-                        
-                        msg_reception = f"""Bonjour {client_prenom},
-
-Votre commande est bien arrivée ! 📦
-
-Référence: {ticket_code}
-{cmd['description']}
-
-Vous pouvez passer à la boutique pour récupérer votre commande ou nous laisser procéder à la réparation.
-
-{nom_boutique}
-📞 {tel_boutique}"""
-                        
-                        st.markdown("**📨 Notifier le client ?**")
-                        
+                    with col5:
+                        # Icônes contact direct
                         if client_tel:
-                            col_wa, col_sms, col_skip = st.columns(3)
-                            with col_wa:
-                                wa_url = wa_link(client_tel, msg_reception)
-                                st.markdown(f'''
-                                <a href="{wa_url}" target="_blank" style="display:block;text-align:center;padding:12px;background:#25D366;color:white;border-radius:8px;text-decoration:none;font-weight:600;">
-                                    📱 WhatsApp
-                                </a>
-                                ''', unsafe_allow_html=True)
-                            with col_sms:
-                                sms_url = sms_link(client_tel, msg_reception)
-                                st.markdown(f'''
-                                <a href="{sms_url}" style="display:block;text-align:center;padding:12px;background:#3b82f6;color:white;border-radius:8px;text-decoration:none;font-weight:600;">
-                                    💬 SMS
-                                </a>
-                                ''', unsafe_allow_html=True)
-                            with col_skip:
-                                if st.button("⏭️ Passer", key=f"skip_notif_{cmd_id}", use_container_width=True):
-                                    del st.session_state[f"notif_cmd_{cmd_id}"]
-                                    st.rerun()
-                        else:
-                            st.warning("⚠️ Pas de téléphone client")
-                            if st.button("OK", key=f"ok_notif_{cmd_id}"):
-                                del st.session_state[f"notif_cmd_{cmd_id}"]
-                                st.rerun()
-                        st.markdown("---")
+                            wa_url = wa_link(client_tel, msg_cmd)
+                            sms_url = sms_link(client_tel, msg_cmd)
+                            st.markdown(f'''
+                            <div style="display:flex;gap:4px;">
+                                <a href="{wa_url}" target="_blank" style="background:#25D366;color:white;padding:6px 8px;border-radius:6px;text-decoration:none;font-size:14px;" title="WhatsApp">📱</a>
+                                <a href="{sms_url}" style="background:#3b82f6;color:white;padding:6px 8px;border-radius:6px;text-decoration:none;font-size:14px;" title="SMS">💬</a>
+                            </div>
+                            ''', unsafe_allow_html=True)
                     
                     st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
     
@@ -7138,18 +6964,45 @@ Vous pouvez passer à la boutique pour récupérer votre commande ou nous laisse
             """, unsafe_allow_html=True)
             
             for cmd in commandes:
-                ticket_info = f"{cmd.get('ticket_code', 'N/A')}"
+                client_tel = cmd.get('client_tel', '')
+                client_prenom = cmd.get('client_prenom', '')
+                ticket_code = cmd.get('ticket_code', 'N/A')
                 date_recv = cmd.get('date_reception', '')[:10] if cmd.get('date_reception') else '—'
                 
-                st.markdown(f"""
-                <div style="display:flex;padding:8px;border-bottom:1px solid #eee;font-size:0.85rem;align-items:center;">
-                    <div style="flex:2;">{cmd['description']}</div>
-                    <div style="flex:1.5;">{ticket_info}</div>
-                    <div style="flex:1;">{cmd.get('fournisseur', '—')}</div>
-                    <div style="flex:1;">{cmd['prix']:.2f} € </div>
-                    <div style="flex:1;">{date_recv}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                # Message pré-rempli pour notification
+                msg_pret = f"""Bonjour {client_prenom},
+
+Votre appareil est prêt ! ✅
+
+Réf: {ticket_code}
+
+Vous pouvez passer le récupérer à la boutique.
+
+{get_param("NOM_BOUTIQUE") or "Klikphone"}
+📞 {get_param("TEL_BOUTIQUE") or "04 79 60 89 22"}"""
+                
+                col1, col2, col3, col4, col5, col6 = st.columns([2, 1.2, 0.8, 0.8, 0.8, 0.7])
+                with col1:
+                    st.write(cmd['description'])
+                with col2:
+                    st.write(ticket_code)
+                with col3:
+                    st.write(cmd.get('fournisseur', '—'))
+                with col4:
+                    st.write(f"{cmd['prix']:.2f} €")
+                with col5:
+                    st.write(date_recv)
+                with col6:
+                    if client_tel:
+                        wa_url = wa_link(client_tel, msg_pret)
+                        sms_url = sms_link(client_tel, msg_pret)
+                        st.markdown(f'''
+                        <div style="display:flex;gap:3px;">
+                            <a href="{wa_url}" target="_blank" style="background:#25D366;color:white;padding:4px 6px;border-radius:4px;text-decoration:none;font-size:12px;" title="WhatsApp">📱</a>
+                            <a href="{sms_url}" style="background:#3b82f6;color:white;padding:4px 6px;border-radius:4px;text-decoration:none;font-size:12px;" title="SMS">💬</a>
+                        </div>
+                        ''', unsafe_allow_html=True)
+                st.markdown("<hr style='margin:5px 0;border:none;border-top:1px solid #eee;'>", unsafe_allow_html=True)
     
     with sub_tab4:
         # Ajouter une nouvelle commande
