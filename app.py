@@ -12,6 +12,7 @@ import os
 from datetime import datetime
 import re
 import functools
+import unicodedata
 
 # Option Postgres (Supabase)
 try:
@@ -21,6 +22,18 @@ except Exception:
     psycopg2 = None
 
 import urllib.parse
+
+# =============================================================================
+# FONCTION DE NORMALISATION POUR RECHERCHE (sans accents, minuscules)
+# =============================================================================
+def normalize_search(text):
+    """Normalise le texte pour recherche : supprime accents et met en minuscules"""
+    if not text:
+        return ""
+    # Décompose les caractères accentués puis supprime les diacritiques
+    text = unicodedata.normalize('NFD', str(text))
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+    return text.lower().strip()
 
 # =============================================================================
 # CONFIG
@@ -2618,6 +2631,7 @@ def init_db():
         "ALTER TABLE tickets ADD COLUMN msg_email INTEGER DEFAULT 0",
         "ALTER TABLE clients ADD COLUMN societe TEXT",
         "ALTER TABLE clients ADD COLUMN carte_camby INTEGER DEFAULT 0",
+        "ALTER TABLE tickets ADD COLUMN type_ecran TEXT",
     ]
     for sql in migrations:
         try:
@@ -2764,8 +2778,9 @@ def check_client_exists(tel):
     conn.close()
     return dict(r) if r else None
 
+@st.cache_data(ttl=30)
 def get_all_clients():
-    """Récupère tous les clients"""
+    """Récupère tous les clients - CACHED 30s"""
     conn = get_db()
     c = conn.cursor()
     c.execute("""SELECT c.*, COUNT(t.id) as nb_tickets 
@@ -2776,6 +2791,33 @@ def get_all_clients():
     clients = [dict(row) for row in c.fetchall()]
     conn.close()
     return clients
+
+def chercher_clients(query):
+    """Recherche clients avec normalisation (sans accents, insensible à la casse)"""
+    if not query or len(query) < 2:
+        return []
+    
+    query_norm = normalize_search(query)
+    clients = get_all_clients()
+    
+    resultats = []
+    for c in clients:
+        # Normaliser les champs du client
+        nom_norm = normalize_search(c.get('nom', ''))
+        prenom_norm = normalize_search(c.get('prenom', ''))
+        tel_norm = normalize_search(c.get('telephone', ''))
+        email_norm = normalize_search(c.get('email', ''))
+        
+        # Rechercher dans tous les champs
+        if (query_norm in nom_norm or 
+            query_norm in prenom_norm or 
+            query_norm in tel_norm or
+            query_norm in email_norm or
+            query_norm in f"{nom_norm} {prenom_norm}" or
+            query_norm in f"{prenom_norm} {nom_norm}"):
+            resultats.append(c)
+    
+    return resultats
 
 def get_client_by_id(client_id):
     """Récupère un client par son ID"""
@@ -2816,16 +2858,10 @@ def supprimer_client(client_id):
     return True
 
 def search_clients(query):
-    """Recherche des clients par nom, prénom, téléphone ou société"""
-    conn = get_db()
-    c = conn.cursor()
-    q = f"%{query}%"
-    c.execute("""SELECT * FROM clients 
-                 WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ? OR societe LIKE ?
-                 ORDER BY nom, prenom LIMIT 20""", (q, q, q, q))
-    clients = [dict(row) for row in c.fetchall()]
-    conn.close()
-    return clients
+    """Recherche des clients par nom, prénom, téléphone ou société - SANS accents ni majuscules"""
+    if not query or len(query) < 2:
+        return []
+    return chercher_clients(query)
 
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
@@ -2931,13 +2967,13 @@ def supprimer_membre_equipe(membre_id):
     conn.commit()
     conn.close()
 
-def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei="", commande_piece=0):
+def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei="", commande_piece=0, type_ecran=""):
     conn = get_db()
     c = conn.cursor()
     c.execute("""INSERT INTO tickets 
-        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, commande_piece, statut) 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
-        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes, commande_piece))
+        (client_id, categorie, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes_client, commande_piece, type_ecran, statut) 
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'En attente de diagnostic')""", 
+        (client_id, cat, marque, modele, modele_autre, imei, panne, panne_detail, pin, pattern, notes, commande_piece, type_ecran))
     tid = c.lastrowid
     code = f"KP-{tid:06d}"
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
@@ -3420,6 +3456,9 @@ def ticket_client_html(t, for_email=False):
     modele_txt = t.get("modele", "")
     if t.get("modele_autre"): modele_txt += f" ({t['modele_autre']})"
     
+    # Type d'écran si renseigné
+    type_ecran = (t.get('type_ecran') or '').strip()
+    
     # Commentaire public (imprimé sur le document)
     comment_public = (t.get("commentaire_client") or "").strip()
     
@@ -3434,6 +3473,9 @@ def ticket_client_html(t, for_email=False):
     ticket_code = t.get('ticket_code', '')
     url_suivi_ticket = f"{url_suivi}?ticket={ticket_code}"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(url_suivi_ticket)}"
+    
+    # HTML pour type écran
+    type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">📱 Type écran: {type_ecran}</div>' if type_ecran else ""
     
     # Version EMAIL (colorée)
     if for_email:
@@ -3485,6 +3527,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <div class="section-title">📱 Appareil</div>
 <div style="font-weight:600;">{t.get('marque','')} {modele_txt}</div>
 <div style="color:#64748b;margin-top:5px;">Motif: {panne}</div>
+{type_ecran_email}
 </div>
 <div class="tarif-box">
 <div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
@@ -3504,6 +3547,9 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </div>
 </body>
 </html>"""
+    
+    # Type écran pour impression
+    type_ecran_print = f'<div class="info-row"><span class="label">Type écran</span><span class="value" style="color:#3b82f6;">{type_ecran}</span></div>' if type_ecran else ""
     
     # Version IMPRESSION - 80mm - Style moderne
     comment_section_thermal = f"""
@@ -3722,6 +3768,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
             <span class="label">Motif</span>
             <span class="value">{panne}</span>
         </div>
+        {type_ecran_print}
         <div class="info-row">
             <span class="label">Date dépôt</span>
             <span class="value">{fmt_date(t.get('date_depot',''))}</span>
@@ -3764,19 +3811,14 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 </html>"""
 
 def ticket_staff_html(t):
-    """Ticket staff - 80mm x 200mm - VERSION AMÉLIORÉE - Plus lisible, sans QR code"""
-    panne = t.get("panne", "")
-    if t.get("panne_detail"): panne += f" ({t['panne_detail']})"
-    modele = t.get("modele", "")
-    if t.get("modele_autre"): modele += f" ({t['modele_autre']})"
+    """Génère un ticket STAFF HTML pour impression 80mm - Style moderne orange"""
+    modele = t.get('modele_autre') or f"{t.get('modele', '')}"
+    panne = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
     
-    # Notes privées
-    notes_privees = t.get('notes_internes') or ''
-    if len(notes_privees) > 100: notes_privees = notes_privees[:100] + "..."
-    
-    # Notes publiques
-    notes_publiques = t.get('commentaire_client') or ''
-    if len(notes_publiques) > 80: notes_publiques = notes_publiques[:80] + "..."
+    notes_publiques = (t.get('commentaire_client') or '').strip()
+    notes_privees = (t.get('notes_internes') or '').strip()
+    notes_client = (t.get('notes_client') or '').strip()
+    type_ecran = (t.get('type_ecran') or '').strip()
     
     # Calcul reste à payer
     devis = t.get('devis_estime') or 0
@@ -3784,191 +3826,53 @@ def ticket_staff_html(t):
     tarif_final = t.get('tarif_final') or devis
     reste = max(0, tarif_final - acompte)
     
+    # Sections conditionnelles
+    type_ecran_html = f'<div class="info-detail"><strong>📱 Type écran:</strong> {type_ecran}</div>' if type_ecran else ""
+    notes_client_html = f'<div class="notes-box client"><div class="notes-title">📋 Note client (dépôt)</div>{notes_client}</div>' if notes_client else ""
+    notes_pub_html = f'<div class="notes-box public"><div class="notes-title">💬 Note publique</div>{notes_publiques}</div>' if notes_publiques else ""
+    notes_priv_html = f'<div class="notes-box private"><div class="notes-title">🔒 Note privée (équipe)</div>{notes_privees}</div>' if notes_privees else ""
+    
     return f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket Staff - Klikphone</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Ticket Staff - {t['ticket_code']}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-        }}
-        .ticket {{
-            background: #fff;
-            width: 80mm;
-            max-width: 80mm;
-            min-height: 180mm;
-            overflow: hidden;
-            padding: 4mm;
-            border: 1px solid #ccc;
-            border-radius: 2px;
-            font-size: 11px;
-            line-height: 1.4;
-            color: #000;
-        }}
-        .header {{
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 3mm;
-            margin-bottom: 3mm;
-        }}
-        .header img {{
-            width: 18mm;
-            height: 18mm;
-            margin-bottom: 2mm;
-        }}
-        .header h1 {{
-            font-size: 14px;
-            font-weight: 900;
-            margin: 0;
-            letter-spacing: 1px;
-        }}
-        .ticket-num {{
-            background: #000;
-            color: #fff;
-            text-align: center;
-            font-size: 16px;
-            font-weight: 900;
-            padding: 3mm;
-            margin: 3mm 0;
-            letter-spacing: 2px;
-        }}
-        .status {{
-            text-align: center;
-            font-weight: 800;
-            font-size: 12px;
-            padding: 2mm;
-            margin-bottom: 3mm;
-            background: #f5f5f5;
-            border: 1px solid #ddd;
-        }}
-        .section {{
-            margin: 3mm 0;
-            padding: 2mm 0;
-            border-bottom: 1px dashed #ccc;
-        }}
-        .section-title {{
-            font-size: 10px;
-            font-weight: 800;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 2mm;
-            letter-spacing: 0.5px;
-        }}
-        .info-row {{
-            display: flex;
-            justify-content: space-between;
-            margin: 1.5mm 0;
-            font-size: 11px;
-        }}
-        .info-row .label {{
-            color: #555;
-            font-weight: 500;
-        }}
-        .info-row .value {{
-            font-weight: 700;
-            text-align: right;
-            max-width: 60%;
-        }}
-        .big-info {{
-            font-size: 13px;
-            font-weight: 800;
-            margin: 2mm 0;
-        }}
-        .security-box {{
-            border: 3px solid #000;
-            padding: 3mm;
-            margin: 3mm 0;
-            text-align: center;
-            background: #fffbeb;
-        }}
-        .security-box .title {{
-            font-weight: 900;
-            font-size: 11px;
-            margin-bottom: 2mm;
-        }}
-        .security-box .codes {{
-            font-size: 14px;
-            font-weight: 900;
-            font-family: monospace;
-            letter-spacing: 1px;
-        }}
-        .notes-box {{
-            background: #f8f8f8;
-            border-left: 3px solid #000;
-            padding: 2mm 3mm;
-            margin: 2mm 0;
-            font-size: 10px;
-        }}
-        .notes-box.private {{
-            background: #fef2f2;
-            border-color: #ef4444;
-        }}
-        .notes-box.public {{
-            background: #f0fdf4;
-            border-color: #22c55e;
-        }}
-        .notes-title {{
-            font-weight: 700;
-            font-size: 9px;
-            margin-bottom: 1mm;
-            text-transform: uppercase;
-        }}
-        .tarif-box {{
-            background: #000;
-            color: #fff;
-            padding: 5mm;
-            margin: 4mm 0;
-            border: 3px solid #000;
-        }}
-        .tarif-row {{
-            display: flex;
-            justify-content: space-between;
-            margin: 2mm 0;
-            font-size: 13px;
-            font-weight: 600;
-        }}
-        .tarif-row.total {{
-            font-size: 24px;
-            font-weight: 900;
-            border-top: 3px solid #fff;
-            padding-top: 4mm;
-            margin-top: 4mm;
-            letter-spacing: 1px;
-        }}
-        .footer {{
-            text-align: center;
-            font-size: 10px;
-            margin-top: 3mm;
-            padding-top: 2mm;
-            border-top: 1px solid #000;
-        }}
-        .print-btn {{
-            display: block;
-            width: 100%;
-            margin-top: 3mm;
-            background: #000;
-            color: #fff;
-            padding: 3mm;
-            border: none;
-            border-radius: 2mm;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-        }}
-        .print-btn:hover {{ background: #333; }}
-
+        body {{ font-family: Arial, sans-serif; background: #f5f5f5; padding: 10px; }}
+        .ticket {{ background: #fff; width: 80mm; max-width: 80mm; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        .header {{ background: linear-gradient(135deg, #6b7280, #4b5563); color: white; padding: 12px; text-align: center; }}
+        .header img {{ width: 40px; height: 40px; margin-bottom: 6px; }}
+        .header h1 {{ font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 1px; }}
+        .header p {{ font-size: 10px; opacity: 0.9; margin-top: 2px; }}
+        .ticket-num {{ background: #1e293b; color: white; text-align: center; padding: 10px; font-size: 18px; font-weight: 800; letter-spacing: 2px; }}
+        .status {{ background: #f97316; color: white; text-align: center; padding: 8px; font-size: 11px; font-weight: 700; }}
+        .content {{ padding: 10px; }}
+        .section {{ margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e5e7eb; }}
+        .section:last-child {{ border-bottom: none; }}
+        .section-title {{ font-weight: 700; color: #f97316; font-size: 10px; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }}
+        .info-row {{ display: flex; justify-content: space-between; margin: 4px 0; font-size: 11px; }}
+        .info-row .label {{ color: #6b7280; }}
+        .info-row .value {{ font-weight: 600; text-align: right; max-width: 55%; }}
+        .info-detail {{ font-size: 11px; margin: 4px 0; padding: 4px 8px; background: #f3f4f6; border-radius: 4px; }}
+        .big-name {{ font-size: 14px; font-weight: 700; margin-bottom: 4px; }}
+        .security-box {{ background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: center; }}
+        .security-box .title {{ font-weight: 800; font-size: 11px; color: #92400e; margin-bottom: 6px; }}
+        .security-box .codes {{ font-size: 16px; font-weight: 800; font-family: monospace; color: #1e293b; letter-spacing: 1px; }}
+        .tarif-box {{ background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 12px; margin: 10px 0; border-radius: 8px; }}
+        .tarif-row {{ display: flex; justify-content: space-between; margin: 4px 0; font-size: 12px; }}
+        .tarif-row.total {{ font-size: 18px; font-weight: 800; border-top: 2px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px; }}
+        .notes-box {{ border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 10px; }}
+        .notes-box.client {{ background: #fff7ed; border-left: 3px solid #f97316; }}
+        .notes-box.public {{ background: #f0fdf4; border-left: 3px solid #22c55e; }}
+        .notes-box.private {{ background: #fef2f2; border-left: 3px solid #ef4444; }}
+        .notes-title {{ font-weight: 700; font-size: 9px; margin-bottom: 4px; text-transform: uppercase; }}
+        .footer {{ background: #f8fafc; padding: 10px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e5e7eb; }}
+        .print-btn {{ display: block; width: calc(100% - 20px); margin: 10px; background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }}
+        .print-btn:hover {{ opacity: 0.9; }}
         @media print {{
-            body {{ background: #fff; padding: 0; margin: 0; }}
-            .ticket {{ border: none; border-radius: 0; padding: 2mm; min-height: auto; }}
+            body {{ background: #fff; padding: 0; }}
+            .ticket {{ box-shadow: none; border-radius: 0; }}
             .print-btn {{ display: none !important; }}
         }}
     </style>
@@ -3977,76 +3881,53 @@ def ticket_staff_html(t):
 <div class="ticket">
     <div class="header">
         <img src="data:image/png;base64,{LOGO_B64}" alt="Logo">
-        <h1>TICKET STAFF</h1>
+        <h1>📋 TICKET STAFF</h1>
+        <p>Document interne</p>
     </div>
-
     <div class="ticket-num">{t['ticket_code']}</div>
     <div class="status">📍 {t.get('statut','En attente')}</div>
-
-    <div class="section">
-        <div class="section-title">👤 Client</div>
-        <div class="big-info">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
-        <div class="info-row">
-            <span class="label">Téléphone</span>
-            <span class="value" style="font-family:monospace;">{t.get('client_tel','')}</span>
+    <div class="content">
+        <div class="section">
+            <div class="section-title">👤 Client</div>
+            <div class="big-name">{t.get('client_nom','')} {t.get('client_prenom','')}</div>
+            <div class="info-row">
+                <span class="label">Téléphone</span>
+                <span class="value" style="font-family:monospace;font-size:13px;">{t.get('client_tel','')}</span>
+            </div>
         </div>
+        <div class="section">
+            <div class="section-title">📱 Appareil</div>
+            <div class="big-name">{t.get('marque','')} {modele}</div>
+            <div class="info-row">
+                <span class="label">Réparation</span>
+                <span class="value">{panne}</span>
+            </div>
+            {type_ecran_html}
+        </div>
+        <div class="security-box">
+            <div class="title">🔐 CODES DE SÉCURITÉ</div>
+            <div class="codes">PIN: {t.get('pin') or '----'} | Schéma: {t.get('pattern') or '----'}</div>
+        </div>
+        <div class="tarif-box">
+            <div class="tarif-row"><span>Devis</span><span>{devis:.2f} €</span></div>
+            <div class="tarif-row"><span>Acompte</span><span>- {acompte:.2f} €</span></div>
+            <div class="tarif-row total"><span>RESTE</span><span>{reste:.2f} €</span></div>
+        </div>
+        <div class="section">
+            <div class="section-title">📅 Dates</div>
+            <div class="info-row"><span class="label">Dépôt</span><span class="value">{fmt_date(t.get('date_depot',''))}</span></div>
+            <div class="info-row"><span class="label">Récup.</span><span class="value">{t.get('date_recuperation') or 'À définir'}</span></div>
+        </div>
+        {notes_client_html}
+        {notes_pub_html}
+        {notes_priv_html}
     </div>
-
-    <div class="section">
-        <div class="section-title">📱 Appareil</div>
-        <div class="big-info">{t.get('marque','')} {modele}</div>
-        <div class="info-row">
-            <span class="label">Panne</span>
-            <span class="value">{panne}</span>
-        </div>
-    </div>
-
-    <div class="security-box">
-        <div class="title">🔐 CODES DE SÉCURITÉ</div>
-        <div class="codes">
-            PIN: {t.get('pin') or '----'}  &nbsp;|&nbsp;  Schéma: {t.get('pattern') or '----'}
-        </div>
-    </div>
-
-    <div class="tarif-box">
-        <div class="tarif-row">
-            <span>Devis estimé</span>
-            <span>{devis:.2f} €</span>
-        </div>
-        <div class="tarif-row">
-            <span>Acompte versé</span>
-            <span>- {acompte:.2f} €</span>
-        </div>
-        <div class="tarif-row total">
-            <span>RESTE À PAYER</span>
-            <span>{reste:.2f} €</span>
-        </div>
-    </div>
-
-    <div class="section">
-        <div class="section-title">📅 Dates</div>
-        <div class="info-row">
-            <span class="label">Dépôt</span>
-            <span class="value">{fmt_date(t.get('date_depot',''))}</span>
-        </div>
-        <div class="info-row">
-            <span class="label">Récupération prévue</span>
-            <span class="value">{t.get('date_recuperation') or 'À définir'}</span>
-        </div>
-    </div>
-
-    {"<div class='notes-box public'><div class='notes-title'>💬 Note publique</div>" + notes_publiques + "</div>" if notes_publiques else ""}
-    
-    {"<div class='notes-box private'><div class='notes-title'>🔒 Note privée (équipe)</div>" + notes_privees + "</div>" if notes_privees else ""}
-
-    <div class="footer">
-        <strong>Motif:</strong> {panne}
-    </div>
-
+    <div class="footer"><strong>Tech:</strong> {t.get('technicien_assigne') or 'Non assigné'}</div>
     <button class="print-btn" onclick="window.print()">🖨️ IMPRIMER</button>
 </div>
 </body>
 </html>"""
+
 
 def ticket_devis_facture_html(t, doc_type="devis", for_email=False):
     """Génère un ticket DEVIS ou RÉCAPITULATIF - version impression ou email"""
@@ -5160,9 +5041,36 @@ def client_step4():
             if p == "Autre" or p == "Diagnostic":
                 st.session_state.data["show_detail"] = True
                 st.rerun()
+            elif p == "Écran casse":
+                st.session_state.data["show_type_ecran"] = True
+                st.rerun()
             else:
                 st.session_state.step = 5
                 st.rerun()
+    
+    # Afficher zone type d'écran si écran cassé
+    if st.session_state.data.get("show_type_ecran"):
+        st.markdown("---")
+        st.markdown("""
+        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:12px;padding:1rem;margin-bottom:1rem;">
+            <p style="margin:0;color:#1e40af;font-size:0.9rem;">
+                📱 <strong>Type d'écran souhaité</strong><br>
+                Précisez le type d'écran que vous souhaitez (optionnel)
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        type_ecran = st.text_input(
+            "Type d'écran",
+            placeholder="Ex: Écran original, Écran OLED, Écran premium, Incell...",
+            key="type_ecran_input"
+        )
+        
+        if st.button("Continuer →", type="primary", use_container_width=True, key="continue_ecran"):
+            st.session_state.data["type_ecran"] = type_ecran
+            st.session_state.step = 5
+            st.rerun()
+        return
     
     # Afficher zone de détail si nécessaire
     if st.session_state.data.get("show_detail"):
@@ -5429,7 +5337,8 @@ def client_step6():
                 
                 code = creer_ticket(cid, d.get("cat",""), d.get("marque",""), d.get("modèle",""),
                                    d.get("modele_autre",""), d.get("panne",""), d.get("panne_detail",""),
-                                   d.get("pin",""), d.get("pattern",""), notes, "", 1 if final_commande_piece else 0)
+                                   d.get("pin",""), d.get("pattern",""), notes, "", 1 if final_commande_piece else 0,
+                                   d.get("type_ecran", ""))
                 
                 # Si commande pièce, créer une entrée dans commandes_pieces
                 if final_commande_piece:
@@ -5575,19 +5484,50 @@ def staff_liste_demandes():
         tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
         f_tech = st.selectbox("Tech", tech_options, key="f_tech", label_visibility="collapsed")
     
-    # Recherche avec les filtres
+    # Recherche avec les filtres - utiliser normalisation
     statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (f_statut if f_statut != "Tous" else None)
     
-    tickets = chercher_tickets(
-        statut=statut_filtre,
-        code=f_code.strip() if f_code and f_code.strip() else None, 
-        tel=f_tel.strip() if f_tel and f_tel.strip() else None, 
-        nom=f_nom.strip() if f_nom and f_nom.strip() else None
-    )
+    all_tickets = chercher_tickets(statut=statut_filtre)
+    
+    # Filtrer par code
+    if f_code and f_code.strip():
+        code_norm = normalize_search(f_code.strip())
+        all_tickets = [t for t in all_tickets if code_norm in normalize_search(t.get('ticket_code', ''))]
+    
+    # Filtrer par téléphone  
+    if f_tel and f_tel.strip():
+        tel_norm = normalize_search(f_tel.strip())
+        all_tickets = [t for t in all_tickets if tel_norm in normalize_search(t.get('client_tel', ''))]
+    
+    # Filtrer par nom (avec normalisation sans accents)
+    if f_nom and f_nom.strip():
+        nom_norm = normalize_search(f_nom.strip())
+        all_tickets = [t for t in all_tickets if 
+                      nom_norm in normalize_search(t.get('client_nom', '')) or 
+                      nom_norm in normalize_search(t.get('client_prenom', ''))]
     
     # Filtrer par technicien si sélectionné
     if f_tech != "👥 Tous":
-        tickets = [t for t in tickets if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
+        all_tickets = [t for t in all_tickets if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
+    
+    # Séparer tickets actifs et archivés
+    tickets_actifs = [t for t in all_tickets if t.get('statut') != 'Clôturé']
+    tickets_archives = [t for t in all_tickets if t.get('statut') == 'Clôturé']
+    
+    # Afficher le compteur
+    st.markdown(f"""
+    <div style="display:flex;gap:16px;margin-bottom:12px;">
+        <span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">
+            📋 {len(tickets_actifs)} actif(s)
+        </span>
+        <span style="background:#f3f4f6;color:#6b7280;padding:4px 12px;border-radius:20px;font-size:13px;">
+            📦 {len(tickets_archives)} archivé(s)
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Utiliser les tickets actifs pour l'affichage principal
+    tickets = tickets_actifs
     
     # Pagination
     ITEMS_PER_PAGE = 8
@@ -5841,6 +5781,30 @@ def staff_liste_demandes():
                 if st.button("Suivant →", key="accueil_next", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page + 1
                     st.rerun()
+    
+    # === SECTION TICKETS ARCHIVÉS ===
+    if tickets_archives:
+        st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
+        with st.expander(f"📦 Tickets archivés ({len(tickets_archives)})", expanded=False):
+            for t in tickets_archives[:20]:  # Limiter à 20 pour performance
+                col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns([1, 1.5, 1.5, 1, 0.5])
+                with col_a1:
+                    st.markdown(f"**{t['ticket_code']}**")
+                with col_a2:
+                    st.write(f"{t.get('client_nom', '')} {t.get('client_prenom', '')}")
+                with col_a3:
+                    modele = t.get('modele_autre') or f"{t.get('marque', '')} {t.get('modele', '')}"
+                    st.write(modele[:25])
+                with col_a4:
+                    st.write(fmt_date(t.get('date_cloture', t.get('date_maj', '')))[:10])
+                with col_a5:
+                    if st.button("👁️", key=f"view_arch_{t['id']}", help="Voir"):
+                        st.session_state.edit_id = t['id']
+                        st.rerun()
+                st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #e5e7eb;'>", unsafe_allow_html=True)
+            
+            if len(tickets_archives) > 20:
+                st.info(f"📋 {len(tickets_archives) - 20} autres tickets archivés...")
 
 def staff_traiter_demande(tid):
     t = get_ticket_full(tid=tid)
@@ -6148,6 +6112,17 @@ def staff_traiter_demande(tid):
                                          placeholder="Ex: Remplacement connecteur...",
                                          key=f"panne_detail_{tid}")
         
+        # Type d'écran (visible si écran cassé ou toujours pour info)
+        type_ecran_val = t.get('type_ecran') or ""
+        if new_panne == "Écran casse" or type_ecran_val:
+            type_ecran_new = st.text_input("📱 Type d'écran choisi", 
+                                           value=type_ecran_val,
+                                           placeholder="Ex: Original, OLED, Incell, Premium...",
+                                           key=f"type_ecran_{tid}",
+                                           help="Type d'écran commandé/installé")
+        else:
+            type_ecran_new = type_ecran_val
+        
         # Technicien assigné
         membres = get_membres_equipe()
         membres_options = ["-- Non assigné --"] + [f"{m['nom']} ({m['role']})" for m in membres]
@@ -6297,7 +6272,10 @@ def staff_traiter_demande(tid):
             # Récupérer les valeurs des notes depuis session_state (text_area avec key)
             final_notes_internes = st.session_state.get(f"notes_int_{tid}", t.get('notes_internes') or "")
             final_commentaire_public = st.session_state.get(f"notes_pub_{tid}", t.get('commentaire_client') or "")
-            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=final_notes_internes, commentaire_client=final_commentaire_public)
+            final_type_ecran = st.session_state.get(f"type_ecran_{tid}", t.get('type_ecran') or "")
+            update_ticket(tid, panne=new_panne, panne_detail=panne_detail, type_ecran=final_type_ecran, devis_estime=devis, acompte=acompte, technicien_assigne=tech_name, date_recuperation=date_recup, notes_internes=final_notes_internes, commentaire_client=final_commentaire_public)
+            # Clear cache pour rafraîchir les données
+            get_all_clients.clear()
             if new_statut != statut_actuel:
                 changer_statut(tid, new_statut)
             st.success("✅ Demande mise à jour !")
@@ -6732,6 +6710,63 @@ def staff_gestion_clients():
     
     st.markdown("---")
     
+    # Mode nouvelle réparation pour client existant
+    if st.session_state.get("new_repair_client_id"):
+        client_id = st.session_state.new_repair_client_id
+        client = get_client_by_id(client_id)
+        
+        if client:
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:2px solid #f97316;border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+                <h3 style="color:#ea580c;margin:0 0 0.5rem 0;">➕ Nouvelle réparation</h3>
+                <p style="margin:0;"><strong>{client.get('nom', '')} {client.get('prenom', '')}</strong> — 📞 {client.get('telephone', '')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                new_cat = st.selectbox("Type d'appareil", ["Smartphone", "Tablette", "PC Portable", "Console", "Autre"], key="new_repair_cat")
+                marques_liste = list(MARQUES.get(new_cat, ["Autre"]))
+                new_marque = st.selectbox("Marque", marques_liste + ["Autre"], key="new_repair_marque")
+            with col2:
+                modeles_liste = MODELES.get((new_cat, new_marque), ["Autre"])
+                new_modele = st.selectbox("Modèle", modeles_liste + ["Autre"], key="new_repair_modele")
+                new_modele_autre = ""
+                if new_modele == "Autre":
+                    new_modele_autre = st.text_input("Précisez le modèle", key="new_repair_modele_autre")
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                new_panne = st.selectbox("Type de réparation", PANNES, key="new_repair_panne")
+                new_panne_detail = ""
+                if new_panne in ["Autre", "Diagnostic"]:
+                    new_panne_detail = st.text_input("Détails", key="new_repair_panne_detail")
+            with col4:
+                new_type_ecran = ""
+                if new_panne == "Écran casse":
+                    new_type_ecran = st.text_input("Type d'écran souhaité", placeholder="Ex: Original, OLED, Incell...", key="new_repair_type_ecran")
+                new_pin = st.text_input("Code PIN", key="new_repair_pin")
+                new_pattern = st.text_input("Schéma", key="new_repair_pattern")
+            
+            new_notes = st.text_area("Notes client", placeholder="Remarques éventuelles...", height=80, key="new_repair_notes")
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.button("✅ Créer la réparation", type="primary", use_container_width=True, key="save_new_repair"):
+                    code = creer_ticket(client_id, new_cat, new_marque, new_modele, new_modele_autre, 
+                                       new_panne, new_panne_detail, new_pin, new_pattern, new_notes, "", 0, new_type_ecran)
+                    st.success(f"✅ Réparation créée: **{code}**")
+                    st.session_state.new_repair_client_id = None
+                    st.balloons()
+                    st.rerun()
+            with col_cancel:
+                if st.button("❌ Annuler", type="secondary", use_container_width=True, key="cancel_new_repair"):
+                    st.session_state.new_repair_client_id = None
+                    st.rerun()
+            
+            st.markdown("---")
+            return
+    
     # Mode suppression client (avec PIN)
     if st.session_state.get("delete_client_id"):
         client_id = st.session_state.delete_client_id
@@ -6815,16 +6850,16 @@ def staff_gestion_clients():
     
     st.markdown(f"**{len(clients)} client(s)**")
     
-    # Table header - ajout colonne suppression
+    # Table header - ajout colonne nouvelle réparation
     st.markdown("""
     <div class="table-header">
         <div style="flex:1;">Nom</div>
         <div style="flex:1;">Prénom</div>
         <div style="flex:0.8;">Société</div>
         <div style="flex:1;">Téléphone</div>
-        <div style="flex:1.2;">Email</div>
-        <div style="min-width:50px;">Tickets</div>
-        <div style="min-width:90px;">Actions</div>
+        <div style="flex:1.1;">Email</div>
+        <div style="min-width:40px;">📋</div>
+        <div style="min-width:100px;">Actions</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -6841,19 +6876,19 @@ def staff_gestion_clients():
     clients_page = clients[start_idx:end_idx]
     
     for client in clients_page:
-        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 1, 0.8, 1, 1.2, 0.3, 0.3, 0.3])
+        col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns([1, 1, 0.8, 1, 1.1, 0.3, 0.3, 0.3, 0.4])
         with col1:
             st.markdown(f"**{client.get('nom', '')}**")
         with col2:
             st.write(client.get('prenom', ''))
         with col3:
             societe = client.get('societe', '')
-            st.write(societe[:12] if societe else "—")
+            st.write(societe[:10] if societe else "—")
         with col4:
             st.write(client.get('telephone', ''))
         with col5:
             email = client.get('email', '')
-            st.write(email[:20] if email else "—")
+            st.write(email[:18] if email else "—")
         with col6:
             st.write(f"{client.get('nb_tickets', 0)}")
         with col7:
@@ -6863,6 +6898,10 @@ def staff_gestion_clients():
         with col8:
             if st.button("🗑️", key=f"del_client_{client['id']}", help="Supprimer"):
                 st.session_state.delete_client_id = client['id']
+                st.rerun()
+        with col9:
+            if st.button("➕", key=f"new_repair_{client['id']}", help="Nouvelle réparation", type="primary"):
+                st.session_state.new_repair_client_id = client['id']
                 st.rerun()
         
         st.markdown("<div style='height:1px;background:var(--neutral-100);margin:4px 0;'></div>", unsafe_allow_html=True)
@@ -7001,8 +7040,9 @@ def staff_commandes_pieces():
             st.markdown(f"**{len(commandes)} commande(s) en cours**")
             
             for cmd in commandes:
+                cmd_id = cmd['id']
                 with st.container():
-                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1])
+                    col1, col2, col3, col4 = st.columns([2, 1.5, 1, 1.2])
                     with col1:
                         ticket_info = f"{cmd.get('ticket_code', 'N/A')} - {cmd.get('client_nom', '')} {cmd.get('client_prenom', '')}"
                         st.markdown(f"**{cmd['description']}**")
@@ -7015,10 +7055,65 @@ def staff_commandes_pieces():
                         if cmd.get('prix') and cmd['prix'] > 0:
                             st.write(f"💰 {cmd['prix']:.2f} €")
                     with col4:
-                        if st.button("📦 Reçue", key=f"cmd_recv_{cmd['id']}", type="primary"):
+                        if st.button("📦 Reçue", key=f"cmd_recv_{cmd_id}", type="primary", use_container_width=True):
+                            st.session_state[f"notif_cmd_{cmd_id}"] = True
                             from datetime import datetime
-                            update_commande_piece(cmd['id'], statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            update_commande_piece(cmd_id, statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
                             st.rerun()
+                    
+                    # Section notification client si activée
+                    if st.session_state.get(f"notif_cmd_{cmd_id}"):
+                        st.markdown("---")
+                        st.success("✅ Pièce marquée comme reçue!")
+                        
+                        # Préparer le message
+                        client_prenom = cmd.get('client_prenom', '')
+                        client_nom = cmd.get('client_nom', '')
+                        client_tel = cmd.get('client_tel', '')
+                        ticket_code = cmd.get('ticket_code', '')
+                        nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+                        tel_boutique = get_param("TEL_BOUTIQUE") or "04 79 60 89 22"
+                        
+                        msg_reception = f"""Bonjour {client_prenom},
+
+Votre commande est bien arrivée ! 📦
+
+Référence: {ticket_code}
+{cmd['description']}
+
+Vous pouvez passer à la boutique pour récupérer votre commande ou nous laisser procéder à la réparation.
+
+{nom_boutique}
+📞 {tel_boutique}"""
+                        
+                        st.markdown("**📨 Notifier le client ?**")
+                        
+                        if client_tel:
+                            col_wa, col_sms, col_skip = st.columns(3)
+                            with col_wa:
+                                wa_url = wa_link(client_tel, msg_reception)
+                                st.markdown(f'''
+                                <a href="{wa_url}" target="_blank" style="display:block;text-align:center;padding:12px;background:#25D366;color:white;border-radius:8px;text-decoration:none;font-weight:600;">
+                                    📱 WhatsApp
+                                </a>
+                                ''', unsafe_allow_html=True)
+                            with col_sms:
+                                sms_url = sms_link(client_tel, msg_reception)
+                                st.markdown(f'''
+                                <a href="{sms_url}" style="display:block;text-align:center;padding:12px;background:#3b82f6;color:white;border-radius:8px;text-decoration:none;font-weight:600;">
+                                    💬 SMS
+                                </a>
+                                ''', unsafe_allow_html=True)
+                            with col_skip:
+                                if st.button("⏭️ Passer", key=f"skip_notif_{cmd_id}", use_container_width=True):
+                                    del st.session_state[f"notif_cmd_{cmd_id}"]
+                                    st.rerun()
+                        else:
+                            st.warning("⚠️ Pas de téléphone client")
+                            if st.button("OK", key=f"ok_notif_{cmd_id}"):
+                                del st.session_state[f"notif_cmd_{cmd_id}"]
+                                st.rerun()
+                        st.markdown("---")
                     
                     st.markdown("<hr style='margin:10px 0;border-color:#eee;'>", unsafe_allow_html=True)
     
