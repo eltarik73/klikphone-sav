@@ -3295,7 +3295,7 @@ def envoyer_vers_caisse(ticket):
         shopid = get_param("CAISSE_SHOPID")
         
         if not apikey or not shopid:
-            return False, "Configuration API manquante"
+            return False, "Configuration API manquante (APIKEY ou SHOPID)"
         
         # Préparer les données
         payment_mode = get_param("CAISSE_PAYMENT_MODE") or "-1"
@@ -3315,66 +3315,69 @@ def envoyer_vers_caisse(ticket):
         if ticket.get('panne_detail'):
             panne_txt += f" ({ticket['panne_detail']})"
         
-        description = f"Réparation {modele_txt} - {panne_txt}"
+        description = f"Reparation {modele_txt} - {panne_txt}"
         if ticket.get('type_ecran'):
             description += f" [{ticket['type_ecran']}]"
         
-        # Préparer les données POST
-        data = {
-            "idboutique": shopid,
-            "key": apikey,
-            "payment": payment_mode,
-            "deliveryMethod": delivery_method,
-            "publicComment": f"Ticket: {ticket.get('ticket_code', '')}",
-            "privateComment": ticket.get('notes_internes', '') or "",
-        }
+        # Nettoyer la description (pas de caractères spéciaux problématiques)
+        description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
+        description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
         
-        # Créer ou lier le client
+        # Construire les données POST comme liste de tuples (permet clés dupliquées)
+        post_data = [
+            ("idboutique", shopid),
+            ("key", apikey),
+            ("payment", payment_mode),
+            ("deliveryMethod", delivery_method),
+            ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
+        ]
+        
+        # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
-            data["client[nom]"] = ticket.get('client_nom', '')
-            data["client[prenom]"] = ticket.get('client_prenom', '')
-            data["client[telephone]"] = ticket.get('client_tel', '')
-            data["client[email]"] = ticket.get('client_email', '') or ''
+            post_data.append(("client[nom]", ticket.get('client_nom', '')))
+            post_data.append(("client[prenom]", ticket.get('client_prenom', '')))
+            post_data.append(("client[telephone]", ticket.get('client_tel', '')))
+            if ticket.get('client_email'):
+                post_data.append(("client[email]", ticket.get('client_email', '')))
         
-        # Ajouter la ligne de vente (vente libre)
-        # Format: Free_[prix]_[titre]
-        items = [f"Free_{total:.2f}_{description}"]
-        
-        # Ajouter réparation supplémentaire si présente
+        # Ajouter les articles (format: Free_prix_description)
         if ticket.get('reparation_supp') and prix_supp > 0:
-            items.append(f"Free_{prix_supp:.2f}_{ticket.get('reparation_supp')}")
-            # Ajuster le premier item pour ne pas doubler
-            items[0] = f"Free_{devis:.2f}_{description}"
+            # Deux lignes séparées
+            post_data.append(("itemsList[]", f"Free_{devis:.2f}_{description}"))
+            rep_supp = ticket.get('reparation_supp', 'Reparation supplementaire')
+            rep_supp = rep_supp.replace("_", " ").replace("é", "e").replace("è", "e")
+            post_data.append(("itemsList[]", f"Free_{prix_supp:.2f}_{rep_supp}"))
+        else:
+            # Une seule ligne
+            post_data.append(("itemsList[]", f"Free_{total:.2f}_{description}"))
         
         # Envoyer la requête
         response = requests.post(
             "https://caisse.enregistreuse.fr/workers/webapp.php",
-            data=data,
+            data=post_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=15
         )
-        
-        # Ajouter les items séparément (format URLencoded)
-        for item in items:
-            response = requests.post(
-                "https://caisse.enregistreuse.fr/workers/webapp.php",
-                data={**data, "itemsList[]": items},
-                timeout=15
-            )
         
         if response.status_code == 200:
             try:
                 result = response.json()
-                if result.get("result") == "OK" or "id" in str(result):
-                    return True, f"Vente enregistrée ! ID: {result}"
-                else:
-                    return False, f"Erreur: {result}"
-            except:
-                # Si pas JSON, vérifier si c'est un succès
-                if "OK" in response.text or response.text.isdigit():
+                if result.get("result") == "OK":
                     return True, f"Vente enregistrée !"
-                return False, f"Réponse inattendue: {response.text[:200]}"
+                elif "id" in str(result).lower():
+                    return True, f"Vente enregistrée ! {result}"
+                else:
+                    return False, f"{result.get('errorMessage', result)}"
+            except:
+                # Si pas JSON, vérifier si c'est un succès (nombre = ID de vente)
+                text = response.text.strip()
+                if text.isdigit():
+                    return True, f"Vente enregistrée ! ID: {text}"
+                elif "OK" in text:
+                    return True, "Vente enregistrée !"
+                return False, f"Réponse: {text[:200]}"
         else:
-            return False, f"Erreur HTTP {response.status_code}"
+            return False, f"Erreur HTTP {response.status_code}: {response.text[:100]}"
             
     except Exception as e:
         return False, f"Erreur: {str(e)}"
@@ -6211,14 +6214,24 @@ Merci de nous confirmer votre accord.
         st.markdown("---")
         st.markdown("##### 💳 Caisse Enregistreuse")
         
-        caisse_configured = get_param("CAISSE_ENABLED") == "1" and get_param("CAISSE_APIKEY")
+        caisse_apikey = get_param("CAISSE_APIKEY") or ""
+        caisse_shopid = get_param("CAISSE_SHOPID") or ""
+        caisse_enabled = get_param("CAISSE_ENABLED") == "1"
+        caisse_configured = caisse_enabled and caisse_apikey and caisse_shopid
         total_ticket = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
         
         if not caisse_configured:
-            st.warning("⚠️ Configurez l'API dans ⚙️ Config > 💳 Caisse")
+            if not caisse_enabled:
+                st.warning("⚠️ Activez l'intégration dans ⚙️ Config > 💳 Caisse")
+            elif not caisse_apikey:
+                st.warning("⚠️ Token API manquant - cliquez 'Obtenir le token' dans Config > Caisse")
+            elif not caisse_shopid:
+                st.warning("⚠️ SHOPID manquant - cliquez 'Obtenir le token' dans Config > Caisse")
         elif total_ticket <= 0:
             st.info("💡 Renseignez un devis pour envoyer vers la caisse")
         else:
+            # Afficher le SHOPID pour vérification
+            st.caption(f"🔗 SHOPID: {caisse_shopid[:10]}... | Token: {'✅' if len(caisse_apikey) > 10 else '❌'}")
             if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
                 success, message = envoyer_vers_caisse(t)
                 if success:
@@ -7648,6 +7661,14 @@ def staff_config():
                                      value=get_param("CAISSE_ENABLED") == "1",
                                      key="caisse_enabled")
         
+        # Afficher l'état actuel
+        current_apikey = get_param("CAISSE_APIKEY") or ""
+        current_shopid = get_param("CAISSE_SHOPID") or ""
+        if current_apikey and current_shopid:
+            st.success(f"✅ Configuré - SHOPID: {current_shopid} | Token: {current_apikey[:15]}...")
+        else:
+            st.warning("⚠️ Non configuré - Obtenez le token ci-dessous")
+        
         col_c1, col_c2 = st.columns(2)
         with col_c1:
             caisse_login = st.text_input("Email de connexion", 
@@ -7661,11 +7682,11 @@ def staff_config():
         
         with col_c2:
             caisse_apikey = st.text_input("Token API (APIKEY)", 
-                                          value=get_param("CAISSE_APIKEY") or "",
+                                          value=current_apikey,
                                           placeholder="Obtenu automatiquement ou manuellement",
                                           key="caisse_apikey")
             caisse_shopid = st.text_input("ID Boutique (SHOPID)", 
-                                          value=get_param("CAISSE_SHOPID") or "",
+                                          value=current_shopid,
                                           placeholder="Obtenu automatiquement",
                                           key="caisse_shopid")
         
@@ -7678,16 +7699,22 @@ def staff_config():
                         response = requests.post(
                             "https://caisse.enregistreuse.fr/workers/getAuthToken.php",
                             data={"login": caisse_login, "password": caisse_password},
+                            headers={"Content-Type": "application/x-www-form-urlencoded"},
                             timeout=10
                         )
                         data = response.json()
                         if data.get("result") == "OK":
-                            set_param("CAISSE_APIKEY", data.get("APIKEY", ""))
-                            set_param("CAISSE_SHOPID", data.get("SHOPID", ""))
-                            st.success(f"✅ Token obtenu ! SHOPID: {data.get('SHOPID')}")
+                            new_apikey = data.get("APIKEY", "")
+                            new_shopid = data.get("SHOPID", "")
+                            set_param("CAISSE_APIKEY", new_apikey)
+                            set_param("CAISSE_SHOPID", new_shopid)
+                            set_param("CAISSE_ENABLED", "1")
+                            st.success(f"✅ Token obtenu et sauvegardé !")
+                            st.info(f"SHOPID: {new_shopid}")
+                            st.info(f"Token: {new_apikey[:20]}...")
                             st.rerun()
                         else:
-                            st.error(f"❌ Erreur: {data}")
+                            st.error(f"❌ Erreur: {data.get('errorMessage', data)}")
                     except Exception as e:
                         st.error(f"❌ Erreur de connexion: {str(e)}")
                 else:
@@ -7701,6 +7728,7 @@ def staff_config():
                 set_param("CAISSE_APIKEY", caisse_apikey)
                 set_param("CAISSE_SHOPID", caisse_shopid)
                 st.success("✅ Configuration enregistrée!")
+                st.rerun()
         
         # Mode de paiement par défaut
         st.markdown("---")
