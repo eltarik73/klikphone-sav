@@ -2632,6 +2632,7 @@ def init_db():
         "ALTER TABLE clients ADD COLUMN societe TEXT",
         "ALTER TABLE clients ADD COLUMN carte_camby INTEGER DEFAULT 0",
         "ALTER TABLE tickets ADD COLUMN type_ecran TEXT",
+        "ALTER TABLE tickets ADD COLUMN date_cloture TEXT",
     ]
     for sql in migrations:
         try:
@@ -3034,7 +3035,7 @@ def changer_statut(tid, statut):
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if statut == "Clôturé":
-        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_clôturé=? WHERE id=?", (statut, now, now, tid))
+        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=? WHERE id=?", (statut, now, now, tid))
     else:
         c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
     conn.commit()
