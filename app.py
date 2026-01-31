@@ -2870,6 +2870,13 @@ def supprimer_ticket(ticket_id):
     c.execute("DELETE FROM tickets WHERE id=?", (ticket_id,))
     conn.commit()
     conn.close()
+    # Invalider les caches
+    try:
+        clear_tickets_cache()
+        clear_commandes_cache()
+        clear_ticket_full_cache()
+    except:
+        pass
     return True
 
 def search_clients(query):
@@ -2881,8 +2888,9 @@ def search_clients(query):
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
-def get_commandes_pieces(ticket_id=None, statut=None):
-    """Récupère les commandes de pièces avec détails du ticket"""
+@st.cache_data(ttl=20)  # Cache 20 secondes pour les commandes
+def _get_commandes_pieces_cached(ticket_id, statut):
+    """Version cachée de get_commandes_pieces"""
     conn = get_db()
     c = conn.cursor()
     q = """SELECT cp.*, t.ticket_code, t.marque, t.modele, t.modele_autre, t.panne_detail, t.categorie,
@@ -2904,6 +2912,17 @@ def get_commandes_pieces(ticket_id=None, statut=None):
     conn.close()
     return commandes
 
+def get_commandes_pieces(ticket_id=None, statut=None):
+    """Récupère les commandes de pièces avec cache"""
+    return _get_commandes_pieces_cached(ticket_id, statut)
+
+def clear_commandes_cache():
+    """Invalide le cache des commandes"""
+    try:
+        _get_commandes_pieces_cached.clear()
+    except:
+        pass
+
 def ajouter_commande_piece(ticket_id, description, fournisseur, reference="", prix=0, notes=""):
     """Ajoute une commande de pièce"""
     conn = get_db()
@@ -2914,6 +2933,7 @@ def ajouter_commande_piece(ticket_id, description, fournisseur, reference="", pr
               (ticket_id, description, fournisseur, reference, prix, notes))
     conn.commit()
     conn.close()
+    clear_commandes_cache()
 
 def update_commande_piece(commande_id, statut=None, date_commande=None, date_reception=None, notes=None):
     """Met à jour une commande de pièce"""
@@ -2930,6 +2950,7 @@ def update_commande_piece(commande_id, statut=None, date_commande=None, date_rec
         c.execute(f"UPDATE commandes_pieces SET {', '.join(updates)} WHERE id=?", params)
         conn.commit()
     conn.close()
+    clear_commandes_cache()
 
 def delete_commande_piece(commande_id):
     """Supprime une commande de pièce"""
@@ -2938,6 +2959,7 @@ def delete_commande_piece(commande_id):
     c.execute("DELETE FROM commandes_pieces WHERE id=?", (commande_id,))
     conn.commit()
     conn.close()
+    clear_commandes_cache()
 
 # Fonctions membres équipe
 @st.cache_data(ttl=60)  # Cache pendant 60 secondes
@@ -2994,6 +3016,7 @@ def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_deta
     c.execute("UPDATE tickets SET ticket_code=? WHERE id=?", (code, tid))
     conn.commit()
     conn.close()
+    clear_tickets_cache()
     return code
 
 def get_ticket(tid=None, code=None):
@@ -3006,7 +3029,9 @@ def get_ticket(tid=None, code=None):
     conn.close()
     return dict(r) if r else None
 
-def get_ticket_full(tid=None, code=None):
+@st.cache_data(ttl=10)  # Cache 10 secondes pour ticket individuel
+def _get_ticket_full_cached(tid, code):
+    """Version cachée de get_ticket_full"""
     conn = get_db()
     c = conn.cursor()
     q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, 
@@ -3015,10 +3040,23 @@ def get_ticket_full(tid=None, code=None):
            FROM tickets t JOIN clients c ON t.client_id=c.id"""
     if tid: c.execute(q + " WHERE t.id=?", (tid,))
     elif code: c.execute(q + " WHERE t.ticket_code=?", (code,))
-    else: return None
+    else: 
+        conn.close()
+        return None
     r = c.fetchone()
     conn.close()
     return dict(r) if r else None
+
+def get_ticket_full(tid=None, code=None):
+    """Récupère un ticket complet avec cache"""
+    return _get_ticket_full_cached(tid, code)
+
+def clear_ticket_full_cache():
+    """Invalide le cache du ticket"""
+    try:
+        _get_ticket_full_cached.clear()
+    except:
+        pass
 
 def update_ticket(tid, **kw):
     if not kw: return
@@ -3029,6 +3067,9 @@ def update_ticket(tid, **kw):
     c.execute(f"UPDATE tickets SET {fields}, date_maj=? WHERE id=?", vals)
     conn.commit()
     conn.close()
+    # Invalider les caches
+    clear_tickets_cache()
+    clear_ticket_full_cache()
 
 def changer_statut(tid, statut):
     conn = get_db()
@@ -3040,8 +3081,13 @@ def changer_statut(tid, statut):
         c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
     conn.commit()
     conn.close()
+    # Invalider les caches
+    clear_tickets_cache()
+    clear_ticket_full_cache()
 
-def chercher_tickets(statut=None, tel=None, code=None, nom=None):
+@st.cache_data(ttl=15)  # Cache 15 secondes pour les tickets
+def _chercher_tickets_cached(statut, tel, code, nom):
+    """Version cachée de chercher_tickets"""
     conn = get_db()
     c = conn.cursor()
     q = """SELECT t.*, c.nom as client_nom, c.prenom as client_prenom, c.telephone as client_tel,
@@ -3057,6 +3103,17 @@ def chercher_tickets(statut=None, tel=None, code=None, nom=None):
     r = [dict(row) for row in c.fetchall()]
     conn.close()
     return r
+
+def chercher_tickets(statut=None, tel=None, code=None, nom=None):
+    """Recherche tickets avec cache"""
+    return _chercher_tickets_cached(statut, tel, code, nom)
+
+def clear_tickets_cache():
+    """Invalide le cache des tickets"""
+    try:
+        _chercher_tickets_cached.clear()
+    except:
+        pass
 
 def ajouter_note(tid, note):
     t = get_ticket(tid=tid)
