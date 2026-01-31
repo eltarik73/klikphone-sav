@@ -3285,7 +3285,7 @@ def html_to_pdf(html_content):
     except Exception as e:
         return None
 
-def envoyer_vers_caisse(ticket):
+def envoyer_vers_caisse(ticket, payment_override=None):
     """Envoie un ticket de réparation vers caisse.enregistreuse.fr"""
     try:
         import requests
@@ -3298,7 +3298,7 @@ def envoyer_vers_caisse(ticket):
             return False, "Configuration API manquante (APIKEY ou SHOPID)"
         
         # Préparer les données
-        payment_mode = get_param("CAISSE_PAYMENT_MODE") or "-1"
+        payment_mode = payment_override or get_param("CAISSE_PAYMENT_MODE") or "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
         
         # Calculer le montant total
@@ -6230,10 +6230,25 @@ Merci de nous confirmer votre accord.
         elif total_ticket <= 0:
             st.info("💡 Renseignez un devis pour envoyer vers la caisse")
         else:
-            # Afficher le SHOPID pour vérification
-            st.caption(f"🔗 SHOPID: {caisse_shopid[:10]}... | Token: {'✅' if len(caisse_apikey) > 10 else '❌'}")
+            # Choix du mode de paiement au moment de l'envoi
+            mode_envoi = st.radio(
+                "Mode de paiement",
+                ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée (à encaisser)"],
+                index=0,
+                key=f"mode_paiement_envoi_{tid}",
+                horizontal=True
+            )
+            
+            # Mapper le choix vers la valeur API
+            mode_map = {
+                "💳 Carte bancaire": "2",
+                "💵 Espèces": "1",
+                "📝 Non payée (à encaisser)": "-1"
+            }
+            mode_val = mode_map.get(mode_envoi, "2")
+            
             if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
-                success, message = envoyer_vers_caisse(t)
+                success, message = envoyer_vers_caisse(t, payment_override=mode_val)
                 if success:
                     st.success(f"✅ {message}")
                 else:
@@ -7734,23 +7749,42 @@ def staff_config():
         st.markdown("---")
         st.markdown("#### Paramètres d'envoi")
         
+        payment_options = ["-2 (Non payée, non validée)", "-1 (Non payée, validée)", "1 (Espèces)", "2 (Carte bancaire)", "3 (Chèque)"]
+        payment_values = ["-2", "-1", "1", "2", "3"]
+        current_payment = get_param("CAISSE_PAYMENT_MODE") or "-1"
+        payment_index = payment_values.index(current_payment) if current_payment in payment_values else 1
+        
         caisse_payment_mode = st.selectbox(
             "Mode de paiement par défaut",
-            ["-2 (Non payée, non validée)", "-1 (Non payée, validée)", "1 (Espèces)", "2 (Carte bancaire)", "3 (Chèque)"],
-            index=1 if get_param("CAISSE_PAYMENT_MODE") == "-1" else 0,
+            payment_options,
+            index=payment_index,
             key="caisse_payment_mode"
         )
         payment_val = caisse_payment_mode.split(" ")[0]
-        set_param("CAISSE_PAYMENT_MODE", payment_val)
+        
+        # Sauvegarder si changé
+        if payment_val != current_payment:
+            set_param("CAISSE_PAYMENT_MODE", payment_val)
+            st.success(f"✅ Mode de paiement changé: {caisse_payment_mode}")
+        
+        # Afficher le mode actuel
+        st.caption(f"📌 Mode actuel en BDD: {current_payment}")
+        
+        delivery_options = ["4 (Vente au comptoir)", "0 (À emporter)", "2 (Sur place)"]
+        delivery_values = ["4", "0", "2"]
+        current_delivery = get_param("CAISSE_DELIVERY_METHOD") or "4"
+        delivery_index = delivery_values.index(current_delivery) if current_delivery in delivery_values else 0
         
         caisse_delivery = st.selectbox(
             "Méthode de livraison",
-            ["4 (Vente au comptoir)", "0 (À emporter)", "2 (Sur place)"],
-            index=0,
+            delivery_options,
+            index=delivery_index,
             key="caisse_delivery"
         )
         delivery_val = caisse_delivery.split(" ")[0]
-        set_param("CAISSE_DELIVERY_METHOD", delivery_val)
+        
+        if delivery_val != current_delivery:
+            set_param("CAISSE_DELIVERY_METHOD", delivery_val)
         
         # Test de connexion
         st.markdown("---")
