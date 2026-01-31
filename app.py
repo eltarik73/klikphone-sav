@@ -3285,6 +3285,100 @@ def html_to_pdf(html_content):
     except Exception as e:
         return None
 
+def envoyer_vers_caisse(ticket):
+    """Envoie un ticket de réparation vers caisse.enregistreuse.fr"""
+    try:
+        import requests
+        
+        # Vérifier la configuration
+        apikey = get_param("CAISSE_APIKEY")
+        shopid = get_param("CAISSE_SHOPID")
+        
+        if not apikey or not shopid:
+            return False, "Configuration API manquante"
+        
+        # Préparer les données
+        payment_mode = get_param("CAISSE_PAYMENT_MODE") or "-1"
+        delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
+        
+        # Calculer le montant total
+        devis = float(ticket.get('devis_estime') or 0)
+        prix_supp = float(ticket.get('prix_supp') or 0)
+        total = devis + prix_supp
+        
+        # Construire la description de la réparation
+        modele_txt = f"{ticket.get('marque', '')} {ticket.get('modele', '')}"
+        if ticket.get('modele_autre'):
+            modele_txt += f" ({ticket['modele_autre']})"
+        
+        panne_txt = ticket.get('panne', '')
+        if ticket.get('panne_detail'):
+            panne_txt += f" ({ticket['panne_detail']})"
+        
+        description = f"Réparation {modele_txt} - {panne_txt}"
+        if ticket.get('type_ecran'):
+            description += f" [{ticket['type_ecran']}]"
+        
+        # Préparer les données POST
+        data = {
+            "idboutique": shopid,
+            "key": apikey,
+            "payment": payment_mode,
+            "deliveryMethod": delivery_method,
+            "publicComment": f"Ticket: {ticket.get('ticket_code', '')}",
+            "privateComment": ticket.get('notes_internes', '') or "",
+        }
+        
+        # Créer ou lier le client
+        if ticket.get('client_nom') or ticket.get('client_prenom'):
+            data["client[nom]"] = ticket.get('client_nom', '')
+            data["client[prenom]"] = ticket.get('client_prenom', '')
+            data["client[telephone]"] = ticket.get('client_tel', '')
+            data["client[email]"] = ticket.get('client_email', '') or ''
+        
+        # Ajouter la ligne de vente (vente libre)
+        # Format: Free_[prix]_[titre]
+        items = [f"Free_{total:.2f}_{description}"]
+        
+        # Ajouter réparation supplémentaire si présente
+        if ticket.get('reparation_supp') and prix_supp > 0:
+            items.append(f"Free_{prix_supp:.2f}_{ticket.get('reparation_supp')}")
+            # Ajuster le premier item pour ne pas doubler
+            items[0] = f"Free_{devis:.2f}_{description}"
+        
+        # Envoyer la requête
+        response = requests.post(
+            "https://caisse.enregistreuse.fr/workers/webapp.php",
+            data=data,
+            timeout=15
+        )
+        
+        # Ajouter les items séparément (format URLencoded)
+        for item in items:
+            response = requests.post(
+                "https://caisse.enregistreuse.fr/workers/webapp.php",
+                data={**data, "itemsList[]": items},
+                timeout=15
+            )
+        
+        if response.status_code == 200:
+            try:
+                result = response.json()
+                if result.get("result") == "OK" or "id" in str(result):
+                    return True, f"Vente enregistrée ! ID: {result}"
+                else:
+                    return False, f"Erreur: {result}"
+            except:
+                # Si pas JSON, vérifier si c'est un succès
+                if "OK" in response.text or response.text.isdigit():
+                    return True, f"Vente enregistrée !"
+                return False, f"Réponse inattendue: {response.text[:200]}"
+        else:
+            return False, f"Erreur HTTP {response.status_code}"
+            
+    except Exception as e:
+        return False, f"Erreur: {str(e)}"
+
 def export_clients_excel():
     """Exporte la liste des clients en Excel"""
     try:
@@ -6101,6 +6195,24 @@ Merci de nous confirmer votre accord.
                     if success:
                         update_ticket(tid, msg_email=1)
                         st.success("✅ Envoyé!")
+        
+        # --- INTÉGRATION CAISSE ---
+        if get_param("CAISSE_ENABLED") == "1" and get_param("CAISSE_APIKEY"):
+            st.markdown("---")
+            st.markdown("##### 💳 Caisse Enregistreuse")
+            
+            # Calculer le total
+            total_ticket = float(t.get('devis_estime') or 0) + float(t.get('prix_supp') or 0)
+            
+            if total_ticket > 0:
+                if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
+                    success, message = envoyer_vers_caisse(t)
+                    if success:
+                        st.success(f"✅ {message}")
+                    else:
+                        st.error(f"❌ {message}")
+            else:
+                st.info("💡 Renseignez un devis pour pouvoir envoyer vers la caisse")
     
     # =================================================================
     # ZONE BAS: Notes (gauche) + Notifications (droite)
@@ -6988,7 +7100,7 @@ def staff_nouvelle_demande():
             st.success(f"Demande créée : {code}")
 
 def staff_config():
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité", "💳 Caisse"])
     
     with tab1:
         st.markdown("### Informations de la boutique")
@@ -7507,6 +7619,139 @@ def staff_config():
                         
             except Exception as e:
                 st.error(f"❌ Erreur lors de la lecture du fichier: {str(e)}")
+    
+    with tab7:
+        st.markdown("### 💳 Intégration Caisse Enregistreuse")
+        st.markdown("""
+        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <strong>🔗 caisse.enregistreuse.fr</strong><br>
+            Synchronisez vos tickets de réparation avec votre logiciel de caisse.<br>
+            <span style="font-size:12px;color:#64748b;">Nécessite une licence étendue pour l'accès API</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("#### Configuration API")
+        
+        caisse_enabled = st.checkbox("Activer l'intégration Caisse Enregistreuse", 
+                                     value=get_param("CAISSE_ENABLED") == "1",
+                                     key="caisse_enabled")
+        
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            caisse_login = st.text_input("Email de connexion", 
+                                         value=get_param("CAISSE_LOGIN") or "",
+                                         placeholder="votre@email.com",
+                                         key="caisse_login")
+            caisse_password = st.text_input("Mot de passe", 
+                                            type="password",
+                                            value=get_param("CAISSE_PASSWORD") or "",
+                                            key="caisse_password")
+        
+        with col_c2:
+            caisse_apikey = st.text_input("Token API (APIKEY)", 
+                                          value=get_param("CAISSE_APIKEY") or "",
+                                          placeholder="Obtenu automatiquement ou manuellement",
+                                          key="caisse_apikey")
+            caisse_shopid = st.text_input("ID Boutique (SHOPID)", 
+                                          value=get_param("CAISSE_SHOPID") or "",
+                                          placeholder="Obtenu automatiquement",
+                                          key="caisse_shopid")
+        
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("🔑 Obtenir le token API", type="secondary", use_container_width=True):
+                if caisse_login and caisse_password:
+                    try:
+                        import requests
+                        response = requests.post(
+                            "https://caisse.enregistreuse.fr/workers/getAuthToken.php",
+                            data={"login": caisse_login, "password": caisse_password},
+                            timeout=10
+                        )
+                        data = response.json()
+                        if data.get("result") == "OK":
+                            set_param("CAISSE_APIKEY", data.get("APIKEY", ""))
+                            set_param("CAISSE_SHOPID", data.get("SHOPID", ""))
+                            st.success(f"✅ Token obtenu ! SHOPID: {data.get('SHOPID')}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Erreur: {data}")
+                    except Exception as e:
+                        st.error(f"❌ Erreur de connexion: {str(e)}")
+                else:
+                    st.warning("Renseignez l'email et le mot de passe")
+        
+        with col_btn2:
+            if st.button("💾 Enregistrer la configuration", type="primary", use_container_width=True):
+                set_param("CAISSE_ENABLED", "1" if caisse_enabled else "0")
+                set_param("CAISSE_LOGIN", caisse_login)
+                set_param("CAISSE_PASSWORD", caisse_password)
+                set_param("CAISSE_APIKEY", caisse_apikey)
+                set_param("CAISSE_SHOPID", caisse_shopid)
+                st.success("✅ Configuration enregistrée!")
+        
+        # Mode de paiement par défaut
+        st.markdown("---")
+        st.markdown("#### Paramètres d'envoi")
+        
+        caisse_payment_mode = st.selectbox(
+            "Mode de paiement par défaut",
+            ["-2 (Non payée, non validée)", "-1 (Non payée, validée)", "1 (Espèces)", "2 (Carte bancaire)", "3 (Chèque)"],
+            index=1 if get_param("CAISSE_PAYMENT_MODE") == "-1" else 0,
+            key="caisse_payment_mode"
+        )
+        payment_val = caisse_payment_mode.split(" ")[0]
+        set_param("CAISSE_PAYMENT_MODE", payment_val)
+        
+        caisse_delivery = st.selectbox(
+            "Méthode de livraison",
+            ["4 (Vente au comptoir)", "0 (À emporter)", "2 (Sur place)"],
+            index=0,
+            key="caisse_delivery"
+        )
+        delivery_val = caisse_delivery.split(" ")[0]
+        set_param("CAISSE_DELIVERY_METHOD", delivery_val)
+        
+        # Test de connexion
+        st.markdown("---")
+        st.markdown("#### Test de connexion")
+        
+        if st.button("🔄 Tester la connexion API", use_container_width=True):
+            apikey = get_param("CAISSE_APIKEY")
+            shopid = get_param("CAISSE_SHOPID")
+            if apikey and shopid:
+                try:
+                    import requests
+                    response = requests.get(
+                        f"https://caisse.enregistreuse.fr/workers/getPlus.php?idboutique={shopid}&key={apikey}&format=json",
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        if isinstance(data, list):
+                            st.success(f"✅ Connexion réussie ! {len(data)} articles trouvés dans votre catalogue")
+                        else:
+                            st.warning(f"⚠️ Réponse inattendue: {data}")
+                    else:
+                        st.error(f"❌ Erreur HTTP: {response.status_code}")
+                except Exception as e:
+                    st.error(f"❌ Erreur: {str(e)}")
+            else:
+                st.warning("⚠️ Configurez d'abord l'API (token + SHOPID)")
+        
+        # Instructions
+        st.markdown("---")
+        st.markdown("""
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1rem;font-size:13px;">
+            <strong>📖 Comment ça marche :</strong>
+            <ol style="margin:10px 0 0 0;padding-left:20px;">
+                <li>Créez un compte sur <a href="https://caisse.enregistreuse.fr/caisse-gratuite/" target="_blank">caisse.enregistreuse.fr</a></li>
+                <li>Souscrivez à la licence étendue (28€/mois) pour accéder à l'API</li>
+                <li>Entrez vos identifiants ci-dessus et cliquez "Obtenir le token"</li>
+                <li>Une fois configuré, un bouton "📤 Envoyer à la caisse" apparaîtra sur les tickets clôturés</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
 
 # =============================================================================
 # INTERFACE TECHNICIEN
