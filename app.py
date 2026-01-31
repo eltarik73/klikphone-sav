@@ -5695,20 +5695,28 @@ def staff_traiter_demande(tid):
             precision_label = "📝 Précision"
         
         camby_html = ' <span style="background:#22c55e;color:white;padding:2px 8px;border-radius:10px;font-size:11px;">🎫 CAMBY</span>' if t.get('client_carte_camby') else ''
-        type_ecran_html = f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">{precision_label}</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>' if t.get('type_ecran') else ''
-        recup_html = f'<div class="detail-row" style="background:#dcfce7;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#166534;">📅 Récupération</span><span class="detail-value" style="color:#166534;font-weight:600;">{t.get("date_recuperation")}</span></div>' if t.get('date_recuperation') else ''
         
-        st.markdown(f'''
-        <div class="detail-card">
-            <div class="detail-row"><span class="detail-label">Client</span><span class="detail-value">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_html}</span></div>
-            <div class="detail-row"><span class="detail-label">Téléphone</span><span class="detail-value" style="font-family:monospace;">{t.get('client_tel','')}</span></div>
-            <div class="detail-row"><span class="detail-label">Appareil</span><span class="detail-value">{modele_txt}</span></div>
-            <div class="detail-row"><span class="detail-label">Motif</span><span class="detail-value">{panne}</span></div>
-            {type_ecran_html}
-            <div class="detail-row"><span class="detail-label">Dépôt</span><span class="detail-value">{fmt_date(t.get('date_depot',''))}</span></div>
-            {recup_html}
-        </div>
-        ''', unsafe_allow_html=True)
+        # Construire le HTML ligne par ligne
+        html_lines = []
+        html_lines.append('<div class="detail-card">')
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">Client</span><span class="detail-value">{t.get("client_nom","")} {t.get("client_prenom","")}{camby_html}</span></div>')
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">Téléphone</span><span class="detail-value" style="font-family:monospace;">{t.get("client_tel","")}</span></div>')
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">Appareil</span><span class="detail-value">{modele_txt}</span></div>')
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">Motif</span><span class="detail-value">{panne}</span></div>')
+        
+        # Précision si présente
+        if t.get('type_ecran'):
+            html_lines.append(f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">{precision_label}</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>')
+        
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">Dépôt</span><span class="detail-value">{fmt_date(t.get("date_depot",""))}</span></div>')
+        
+        # Date récupération si présente
+        if t.get('date_recuperation'):
+            html_lines.append(f'<div class="detail-row" style="background:#dcfce7;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#166534;">📅 Récupération</span><span class="detail-value" style="color:#166534;font-weight:600;">{t.get("date_recuperation")}</span></div>')
+        
+        html_lines.append('</div>')
+        
+        st.markdown(''.join(html_lines), unsafe_allow_html=True)
         
         # Bouton modifier client
         if st.button("✏️ Modifier client/appareil", key=f"edit_client_btn_{tid}", type="secondary", use_container_width=True):
