@@ -2527,18 +2527,54 @@ class _PgConnProxy:
         return getattr(self._conn, name)
 
 
-def get_db():
-    """Retourne une connexion DB.
+class _SqliteConnProxy:
+    """Proxy de connexion SQLite qui ignore close() pour connexion persistante"""
+    def __init__(self, conn):
+        self._conn = conn
+    def cursor(self):
+        return self._conn.cursor()
+    def commit(self):
+        return self._conn.commit()
+    def rollback(self):
+        return self._conn.rollback()
+    def execute(self, *args, **kwargs):
+        return self._conn.execute(*args, **kwargs)
+    def executemany(self, *args, **kwargs):
+        return self._conn.executemany(*args, **kwargs)
+    def close(self):
+        pass  # No-op pour garder la connexion persistante
+    @property
+    def row_factory(self):
+        return self._conn.row_factory
+    @row_factory.setter
+    def row_factory(self, val):
+        self._conn.row_factory = val
 
-    - SQLite si aucune config Supabase
+def get_db():
+    """Retourne une connexion DB optimisée.
+
+    - SQLite: connexion persistante en session + PRAGMA optimisations
     - Postgres (Supabase) si secrets/env présents
     """
     if is_postgres():
         return _PgConnProxy(_pg_connect())
 
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    # Connexion SQLite persistante en session_state
+    if "_sqlite_conn" not in st.session_state or st.session_state._sqlite_conn is None:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        
+        # PRAGMA optimisations performance
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA mmap_size=268435456")  # 256MB mmap
+        
+        st.session_state._sqlite_conn = conn
+    
+    return _SqliteConnProxy(st.session_state._sqlite_conn)
 
 def init_db():
     # Sur Supabase/Postgres, le schéma est créé via le SQL Editor.
@@ -2680,8 +2716,39 @@ def init_db():
             for m in modeles_list:
                 c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, m))
     
+    # P3: INDEX pour performances (IF NOT EXISTS pour éviter erreurs)
+    index_definitions = [
+        "CREATE INDEX IF NOT EXISTS idx_clients_telephone ON clients(telephone)",
+        "CREATE INDEX IF NOT EXISTS idx_clients_search_key ON clients(search_key)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_code ON tickets(ticket_code)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_client ON tickets(client_id)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_statut ON tickets(statut)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_date ON tickets(date_depot)",
+        "CREATE INDEX IF NOT EXISTS idx_commandes_ticket ON commandes_pieces(ticket_id)",
+        "CREATE INDEX IF NOT EXISTS idx_commandes_statut ON commandes_pieces(statut)",
+    ]
+    for idx_sql in index_definitions:
+        try:
+            c.execute(idx_sql)
+        except:
+            pass
+    
+    # P4: Ajouter colonne search_key si absente
+    try:
+        c.execute("ALTER TABLE clients ADD COLUMN search_key TEXT")
+        conn.commit()
+    except:
+        pass
+    
+    # P4: Remplir search_key si vide (migration unique)
+    c.execute("SELECT COUNT(*) FROM clients WHERE search_key IS NULL OR search_key = ''")
+    if c.fetchone()[0] > 0:
+        c.execute("SELECT id, nom, prenom, telephone, email, societe FROM clients WHERE search_key IS NULL OR search_key = ''")
+        for row in c.fetchall():
+            sk = normalize_search(f"{row['nom'] or ''} {row['prenom'] or ''} {row['telephone'] or ''} {row['email'] or ''} {row['societe'] or ''}")
+            c.execute("UPDATE clients SET search_key = ? WHERE id = ?", (sk, row['id']))
+    
     conn.commit()
-    conn.close()
 
 def get_param(k):
     """Récupère un paramètre (avec cache)"""
@@ -2760,16 +2827,20 @@ def ajouter_modele(cat, marque, modele):
 def get_or_create_client(nom, tel, prenom="", email="", societe="", carte_camby=0):
     conn = get_db()
     c = conn.cursor()
+    # Calculer search_key
+    search_key = normalize_search(f"{nom} {prenom} {tel} {email} {societe}")
+    
     c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=? WHERE id=?", (nom, prenom, email, societe, carte_camby, cid))
+        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=?, search_key=? WHERE id=?", 
+                  (nom, prenom, email, societe, carte_camby, search_key, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby) VALUES (?,?,?,?,?,?)", (nom, prenom, tel, email, societe, carte_camby))
+        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby, search_key) VALUES (?,?,?,?,?,?,?)", 
+                  (nom, prenom, tel, email, societe, carte_camby, search_key))
         cid = c.lastrowid
     conn.commit()
-    conn.close()
     return cid
 
 def check_client_exists(tel):
@@ -2796,29 +2867,55 @@ def get_all_clients():
     return clients
 
 def chercher_clients(query):
-    """Recherche clients avec normalisation (sans accents, insensible à la casse)"""
+    """Recherche clients optimisée via SQL LIKE sur search_key"""
     if not query or len(query) < 2:
         return []
     
     query_norm = normalize_search(query)
-    clients = get_all_clients()
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Recherche SQL directe via search_key (si colonne existe) avec LIMIT
+    try:
+        c.execute("""SELECT c.*, COUNT(t.id) as nb_tickets 
+                     FROM clients c 
+                     LEFT JOIN tickets t ON c.id = t.client_id 
+                     WHERE c.search_key LIKE ?
+                     GROUP BY c.id 
+                     ORDER BY c.nom, c.prenom
+                     LIMIT 50""", (f"%{query_norm}%",))
+        resultats = [dict(row) for row in c.fetchall()]
+        if resultats:
+            return resultats
+    except:
+        pass  # Colonne search_key absente, fallback
+    
+    # Fallback: recherche classique (plus lente mais compatible)
+    c.execute("""SELECT c.*, COUNT(t.id) as nb_tickets 
+                 FROM clients c 
+                 LEFT JOIN tickets t ON c.id = t.client_id 
+                 GROUP BY c.id 
+                 ORDER BY c.nom, c.prenom""")
+    clients = [dict(row) for row in c.fetchall()]
     
     resultats = []
-    for c in clients:
-        # Normaliser les champs du client
-        nom_norm = normalize_search(c.get('nom', ''))
-        prenom_norm = normalize_search(c.get('prenom', ''))
-        tel_norm = normalize_search(c.get('telephone', ''))
-        email_norm = normalize_search(c.get('email', ''))
+    for cl in clients:
+        nom_norm = normalize_search(cl.get('nom', ''))
+        prenom_norm = normalize_search(cl.get('prenom', ''))
+        tel_norm = normalize_search(cl.get('telephone', ''))
+        email_norm = normalize_search(cl.get('email', ''))
+        societe_norm = normalize_search(cl.get('societe', ''))
         
-        # Rechercher dans tous les champs
         if (query_norm in nom_norm or 
             query_norm in prenom_norm or 
             query_norm in tel_norm or
             query_norm in email_norm or
+            query_norm in societe_norm or
             query_norm in f"{nom_norm} {prenom_norm}" or
             query_norm in f"{prenom_norm} {nom_norm}"):
-            resultats.append(c)
+            resultats.append(cl)
+            if len(resultats) >= 50:  # Limite résultats
+                break
     
     return resultats
 
@@ -2832,7 +2929,7 @@ def get_client_by_id(client_id):
     return dict(r) if r else None
 
 def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, societe=None):
-    """Met à jour les informations d'un client"""
+    """Met à jour les informations d'un client + recalcule search_key"""
     conn = get_db()
     c = conn.cursor()
     updates = []
@@ -2843,10 +2940,22 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, 
     if email is not None: updates.append("email=?"); params.append(email)
     if societe is not None: updates.append("societe=?"); params.append(societe)
     if updates:
+        # Recalculer search_key
+        c.execute("SELECT nom, prenom, telephone, email, societe FROM clients WHERE id=?", (client_id,))
+        row = c.fetchone()
+        if row:
+            new_nom = nom if nom is not None else (row['nom'] or '')
+            new_prenom = prenom if prenom is not None else (row['prenom'] or '')
+            new_tel = telephone if telephone is not None else (row['telephone'] or '')
+            new_email = email if email is not None else (row['email'] or '')
+            new_societe = societe if societe is not None else (row['societe'] or '')
+            search_key = normalize_search(f"{new_nom} {new_prenom} {new_tel} {new_email} {new_societe}")
+            updates.append("search_key=?")
+            params.append(search_key)
+        
         params.append(client_id)
         c.execute(f"UPDATE clients SET {', '.join(updates)} WHERE id=?", params)
         conn.commit()
-    conn.close()
 
 def supprimer_client(client_id):
     """Supprime un client et tous ses tickets associés"""
@@ -3153,10 +3262,27 @@ def wa_link(tel, msg):
 
 def get_status_class(statut):
     if "diagnostic" in statut.lower(): return "status-diagnostic"
+    elif "pièce" in statut.lower() or "piece" in statut.lower(): return "status-piece"
+    elif "accord" in statut.lower(): return "status-accord"
     elif "cours" in statut.lower(): return "status-encours"
     elif "terminée" in statut.lower(): return "status-termine"
     elif "rendu" in statut.lower(): return "status-rendu"
-    else: return "status-clôturé"
+    else: return "status-cloture"
+
+def get_status_badge(statut):
+    """Retourne un badge HTML stylisé pour le statut"""
+    colors = {
+        "En attente de diagnostic": ("#FEF3C7", "#92400E", "🔍"),
+        "En attente de pièce": ("#FEE2E2", "#B91C1C", "📦"),
+        "En attente d'accord client": ("#FEF3C7", "#B45309", "⏳"),
+        "En cours de réparation": ("#DBEAFE", "#1D4ED8", "🔧"),
+        "Réparation terminée": ("#D1FAE5", "#047857", "✅"),
+        "Rendu au client": ("#E0E7FF", "#4338CA", "👤"),
+        "Clôturé": ("#F3F4F6", "#6B7280", "📁"),
+    }
+    bg, color, icon = colors.get(statut, ("#F3F4F6", "#6B7280", ""))
+    short_label = statut.replace("En attente de ", "").replace("En cours de ", "").replace("Réparation ", "")
+    return f'''<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:{bg};color:{color};">{icon} {short_label}</span>'''
 
 def sms_link(tel, msg):
     """Genere un lien SMS"""
@@ -6536,8 +6662,13 @@ def staff_gestion_clients():
             st.session_state.edit_client_id = None
             st.rerun()
     
-    # Recherche
-    search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom, téléphone ou société...", key="search_clients")
+    # Recherche avec formulaire (évite rerun à chaque frappe)
+    with st.form(key="search_clients_form", clear_on_submit=False):
+        col_search, col_btn = st.columns([5, 1])
+        with col_search:
+            search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom, téléphone ou société...", key="search_clients", label_visibility="collapsed")
+        with col_btn:
+            search_submitted = st.form_submit_button("🔍", use_container_width=True)
     
     # Liste des clients
     if search and len(search) >= 2:
@@ -6915,7 +7046,12 @@ def staff_attestation():
     use_existing = st.checkbox("Rechercher un client existant", key="att_use_existing")
     
     if use_existing:
-        search_query = st.text_input("🔍 Rechercher par nom, prénom ou téléphone", key="att_search", placeholder="Tapez pour rechercher...")
+        with st.form(key="att_search_form", clear_on_submit=False):
+            col_s, col_b = st.columns([4, 1])
+            with col_s:
+                search_query = st.text_input("🔍 Rechercher", key="att_search", placeholder="Nom, prénom ou téléphone...", label_visibility="collapsed")
+            with col_b:
+                att_search_btn = st.form_submit_button("🔍", use_container_width=True)
         
         if search_query and len(search_query) >= 2:
             clients_found = search_clients(search_query)
@@ -7993,18 +8129,22 @@ def ui_tech():
         return
     
     # Filtres améliorés
-    col_f1, col_f2, col_f3, col_f4 = st.columns([1.5, 1.5, 1.5, 1.5])
-    with col_f1:
-        filtre_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
-    with col_f2:
-        # Filtre par technicien
-        membres = get_membres_equipe()
-        tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
-        filtre_tech = st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
-    with col_f3:
-        tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
-    with col_f4:
-        recherche = st.text_input("Recherche", placeholder="Ticket, nom...", key="tech_recherche")
+    # Filtres avec formulaire (évite rerun à chaque changement)
+    with st.form(key="tech_filters_form", clear_on_submit=False):
+        col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns([1.3, 1.3, 1.2, 1.5, 0.7])
+        with col_f1:
+            filtre_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
+        with col_f2:
+            # Filtre par technicien
+            membres = get_membres_equipe()
+            tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
+            filtre_tech = st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
+        with col_f3:
+            tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
+        with col_f4:
+            recherche = st.text_input("Recherche", placeholder="Ticket, nom...", key="tech_recherche", label_visibility="collapsed")
+        with col_f5:
+            st.form_submit_button("🔍", use_container_width=True)
     
     st.markdown("---")
     
