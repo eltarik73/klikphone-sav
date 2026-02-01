@@ -5637,35 +5637,47 @@ def staff_liste_demandes():
         tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
         f_tech = st.selectbox("Tech", tech_options, key="f_tech", label_visibility="collapsed")
     
-    # Recherche avec les filtres - utiliser normalisation
+    # 1. Récupérer TOUS les tickets (sans filtre statut)
+    all_tickets = chercher_tickets()
+    
+    # 2. Séparer IMMÉDIATEMENT actifs et archives
+    tous_actifs = [t for t in all_tickets if t.get('statut') != 'Clôturé']
+    tous_archives = [t for t in all_tickets if t.get('statut') == 'Clôturé']
+    
+    # 3. Appliquer le filtre de statut UNIQUEMENT sur les actifs
     statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (f_statut if f_statut != "Tous" else None)
+    if statut_filtre:
+        tous_actifs = [t for t in tous_actifs if t.get('statut') == statut_filtre]
     
-    all_tickets = chercher_tickets(statut=statut_filtre)
-    
+    # 4. Appliquer les autres filtres sur actifs ET archives
     # Filtrer par code
     if f_code and f_code.strip():
         code_norm = normalize_search(f_code.strip())
-        all_tickets = [t for t in all_tickets if code_norm in normalize_search(t.get('ticket_code', ''))]
+        tous_actifs = [t for t in tous_actifs if code_norm in normalize_search(t.get('ticket_code', ''))]
+        tous_archives = [t for t in tous_archives if code_norm in normalize_search(t.get('ticket_code', ''))]
     
     # Filtrer par téléphone  
     if f_tel and f_tel.strip():
         tel_norm = normalize_search(f_tel.strip())
-        all_tickets = [t for t in all_tickets if tel_norm in normalize_search(t.get('client_tel', ''))]
+        tous_actifs = [t for t in tous_actifs if tel_norm in normalize_search(t.get('client_tel', ''))]
+        tous_archives = [t for t in tous_archives if tel_norm in normalize_search(t.get('client_tel', ''))]
     
     # Filtrer par nom (avec normalisation sans accents)
     if f_nom and f_nom.strip():
         nom_norm = normalize_search(f_nom.strip())
-        all_tickets = [t for t in all_tickets if 
-                      nom_norm in normalize_search(t.get('client_nom', '')) or 
-                      nom_norm in normalize_search(t.get('client_prenom', ''))]
+        def match_nom(t):
+            return nom_norm in normalize_search(t.get('client_nom', '')) or nom_norm in normalize_search(t.get('client_prenom', ''))
+        tous_actifs = [t for t in tous_actifs if match_nom(t)]
+        tous_archives = [t for t in tous_archives if match_nom(t)]
     
     # Filtrer par technicien si sélectionné
     if f_tech != "👥 Tous":
-        all_tickets = [t for t in all_tickets if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
+        tous_actifs = [t for t in tous_actifs if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
+        tous_archives = [t for t in tous_archives if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
     
-    # Séparer tickets actifs et archivés
-    tickets_actifs = [t for t in all_tickets if t.get('statut') != 'Clôturé']
-    tickets_archives = [t for t in all_tickets if t.get('statut') == 'Clôturé']
+    # Utiliser les listes filtrées
+    tickets_actifs = tous_actifs
+    tickets_archives = tous_archives
     
     # Fonction helper pour obtenir les initiales
     def get_initials(nom, prenom):
@@ -8180,33 +8192,44 @@ def ui_tech():
     
     st.markdown("---")
     
-    # Récupérer TOUS les tickets
+    # 1. Récupérer TOUS les tickets
     all_tickets_tech = chercher_tickets()
     
-    # Filtrer par statut si sélectionné (sauf "Tous" et "Clôturé" qui sont gérés par onglets)
-    if filtre_statut not in ["Tous", "Clôturé"]:
-        all_tickets_tech = [t for t in all_tickets_tech if t.get('statut') == filtre_statut]
+    # 2. Séparer IMMÉDIATEMENT actifs et archives (AVANT tout filtrage)
+    tous_actifs = [t for t in all_tickets_tech if t.get('statut') != 'Clôturé']
+    tous_archives = [t for t in all_tickets_tech if t.get('statut') == 'Clôturé']
     
-    # Filtrer par technicien
+    # 3. Appliquer les filtres UNIQUEMENT sur les actifs
+    tickets_actifs_filtres = tous_actifs
+    
+    # Filtrer par statut (uniquement sur actifs)
+    if filtre_statut not in ["Tous"]:
+        tickets_actifs_filtres = [t for t in tickets_actifs_filtres if t.get('statut') == filtre_statut]
+    
+    # Filtrer par technicien (sur actifs ET archives)
     if filtre_tech == "🔴 Non assignés":
-        all_tickets_tech = [t for t in all_tickets_tech if not t.get('technicien_assigne')]
+        tickets_actifs_filtres = [t for t in tickets_actifs_filtres if not t.get('technicien_assigne')]
+        tous_archives = [t for t in tous_archives if not t.get('technicien_assigne')]
     elif filtre_tech not in ["👥 Tous"]:
-        all_tickets_tech = [t for t in all_tickets_tech if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
+        tickets_actifs_filtres = [t for t in tickets_actifs_filtres if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
+        tous_archives = [t for t in tous_archives if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
     
-    # Filtrer par recherche
+    # Filtrer par recherche (sur actifs ET archives)
     if recherche:
         recherche_lower = recherche.lower()
-        all_tickets_tech = [t for t in all_tickets_tech if 
-                   recherche_lower in t.get('ticket_code', '').lower() or
+        def match_recherche(t):
+            return (recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
                    recherche_lower in t.get('client_prenom', '').lower() or
                    recherche_lower in t.get('marque', '').lower() or
                    recherche_lower in t.get('modele', '').lower() or
-                   recherche_lower in t.get('client_tel', '').lower()]
+                   recherche_lower in t.get('client_tel', '').lower())
+        tickets_actifs_filtres = [t for t in tickets_actifs_filtres if match_recherche(t)]
+        tous_archives = [t for t in tous_archives if match_recherche(t)]
     
-    # Séparer actifs et archives
-    tickets_actifs = [t for t in all_tickets_tech if t.get('statut') != 'Clôturé']
-    tickets_archives = [t for t in all_tickets_tech if t.get('statut') == 'Clôturé']
+    # Utiliser les listes filtrées
+    tickets_actifs = tickets_actifs_filtres
+    tickets_archives = tous_archives
     
     # Onglets Actifs / Archives
     tab_actifs, tab_archives = st.tabs([f"📋 Actifs ({len(tickets_actifs)})", f"📦 Archives ({len(tickets_archives)})"])
