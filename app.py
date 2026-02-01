@@ -2733,20 +2733,24 @@ def init_db():
         except:
             pass
     
-    # P4: Ajouter colonne search_key si absente
-    try:
-        c.execute("ALTER TABLE clients ADD COLUMN search_key TEXT")
-        conn.commit()
-    except:
-        pass
-    
-    # P4: Remplir search_key si vide (migration unique)
-    c.execute("SELECT COUNT(*) FROM clients WHERE search_key IS NULL OR search_key = ''")
-    if c.fetchone()[0] > 0:
-        c.execute("SELECT id, nom, prenom, telephone, email, societe FROM clients WHERE search_key IS NULL OR search_key = ''")
-        for row in c.fetchall():
-            sk = normalize_search(f"{row['nom'] or ''} {row['prenom'] or ''} {row['telephone'] or ''} {row['email'] or ''} {row['societe'] or ''}")
-            c.execute("UPDATE clients SET search_key = ? WHERE id = ?", (sk, row['id']))
+    # P4: Ajouter colonne search_key si absente (SQLite seulement)
+    if not is_postgres():
+        try:
+            c.execute("ALTER TABLE clients ADD COLUMN search_key TEXT")
+            conn.commit()
+        except:
+            pass
+        
+        # P4: Remplir search_key si vide (migration unique)
+        try:
+            c.execute("SELECT COUNT(*) FROM clients WHERE search_key IS NULL OR search_key = ''")
+            if c.fetchone()[0] > 0:
+                c.execute("SELECT id, nom, prenom, telephone, email, societe FROM clients WHERE search_key IS NULL OR search_key = ''")
+                for row in c.fetchall():
+                    sk = normalize_search(f"{row['nom'] or ''} {row['prenom'] or ''} {row['telephone'] or ''} {row['email'] or ''} {row['societe'] or ''}")
+                    c.execute("UPDATE clients SET search_key = ? WHERE id = ?", (sk, row['id']))
+        except:
+            pass
     
     conn.commit()
 
@@ -2827,18 +2831,28 @@ def ajouter_modele(cat, marque, modele):
 def get_or_create_client(nom, tel, prenom="", email="", societe="", carte_camby=0):
     conn = get_db()
     c = conn.cursor()
-    # Calculer search_key
-    search_key = normalize_search(f"{nom} {prenom} {tel} {email} {societe}")
     
     c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=?, search_key=? WHERE id=?", 
-                  (nom, prenom, email, societe, carte_camby, search_key, cid))
+        # Sur Postgres, pas de colonne search_key
+        if is_postgres():
+            c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=? WHERE id=?", 
+                      (nom, prenom, email, societe, carte_camby, cid))
+        else:
+            search_key = normalize_search(f"{nom} {prenom} {tel} {email} {societe}")
+            c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=?, search_key=? WHERE id=?", 
+                      (nom, prenom, email, societe, carte_camby, search_key, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby, search_key) VALUES (?,?,?,?,?,?,?)", 
-                  (nom, prenom, tel, email, societe, carte_camby, search_key))
+        # Sur Postgres, pas de colonne search_key
+        if is_postgres():
+            c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby) VALUES (?,?,?,?,?,?)", 
+                      (nom, prenom, tel, email, societe, carte_camby))
+        else:
+            search_key = normalize_search(f"{nom} {prenom} {tel} {email} {societe}")
+            c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby, search_key) VALUES (?,?,?,?,?,?,?)", 
+                      (nom, prenom, tel, email, societe, carte_camby, search_key))
         cid = c.lastrowid
     conn.commit()
     return cid
@@ -2929,7 +2943,7 @@ def get_client_by_id(client_id):
     return dict(r) if r else None
 
 def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, societe=None):
-    """Met à jour les informations d'un client + recalcule search_key"""
+    """Met à jour les informations d'un client + recalcule search_key (SQLite only)"""
     conn = get_db()
     c = conn.cursor()
     updates = []
@@ -2940,18 +2954,19 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, 
     if email is not None: updates.append("email=?"); params.append(email)
     if societe is not None: updates.append("societe=?"); params.append(societe)
     if updates:
-        # Recalculer search_key
-        c.execute("SELECT nom, prenom, telephone, email, societe FROM clients WHERE id=?", (client_id,))
-        row = c.fetchone()
-        if row:
-            new_nom = nom if nom is not None else (row['nom'] or '')
-            new_prenom = prenom if prenom is not None else (row['prenom'] or '')
-            new_tel = telephone if telephone is not None else (row['telephone'] or '')
-            new_email = email if email is not None else (row['email'] or '')
-            new_societe = societe if societe is not None else (row['societe'] or '')
-            search_key = normalize_search(f"{new_nom} {new_prenom} {new_tel} {new_email} {new_societe}")
-            updates.append("search_key=?")
-            params.append(search_key)
+        # Recalculer search_key (seulement pour SQLite)
+        if not is_postgres():
+            c.execute("SELECT nom, prenom, telephone, email, societe FROM clients WHERE id=?", (client_id,))
+            row = c.fetchone()
+            if row:
+                new_nom = nom if nom is not None else (row['nom'] or '')
+                new_prenom = prenom if prenom is not None else (row['prenom'] or '')
+                new_tel = telephone if telephone is not None else (row['telephone'] or '')
+                new_email = email if email is not None else (row['email'] or '')
+                new_societe = societe if societe is not None else (row['societe'] or '')
+                search_key = normalize_search(f"{new_nom} {new_prenom} {new_tel} {new_email} {new_societe}")
+                updates.append("search_key=?")
+                params.append(search_key)
         
         params.append(client_id)
         c.execute(f"UPDATE clients SET {', '.join(updates)} WHERE id=?", params)
@@ -5713,7 +5728,22 @@ def staff_liste_demandes():
             st.rerun()
         return
     
+    # Proportions des colonnes
+    col_props = [1.0, 1.6, 1.8, 1.1, 1.6, 0.9, 0.5]
+    
     # Pagination
+    ITEMS_PER_PAGE = 8
+    total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    
+    if "accueil_page" not in st.session_state:
+        st.session_state.accueil_page = 1
+    
+    current_page = st.session_state.accueil_page
+    start_idx = (current_page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    tickets_page = tickets[start_idx:end_idx]
+    
+    # Style du tableau
     st.markdown("""
     <style>
     .ticket-table-wrapper {
@@ -8547,6 +8577,22 @@ def tech_detail_ticket(tid):
                 update_ticket(tid, notes_internes=notes_internes_edit, commentaire_client=commentaire_public_edit)
                 st.toast("✅ Notes mises à jour")
                 st.rerun()
+        
+        # --- CHANGEMENT DE STATUT (dans col1, style comme "Demander accord") ---
+        st.markdown("""
+        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid #0ea5e9;border-radius:14px;padding:16px;margin-top:16px;">
+            <div style="font-weight:700;color:#0369a1;margin-bottom:8px;">🔄 Changer le statut</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
+        nouveau_statut = st.selectbox("Nouveau statut", STATUTS, index=idx_statut, key=f"tech_new_status_{tid}", label_visibility="collapsed")
+        
+        if nouveau_statut != statut_actuel:
+            if st.button(f"✅ Passer à: {nouveau_statut}", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True):
+                changer_statut(tid, nouveau_statut)
+                st.success(f"Statut changé : {nouveau_statut}")
+                st.rerun()
 
     with col2:
 
@@ -8739,29 +8785,12 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
             </div>
             """, unsafe_allow_html=True)
     
-    # === SECTION INFÉRIEURE ===
+    # === SECTION INFÉRIEURE: CONTACTER LE CLIENT ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-    
-    # === CHANGEMENT DE STATUT - MENU DÉROULANT ===
-    st.markdown("""
-    <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:2px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;">
-        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;font-size:1rem;">🔄 Changer le statut</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_statut, col_btn = st.columns([3, 1])
-    with col_statut:
-        idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
-        nouveau_statut = st.selectbox("Nouveau statut", STATUTS, index=idx_statut, key=f"tech_new_status_{tid}", label_visibility="collapsed")
-    with col_btn:
-        if st.button("✅ Appliquer", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True, disabled=(nouveau_statut == statut_actuel)):
-            changer_statut(tid, nouveau_statut)
-            st.success(f"Statut changé : {nouveau_statut}")
-            st.rerun()
     
     # === CONTACTER LE CLIENT ===
     st.markdown("""
-    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:14px;padding:16px;margin-top:16px;">
+    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:14px;padding:16px;">
         <div style="font-weight:700;color:#047857;margin-bottom:12px;font-size:1rem;">📞 Contacter le client</div>
     </div>
     """, unsafe_allow_html=True)
