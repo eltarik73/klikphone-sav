@@ -8172,23 +8172,25 @@ def ui_tech():
         tech_detail_ticket(st.session_state.tech_selected)
         return
     
-    # Filtres améliorés
-    # Filtres avec formulaire (évite rerun à chaque changement)
-    with st.form(key="tech_filters_form", clear_on_submit=False):
-        col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns([1.3, 1.3, 1.2, 1.5, 0.7])
-        with col_f1:
-            filtre_statut = st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
-        with col_f2:
-            # Filtre par technicien
-            membres = get_membres_equipe()
-            tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
-            filtre_tech = st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
-        with col_f3:
-            tri = st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
-        with col_f4:
-            recherche = st.text_input("Recherche", placeholder="Ticket, nom...", key="tech_recherche", label_visibility="collapsed")
-        with col_f5:
-            st.form_submit_button("🔍", use_container_width=True)
+    # Filtres SANS formulaire (pour rafraîchissement immédiat)
+    col_f1, col_f2, col_f3, col_f4 = st.columns([1.5, 1.5, 1.2, 2])
+    with col_f1:
+        st.selectbox("Statut", ["Tous"] + STATUTS, key="tech_filtre_statut")
+    with col_f2:
+        # Filtre par technicien
+        membres = get_membres_equipe()
+        tech_options = ["👥 Tous", "🔴 Non assignés"] + [m['nom'] for m in membres]
+        st.selectbox("Technicien", tech_options, key="tech_filtre_tech")
+    with col_f3:
+        st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
+    with col_f4:
+        st.text_input("🔍 Recherche", placeholder="Ticket, nom, téléphone...", key="tech_recherche", label_visibility="collapsed")
+    
+    # Récupérer les valeurs depuis session_state
+    filtre_statut = st.session_state.get("tech_filtre_statut", "Tous")
+    filtre_tech = st.session_state.get("tech_filtre_tech", "👥 Tous")
+    tri = st.session_state.get("tech_tri", "📅 Récent")
+    recherche = st.session_state.get("tech_recherche", "")
     
     st.markdown("---")
     
@@ -8203,7 +8205,7 @@ def ui_tech():
     tickets_actifs_filtres = tous_actifs
     
     # Filtrer par statut (uniquement sur actifs)
-    if filtre_statut not in ["Tous"]:
+    if filtre_statut != "Tous":
         tickets_actifs_filtres = [t for t in tickets_actifs_filtres if t.get('statut') == filtre_statut]
     
     # Filtrer par technicien (sur actifs ET archives)
@@ -8646,6 +8648,23 @@ def tech_detail_ticket(tid):
         </div>
         """, unsafe_allow_html=True)
         
+        # === RÉPARATION SUPPLÉMENTAIRE (toujours visible) ===
+        st.markdown('<div style="padding:10px;background:#f8fafc;border-radius:10px;border:1px dashed #94a3b8;margin-bottom:16px;">', unsafe_allow_html=True)
+        st.markdown('<span style="font-size:12px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
+        col_rs1, col_rs2 = st.columns([3, 1])
+        with col_rs1:
+            rep_supp_actuel = t.get('reparation_supp') or ""
+            rep_supp_new = st.text_input("Description", value=rep_supp_actuel, placeholder="Ex: Nappe Face ID, batterie...", key=f"tech_rep_supp_main_{tid}", label_visibility="collapsed")
+        with col_rs2:
+            prix_supp_actuel = float(t.get('prix_supp') or 0)
+            prix_supp_new = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"tech_prix_supp_main_{tid}", label_visibility="collapsed")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Auto-save si changement
+        if rep_supp_new != rep_supp_actuel or prix_supp_new != prix_supp_actuel:
+            update_ticket(tid, reparation_supp=rep_supp_new, prix_supp=prix_supp_new)
+            st.rerun()
+        
         # === ACTIONS SELON LE STATUT ===
         
         # Si diagnostic en cours → Créer devis + envoyer
@@ -8752,21 +8771,6 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                 <div style="font-weight:700;color:#1e40af;font-size:1.1rem;">Réparation en cours</div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Réparation supplémentaire
-            st.markdown("**Réparation supplémentaire (optionnel):**")
-            col_rep, col_prix = st.columns([3, 1])
-            with col_rep:
-                rep_supp = st.text_input("Description", value=t.get('reparation_supp') or "", placeholder="Ex: Nappe Face ID...", key=f"tech_rep_supp_{tid}", label_visibility="collapsed")
-            with col_prix:
-                new_prix_supp = st.number_input("€", min_value=0.0, step=5.0, value=float(t.get('prix_supp') or 0), key=f"tech_prix_supp_{tid}", label_visibility="collapsed")
-            
-            if rep_supp and st.button("💾 Enregistrer supplément", key=f"tech_save_supp_{tid}"):
-                update_ticket(tid, reparation_supp=rep_supp, prix_supp=new_prix_supp)
-                st.success("✅ Supplément enregistré!")
-                st.rerun()
-            
-            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
             
             if st.button("✅ RÉPARATION TERMINÉE", key=f"tech_finish_{tid}", type="primary", use_container_width=True):
                 changer_statut(tid, "Réparation terminée")
