@@ -3296,14 +3296,14 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         if not apikey or not shopid:
             return False, "Configuration API manquante (APIKEY ou SHOPID)"
 
-        # Lire depuis la config (avec fallback hardcodé pour test)
+        # Lire depuis la config (avec valeurs par défaut)
         caisse_id = (get_param("CAISSE_ID") or "49343").strip()
         user_id = (get_param("CAISSE_USER_ID") or "42867").strip()
 
         if not caisse_id.isdigit():
-            return False, f"CAISSE_ID invalide: '{caisse_id}' (doit être un entier)"
+            return False, f"CAISSE_ID invalide: '{caisse_id}'"
         if not user_id.isdigit():
-            return False, f"CAISSE_USER_ID invalide: '{user_id}' (doit être un entier)"
+            return False, f"CAISSE_USER_ID invalide: '{user_id}'"
 
         delivery_method = (get_param("CAISSE_DELIVERY_METHOD") or "4").strip()
         if not delivery_method.isdigit():
@@ -3329,18 +3329,15 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         description = f"Reparation {modele_txt} - {panne_txt}".strip()
         if ticket.get("type_ecran"):
             description += f" [{ticket['type_ecran']}]"
-
-        # IMPORTANT : underscores = séparateurs côté API. On évite les "_" dans le titre.
         description = description.replace("_", " ")
 
-        # Construire payload en *liste de tuples* (permet itemsList[] répétés + encoding correct)
+        # URL avec idcaisse dans le querystring (comme leur exemple curl)
+        api_url = f"https://caisse.enregistreuse.fr/workers/webapp.php?idboutique={shopid}&key={apikey}&idUser={user_id}&idcaisse={caisse_id}&payment={payment_mode}&deliveryMethod={delivery_method}"
+        
+        st.info(f"🔗 URL: ...idUser={user_id}&idcaisse={caisse_id}&payment={payment_mode}")
+
+        # Payload POST : seulement les données variables (client, items)
         payload = [
-            ("idboutique", shopid),
-            ("key", apikey),
-            ("idUser", int(user_id)),
-            ("idcaisse", int(caisse_id)),
-            ("payment", int(payment_mode)),
-            ("deliveryMethod", int(delivery_method)),
             ("publicComment", f"Ticket: {ticket.get('ticket_code','')}"),
         ]
 
@@ -3362,35 +3359,24 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         else:
             payload.append(("itemsList[]", f"Free_{total:.2f}_{description}"))
 
-        # Debug: afficher le body réellement encodé
-        req = requests.Request(
-            "POST",
-            "https://caisse.enregistreuse.fr/workers/webapp.php",
-            data=payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        ).prepare()
-
-        st.success("📤 Body réellement ENCODÉ envoyé à l'API:")
-        body_str = req.body.decode("utf-8") if isinstance(req.body, (bytes, bytearray)) else str(req.body)
-        st.code(body_str[:800], "text")
-
-        s = requests.Session()
-        res = s.send(req, timeout=15)
+        st.success(f"📤 Envoi avec idcaisse={caisse_id} dans l'URL")
+        
+        # Envoyer
+        res = requests.post(api_url, data=payload, timeout=15)
 
         if res.status_code != 200:
             return False, f"HTTP {res.status_code}: {res.text[:300]}"
 
-        # API: parfois JSON, parfois texte
         try:
             data = res.json()
             if data.get("result") == "OK":
-                return True, f"Vente créée (idcaisse={caisse_id}, idUser={user_id}, payment={payment_mode})"
+                return True, f"✅ Vente créée ! (idcaisse={caisse_id}, idUser={user_id})"
             return False, f"Erreur API: {data.get('errorMessage', data)}"
         except:
             txt = (res.text or "").strip()
             if txt.isdigit() or "OK" in txt.upper():
-                return True, f"Vente créée: {txt}"
-            return False, f"Réponse API: {txt[:300]}"
+                return True, f"✅ Vente créée ! ID: {txt}"
+            return False, f"Réponse: {txt[:300]}"
 
     except Exception as e:
         return False, f"Erreur: {e}"
