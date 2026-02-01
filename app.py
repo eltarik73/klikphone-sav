@@ -3326,28 +3326,36 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
         description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
         
-        # Construire les données POST
+        # Construire les données POST - ORDRE IMPORTANT
         post_data = [
             ("idboutique", shopid),
             ("key", apikey),
+        ]
+        
+        # idcaisse DOIT être ajouté tôt pour être pris en compte
+        if caisse_id and str(caisse_id).strip():
+            post_data.append(("idcaisse", str(caisse_id).strip()))
+        else:
+            st.error("❌ CAISSE_ID MANQUANT!")
+        
+        # idUser DOIT être ajouté pour éviter l'utilisateur "Webservices"
+        if user_id and str(user_id).strip():
+            post_data.append(("idUser", str(user_id).strip()))
+        else:
+            st.error("❌ USER_ID MANQUANT!")
+        
+        # Reste des paramètres
+        post_data.extend([
             ("payment", payment_mode),
             ("deliveryMethod", delivery_method),
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
-        ]
-        
-        # IMPORTANT: Ajouter idcaisse
-        if caisse_id and str(caisse_id).strip():
-            post_data.append(("idcaisse", str(caisse_id).strip()))
-        
-        # IMPORTANT: Ajouter idUser pour éviter "webservice"
-        if user_id and str(user_id).strip():
-            post_data.append(("idUser", str(user_id).strip()))
+        ])
         
         # DEBUG - Afficher ce qui sera envoyé
-        st.write("**📤 DONNÉES ENVOYÉES :**")
-        for key, val in post_data:
-            if key != "key":
-                st.write(f"• `{key}` = `{val}`")
+        st.success("**📤 DONNÉES ENVOYÉES :**")
+        for k, v in post_data:
+            if k != "key":
+                st.write(f"• `{k}` = `{v}`")
         
         # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
