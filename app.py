@@ -6246,9 +6246,13 @@ Merci de nous confirmer votre accord.
             
             # Vérifier si configuré
             if not cb_id and not esp_id:
-                st.error("⚠️ **IDs non configurés !** Allez dans Config > Caisse pour récupérer vos IDs")
-            else:
-                # Mode de paiement
+                st.error("⚠️ **Modes de paiement non configurés !**")
+                st.warning("Allez dans **⚙️ Config > 💳 Caisse** et cliquez sur **'Récupérer mes MODES DE PAIEMENT'**")
+            elif not caisse_id:
+                st.error("⚠️ **Caisse non configurée !** (Les ventes iront vers 'webservice')")
+                st.warning("Allez dans **⚙️ Config > 💳 Caisse** et cliquez sur **'Récupérer mes CAISSES'** puis entrez l'ID")
+                
+                # Permettre quand même d'envoyer
                 mode_envoi = st.radio(
                     "Mode de paiement",
                     ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
@@ -6257,7 +6261,6 @@ Merci de nous confirmer votre accord.
                     horizontal=True
                 )
                 
-                # Mapper vers les IDs configurés
                 if mode_envoi == "💳 Carte bancaire":
                     mode_val = cb_id
                 elif mode_envoi == "💵 Espèces":
@@ -6265,8 +6268,34 @@ Merci de nous confirmer votre accord.
                 else:
                     mode_val = "-1"
                 
-                # Debug
-                st.caption(f"🔧 **Envoi:** payment={mode_val} | caisse={caisse_id or 'défaut'}")
+                st.caption(f"🔧 payment={mode_val} | **caisse=NON CONFIGURÉE**")
+                
+                if st.button(f"📤 Envoyer (caisse webservice)", key=f"send_caisse_{tid}", type="secondary", use_container_width=True):
+                    success, message = envoyer_vers_caisse(t, payment_override=mode_val)
+                    if success:
+                        st.success(f"✅ {message}")
+                    else:
+                        st.error(f"❌ {message}")
+            else:
+                # Tout est configuré !
+                st.success(f"✅ Config OK: CB={cb_id} | ESP={esp_id} | Caisse={caisse_id}")
+                
+                mode_envoi = st.radio(
+                    "Mode de paiement",
+                    ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
+                    index=0,
+                    key=f"mode_paiement_envoi_{tid}",
+                    horizontal=True
+                )
+                
+                if mode_envoi == "💳 Carte bancaire":
+                    mode_val = cb_id
+                elif mode_envoi == "💵 Espèces":
+                    mode_val = esp_id
+                else:
+                    mode_val = "-1"
+                
+                st.caption(f"🔧 payment={mode_val} | idcaisse={caisse_id}")
                 
                 if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
                     success, message = envoyer_vers_caisse(t, payment_override=mode_val)
