@@ -3302,18 +3302,16 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
         
-        # Récupérer les IDs - avec valeurs par défaut HARDCODÉES pour test
-        caisse_id = get_param("CAISSE_ID") or "49343"  # GENERALE
-        user_id = get_param("CAISSE_USER_ID") or "124840"  # oualid (au lieu de klikphone)
-        
-        st.info(f"🔧 Config: caisse_id={caisse_id}, user_id={user_id}")
+        # IDs - HARDCODÉS pour test
+        caisse_id = "49343"  # GENERALE
+        user_id = "42867"    # klikphone
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
         prix_supp = float(ticket.get('prix_supp') or 0)
         total = devis + prix_supp
         
-        # Construire la description de la réparation
+        # Construire la description
         modele_txt = f"{ticket.get('marque', '')} {ticket.get('modele', '')}"
         if ticket.get('modele_autre'):
             modele_txt += f" ({ticket['modele_autre']})"
@@ -3330,53 +3328,64 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
         description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
         
-        # Construire les données POST - comme dans la doc officielle
-        post_data = [
-            ("idboutique", shopid),
-            ("key", apikey),
-            ("idUser", user_id),
-            ("idcaisse", caisse_id),
-            ("payment", payment_mode),
-            ("deliveryMethod", delivery_method),
-            ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
-        ]
+        # Construire comme dans la doc - avec URLSearchParams style (dict)
+        # Les valeurs numériques doivent être des INT pas des strings
+        post_data = {
+            "idboutique": shopid,
+            "key": apikey,
+            "idUser": int(user_id),
+            "idcaisse": int(caisse_id),
+            "payment": int(payment_mode),
+            "deliveryMethod": int(delivery_method),
+            "publicComment": f"Ticket: {ticket.get('ticket_code', '')}",
+        }
         
-        # DEBUG - Afficher ce qui sera envoyé
-        st.success("**📤 DONNÉES ENVOYÉES :**")
-        for k, v in post_data:
+        # DEBUG
+        st.success("**📤 DONNÉES ENVOYÉES (format dict) :**")
+        for k, v in post_data.items():
             if k != "key":
-                st.write(f"• `{k}` = `{v}`")
+                st.write(f"• `{k}` = `{v}` (type: {type(v).__name__})")
         
-        # Ajouter les infos client si présentes
+        # Ajouter le client si présent
         if ticket.get('client_nom') or ticket.get('client_prenom'):
-            post_data.append(("client[nom]", ticket.get('client_nom', '')))
-            post_data.append(("client[prenom]", ticket.get('client_prenom', '')))
-            post_data.append(("client[telephone]", ticket.get('client_tel', '')))
+            post_data["client[nom]"] = ticket.get('client_nom', '')
+            post_data["client[prenom]"] = ticket.get('client_prenom', '')
+            post_data["client[telephone]"] = ticket.get('client_tel', '')
             if ticket.get('client_email'):
-                post_data.append(("client[email]", ticket.get('client_email', '')))
+                post_data["client[email]"] = ticket.get('client_email', '')
         
-        # Ajouter les articles (format: Free_prix_description)
+        # Convertir en liste pour ajouter itemsList[]
+        from urllib.parse import urlencode
+        
+        # Construire le body manuellement
+        body_parts = []
+        for k, v in post_data.items():
+            body_parts.append(f"{k}={v}")
+        
+        # Ajouter les articles
         if ticket.get('reparation_supp') and prix_supp > 0:
-            # Deux lignes séparées
-            post_data.append(("itemsList[]", f"Free_{devis:.2f}_{description}"))
+            body_parts.append(f"itemsList[]=Free_{devis:.2f}_{description}")
             rep_supp = ticket.get('reparation_supp', 'Reparation supplementaire')
             rep_supp = rep_supp.replace("_", " ").replace("é", "e").replace("è", "e")
-            post_data.append(("itemsList[]", f"Free_{prix_supp:.2f}_{rep_supp}"))
+            body_parts.append(f"itemsList[]=Free_{prix_supp:.2f}_{rep_supp}")
         else:
-            # Une seule ligne
-            post_data.append(("itemsList[]", f"Free_{total:.2f}_{description}"))
+            body_parts.append(f"itemsList[]=Free_{total:.2f}_{description}")
+        
+        body = "&".join(body_parts)
+        
+        st.code(body[:500], language="text")
         
         # Envoyer la requête
         response = requests.post(
             "https://caisse.enregistreuse.fr/workers/webapp.php",
-            data=post_data,
+            data=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=15
         )
         
         # Debug: afficher ce qui a été envoyé
         payment_sent = payment_mode
-        caisse_info = f", caisse={caisse_id}" if caisse_id else ""
+        caisse_info = f", caisse={caisse_id}"
         
         if response.status_code == 200:
             try:
