@@ -3304,7 +3304,7 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         
         # Récupérer les IDs - avec valeurs par défaut HARDCODÉES pour test
         caisse_id = get_param("CAISSE_ID") or "49343"  # GENERALE
-        user_id = get_param("CAISSE_USER_ID") or "42867"  # klikphone
+        user_id = get_param("CAISSE_USER_ID") or "124840"  # oualid (au lieu de klikphone)
         
         st.info(f"🔧 Config: caisse_id={caisse_id}, user_id={user_id}")
         
