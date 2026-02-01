@@ -3199,10 +3199,21 @@ def changer_statut(tid, statut):
     conn = get_db()
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Récupérer l'ancien statut pour l'historique
+    c.execute("SELECT statut, notes_internes FROM tickets WHERE id=?", (tid,))
+    row = c.fetchone()
+    ancien_statut = row['statut'] if row else ""
+    notes_actuelles = row['notes_internes'] or "" if row else ""
+    
+    # Ajouter l'entrée dans l'historique
+    log_entry = f"[{datetime.now().strftime('%d/%m %H:%M')}] Statut: {ancien_statut} → {statut}"
+    new_notes = notes_actuelles.rstrip() + f"\n{log_entry}" if notes_actuelles.strip() else log_entry
+    
     if statut == "Clôturé":
-        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=? WHERE id=?", (statut, now, now, tid))
+        c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=?, notes_internes=? WHERE id=?", (statut, now, now, new_notes, tid))
     else:
-        c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
+        c.execute("UPDATE tickets SET statut=?, date_maj=?, notes_internes=? WHERE id=?", (statut, now, new_notes, tid))
     conn.commit()
     conn.close()
     # Invalider les caches
@@ -6285,9 +6296,11 @@ def staff_traiter_demande(tid):
             prix_supp_val = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Auto-save réparation supp
+        # Auto-save réparation supp avec log
         if rep_supp_val != rep_supp_actuel or prix_supp_val != prix_supp_actuel:
             update_ticket(tid, reparation_supp=rep_supp_val, prix_supp=prix_supp_val)
+            if rep_supp_val and prix_supp_val > 0:
+                ajouter_note(tid, f"[AUTO] Rép. supp: {rep_supp_val} ({prix_supp_val}€)")
         
         # Calcul reste
         paye = t.get('paye', 0)
@@ -6465,46 +6478,20 @@ Merci de nous confirmer votre accord.
                         st.error(f"❌ {message}")
     
     # =================================================================
-    # ZONE BAS: Notes (gauche) + Notifications (droite)
+    # ZONE BAS: Notifications (haut) + Notes (bas)
     # =================================================================
     st.markdown('<div style="height:24px;"></div>', unsafe_allow_html=True)
     st.markdown("---")
     
-    col_notes, col_notifs = st.columns([1, 1], gap="large")
+    # Centre de notifications EN PREMIER
+    st.markdown("""<div class="detail-card-header">📊 Centre de notifications</div>""", unsafe_allow_html=True)
     
-    with col_notes:
-        st.markdown("""<div class="detail-card-header">📝 Notes</div>""", unsafe_allow_html=True)
-        
-        # Note publique
-        st.markdown('<div style="background:#ecfdf5;border-left:4px solid #22c55e;padding:8px 12px;margin-bottom:8px;border-radius:0 8px 8px 0;"><span style="font-weight:600;font-size:12px;color:#166534;">💬 Note publique</span> <span style="font-size:10px;color:#22c55e;">— visible sur ticket client</span></div>', unsafe_allow_html=True)
-        
-        note_pub_actuelle = t.get('commentaire_client') or ""
-        new_note_pub = st.text_area("Note publique", value=note_pub_actuelle, height=80, key=f"notes_pub_{tid}", label_visibility="collapsed")
-        
-        # Note privée
-        st.markdown('<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:8px 12px;margin:12px 0 8px 0;border-radius:0 8px 8px 0;"><span style="font-weight:600;font-size:12px;color:#dc2626;">🔒 Note privée</span> <span style="font-size:10px;color:#ef4444;">— équipe uniquement</span></div>', unsafe_allow_html=True)
-        
-        note_int_actuelle = t.get('notes_internes') or ""
-        new_note_int = st.text_area("Note privée", value=note_int_actuelle, height=80, key=f"notes_int_{tid}", label_visibility="collapsed")
-        
-        # Bouton enregistrer notes + précision
-        if st.button("💾 Enregistrer", key=f"save_notes_{tid}", type="primary", use_container_width=True):
-            # Récupérer type_ecran depuis session_state
-            final_type_ecran = st.session_state.get(f"type_ecran_{tid}", t.get('type_ecran') or "")
-            try:
-                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int, type_ecran=final_type_ecran)
-            except:
-                # Si erreur (colonne type_ecran n'existe pas), sauvegarder sans
-                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int)
-            st.success("✅ Enregistré!")
+    wa_on = t.get('msg_whatsapp')
+    sms_on = t.get('msg_sms')
+    email_on = t.get('msg_email')
     
-    with col_notifs:
-        st.markdown("""<div class="detail-card-header">📊 Centre de notifications</div>""", unsafe_allow_html=True)
-        
-        wa_on = t.get('msg_whatsapp')
-        sms_on = t.get('msg_sms')
-        email_on = t.get('msg_email')
-        
+    col_notif1, col_notif2 = st.columns([2, 1])
+    with col_notif1:
         st.markdown(f"""
         <div style="background:#1e293b;border-radius:12px;padding:16px;color:white;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -6522,15 +6509,61 @@ Merci de nous confirmer votre accord.
             <div style="font-size:10px;color:rgba(255,255,255,0.4);text-align:right;">Dernière màj: {str(t.get('date_maj', ''))[:16]}</div>
         </div>
         """, unsafe_allow_html=True)
-        
+    
+    with col_notif2:
         # Notes du client (de dépôt)
         if t.get('notes_client'):
-            st.markdown(f'<div style="background:#fff7ed;border-left:3px solid #f97316;padding:8px 12px;margin-top:12px;border-radius:0 8px 8px 0;font-size:12px;"><strong>📋 Note client (dépôt):</strong> {t.get("notes_client")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:#fff7ed;border-left:3px solid #f97316;padding:8px 12px;border-radius:0 8px 8px 0;font-size:12px;"><strong>📋 Note client:</strong><br>{t.get("notes_client")}</div>', unsafe_allow_html=True)
         
-        # Infos commande si applicable
-        if t.get('panne_detail') and t.get('categorie') == 'Commande':
-            st.markdown(f'<div style="background:#f3e8ff;border-left:3px solid #a855f7;padding:8px 12px;margin-top:8px;border-radius:0 8px 8px 0;font-size:12px;"><strong>📦 Commande:</strong> {t.get("panne_detail")}</div>', unsafe_allow_html=True)
-
+        # Historique des actions
+        historique = t.get('notes_internes') or ""
+        actions_auto = [line for line in historique.split('\n') if line.strip().startswith('[')]
+        if actions_auto:
+            st.markdown('<div style="background:#f0f9ff;border-left:3px solid #0ea5e9;padding:8px 12px;margin-top:8px;border-radius:0 8px 8px 0;font-size:11px;"><strong>📜 Historique:</strong><br>' + '<br>'.join(actions_auto[-3:]) + '</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
+    
+    # Notes EN SECOND
+    col_notes, col_notes2 = st.columns([1, 1], gap="large")
+    
+    with col_notes:
+        st.markdown("""<div class="detail-card-header">📝 Notes</div>""", unsafe_allow_html=True)
+        
+        # Note publique
+        st.markdown('<div style="background:#ecfdf5;border-left:4px solid #22c55e;padding:8px 12px;margin-bottom:8px;border-radius:0 8px 8px 0;"><span style="font-weight:600;font-size:12px;color:#166534;">💬 Note publique</span> <span style="font-size:10px;color:#22c55e;">— visible sur ticket client</span></div>', unsafe_allow_html=True)
+        
+        note_pub_actuelle = t.get('commentaire_client') or ""
+        new_note_pub = st.text_area("Note publique", value=note_pub_actuelle, height=80, key=f"notes_pub_{tid}", label_visibility="collapsed")
+    
+    with col_notes2:
+        st.markdown('<div style="height:32px;"></div>', unsafe_allow_html=True)
+        # Note privée
+        st.markdown('<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:8px 12px;margin-bottom:8px;border-radius:0 8px 8px 0;"><span style="font-weight:600;font-size:12px;color:#dc2626;">🔒 Note privée</span> <span style="font-size:10px;color:#ef4444;">— équipe uniquement</span></div>', unsafe_allow_html=True)
+        
+        note_int_actuelle = t.get('notes_internes') or ""
+        new_note_int = st.text_area("Note privée", value=note_int_actuelle, height=80, key=f"notes_int_{tid}", label_visibility="collapsed")
+    
+    # Bouton enregistrer notes
+    col_btn, _ = st.columns([1, 3])
+    with col_btn:
+        if st.button("💾 Enregistrer notes", key=f"save_notes_{tid}", type="primary", use_container_width=True):
+            # Récupérer type_ecran depuis session_state
+            final_type_ecran = st.session_state.get(f"type_ecran_{tid}", t.get('type_ecran') or "")
+            try:
+                # Ajouter une entrée dans l'historique si modifications
+                if new_note_pub != note_pub_actuelle or new_note_int != note_int_actuelle:
+                    from datetime import datetime
+                    log_entry = f"[{datetime.now().strftime('%d/%m %H:%M')}] Notes modifiées"
+                    if new_note_int and not new_note_int.endswith(log_entry):
+                        new_note_int = new_note_int.rstrip() + f"\n{log_entry}" if new_note_int.strip() else log_entry
+                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int, type_ecran=final_type_ecran)
+            except:
+                update_ticket(tid, commentaire_client=new_note_pub, notes_internes=new_note_int)
+            st.success("✅ Enregistré!")
+    
+    # Infos commande si applicable
+    if t.get('panne_detail') and t.get('categorie') == 'Commande':
+        st.markdown(f'<div style="background:#f3e8ff;border-left:3px solid #a855f7;padding:8px 12px;margin-top:8px;border-radius:0 8px 8px 0;font-size:12px;"><strong>📦 Commande:</strong> {t.get("panne_detail")}</div>', unsafe_allow_html=True)
 
 
 def staff_gestion_clients():
@@ -8596,27 +8629,12 @@ def tech_detail_ticket(tid):
             help="S'imprime sur le ticket/reçu remis au client.",
         )
 
-        col_save_notes, _sp = st.columns([1, 3], gap="small")
+        col_save_notes, _sp = st.columns([1, 2], gap="small")
         with col_save_notes:
-            if st.button("💾 Enregistrer notes", key=f"tech_save_notes_{tid}", type="primary", use_container_width=True):
+            if st.button("💾 Sauver", key=f"tech_save_notes_{tid}", type="primary", use_container_width=True):
                 update_ticket(tid, notes_internes=notes_internes_edit, commentaire_client=commentaire_public_edit)
+                ajouter_note(tid, "[AUTO] Notes modifiées")
                 st.toast("✅ Notes mises à jour")
-                st.rerun()
-        
-        # --- CHANGEMENT DE STATUT (dans col1, style comme "Demander accord") ---
-        st.markdown("""
-        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:2px solid #0ea5e9;border-radius:14px;padding:16px;margin-top:16px;">
-            <div style="font-weight:700;color:#0369a1;margin-bottom:8px;">🔄 Changer le statut</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
-        nouveau_statut = st.selectbox("Nouveau statut", STATUTS, index=idx_statut, key=f"tech_new_status_{tid}", label_visibility="collapsed")
-        
-        if nouveau_statut != statut_actuel:
-            if st.button(f"✅ Passer à: {nouveau_statut}", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True):
-                changer_statut(tid, nouveau_statut)
-                st.success(f"Statut changé : {nouveau_statut}")
                 st.rerun()
 
     with col2:
@@ -8660,9 +8678,11 @@ def tech_detail_ticket(tid):
             prix_supp_new = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"tech_prix_supp_main_{tid}", label_visibility="collapsed")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Auto-save si changement
+        # Auto-save si changement avec log
         if rep_supp_new != rep_supp_actuel or prix_supp_new != prix_supp_actuel:
             update_ticket(tid, reparation_supp=rep_supp_new, prix_supp=prix_supp_new)
+            if rep_supp_new and prix_supp_new > 0:
+                ajouter_note(tid, f"[TECH] Rép. supp: {rep_supp_new} ({prix_supp_new}€)")
             st.rerun()
         
         # === ACTIONS SELON LE STATUT ===
@@ -8811,6 +8831,18 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                 <div style="font-weight:700;color:#475569;font-size:1.1rem;">Dossier clôturé</div>
             </div>
             """, unsafe_allow_html=True)
+        
+        # === CHANGEMENT DE STATUT (style Accueil) ===
+        st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
+        st.markdown("📍 **Statut**")
+        idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
+        nouveau_statut = st.selectbox("Statut", STATUTS, index=idx_statut, key=f"tech_new_status_{tid}", label_visibility="collapsed")
+        
+        if nouveau_statut != statut_actuel:
+            if st.button(f"✅ Appliquer", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True):
+                changer_statut(tid, nouveau_statut)
+                st.success(f"Statut changé : {nouveau_statut}")
+                st.rerun()
     
     # === SECTION INFÉRIEURE: CONTACTER LE CLIENT ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
