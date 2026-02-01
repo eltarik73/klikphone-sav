@@ -3301,8 +3301,12 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         # Préparer les données
         payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        caisse_id = get_param("CAISSE_ID")
-        user_id = get_param("CAISSE_USER_ID")
+        
+        # Récupérer les IDs - avec valeurs par défaut HARDCODÉES pour test
+        caisse_id = get_param("CAISSE_ID") or "49343"  # GENERALE
+        user_id = get_param("CAISSE_USER_ID") or "42867"  # klikphone
+        
+        st.info(f"🔧 Config: caisse_id={caisse_id}, user_id={user_id}")
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
@@ -3326,30 +3330,16 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
         description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
         
-        # Construire les données POST - ORDRE IMPORTANT
+        # Construire les données POST - comme dans la doc officielle
         post_data = [
             ("idboutique", shopid),
             ("key", apikey),
-        ]
-        
-        # idcaisse DOIT être ajouté tôt pour être pris en compte
-        if caisse_id and str(caisse_id).strip():
-            post_data.append(("idcaisse", str(caisse_id).strip()))
-        else:
-            st.error("❌ CAISSE_ID MANQUANT!")
-        
-        # idUser DOIT être ajouté pour éviter l'utilisateur "Webservices"
-        if user_id and str(user_id).strip():
-            post_data.append(("idUser", str(user_id).strip()))
-        else:
-            st.error("❌ USER_ID MANQUANT!")
-        
-        # Reste des paramètres
-        post_data.extend([
+            ("idUser", user_id),
+            ("idcaisse", caisse_id),
             ("payment", payment_mode),
             ("deliveryMethod", delivery_method),
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
-        ])
+        ]
         
         # DEBUG - Afficher ce qui sera envoyé
         st.success("**📤 DONNÉES ENVOYÉES :**")
@@ -7887,6 +7877,16 @@ def staff_config():
         st.markdown("---")
         st.markdown("##### 📝 Configurer les IDs")
         
+        # DEBUG - Lire directement de la BDD
+        conn = get_db()
+        cursor = conn.cursor()
+        st.write("**🔍 Valeurs actuelles en BDD:**")
+        for param in ["CAISSE_CB_ID", "CAISSE_ESP_ID", "CAISSE_ID", "CAISSE_USER_ID"]:
+            r = cursor.execute("SELECT valeur FROM params WHERE cle=?", (param,)).fetchone()
+            val = r["valeur"] if r else "(VIDE)"
+            st.write(f"• {param} = `{val}`")
+        conn.close()
+        
         current_cb = get_param("CAISSE_CB_ID") or ""
         current_esp = get_param("CAISSE_ESP_ID") or ""
         current_caisse = get_param("CAISSE_ID") or ""
@@ -7902,25 +7902,34 @@ def staff_config():
         with col_id3:
             new_caisse_id = st.text_input("🏪 ID Caisse (GENERALE)", value=current_caisse, placeholder="49343", key="manual_caisse_id")
         with col_id4:
-            new_user_id = st.text_input("👤 ID Utilisateur (PAS Webservices!)", value=current_user, placeholder="ID de klikphone ou oualid", key="manual_user_id")
-        
-        st.error("⚠️ **L'ID Utilisateur est OBLIGATOIRE !** Sinon ça ira toujours vers 'webservice'. Cliquez sur UTILISATEURS pour trouver l'ID de 'klikphone' ou 'oualid'.")
+            new_user_id = st.text_input("👤 ID Utilisateur", value=current_user, placeholder="42867", key="manual_user_id")
         
         if st.button("💾 SAUVEGARDER TOUS LES IDs", type="primary", use_container_width=True):
-            set_param("CAISSE_CB_ID", new_cb_id.strip())
-            set_param("CAISSE_ESP_ID", new_esp_id.strip())
-            set_param("CAISSE_ID", new_caisse_id.strip())
-            set_param("CAISSE_USER_ID", new_user_id.strip())
+            # Sauvegarder directement en BDD
+            conn = get_db()
+            cursor = conn.cursor()
             
-            # Invalider cache
-            for key in ["_cache_param_CAISSE_CB_ID", "_cache_param_CAISSE_ESP_ID", "_cache_param_CAISSE_ID", "_cache_param_CAISSE_USER_ID"]:
-                if key in st.session_state:
-                    del st.session_state[key]
+            params_to_save = [
+                ("CAISSE_CB_ID", new_cb_id.strip()),
+                ("CAISSE_ESP_ID", new_esp_id.strip()),
+                ("CAISSE_ID", new_caisse_id.strip()),
+                ("CAISSE_USER_ID", new_user_id.strip()),
+            ]
             
-            st.success(f"✅ Sauvegardé ! CB={new_cb_id} | ESP={new_esp_id} | Caisse={new_caisse_id} | User={new_user_id}")
+            for key, val in params_to_save:
+                cursor.execute("INSERT OR REPLACE INTO params (cle, valeur) VALUES (?, ?)", (key, val))
+                st.write(f"✅ Sauvegardé: {key} = `{val}`")
+            
+            conn.commit()
+            conn.close()
+            
+            # Invalider tout le cache
+            keys_to_clear = [k for k in st.session_state.keys() if k.startswith("_cache_param_")]
+            for k in keys_to_clear:
+                del st.session_state[k]
+            
+            st.success("✅ TOUS LES IDs SAUVEGARDÉS !")
             st.rerun()
-        
-        st.info(f"📌 **Actuellement:** CB=**{current_cb or '?'}** | ESP=**{current_esp or '?'}** | Caisse=**{current_caisse or '?'}** | User=**{current_user or '⚠️ MANQUANT!'}**")
         
         # Méthode de livraison
         st.markdown("---")
