@@ -3290,125 +3290,110 @@ def envoyer_vers_caisse(ticket, payment_override=None):
     try:
         import requests
         import streamlit as st
-        
-        # Vérifier la configuration
+
         apikey = get_param("CAISSE_APIKEY")
         shopid = get_param("CAISSE_SHOPID")
-        
         if not apikey or not shopid:
             return False, "Configuration API manquante (APIKEY ou SHOPID)"
-        
-        # Préparer les données
-        payment_mode = str(payment_override) if payment_override else "-1"
-        delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        
-        # IDs - HARDCODÉS pour test
-        caisse_id = "49343"  # GENERALE
-        user_id = "42867"    # klikphone
-        
-        # Calculer le montant total
-        devis = float(ticket.get('devis_estime') or 0)
-        prix_supp = float(ticket.get('prix_supp') or 0)
+
+        # Lire depuis la config (avec fallback hardcodé pour test)
+        caisse_id = (get_param("CAISSE_ID") or "49343").strip()
+        user_id = (get_param("CAISSE_USER_ID") or "42867").strip()
+
+        if not caisse_id.isdigit():
+            return False, f"CAISSE_ID invalide: '{caisse_id}' (doit être un entier)"
+        if not user_id.isdigit():
+            return False, f"CAISSE_USER_ID invalide: '{user_id}' (doit être un entier)"
+
+        delivery_method = (get_param("CAISSE_DELIVERY_METHOD") or "4").strip()
+        if not delivery_method.isdigit():
+            delivery_method = "4"
+
+        payment_mode = str(payment_override) if payment_override is not None else "-1"
+        try:
+            int(payment_mode)
+        except:
+            return False, f"payment invalide: {payment_mode}"
+
+        devis = float(ticket.get("devis_estime") or 0)
+        prix_supp = float(ticket.get("prix_supp") or 0)
         total = devis + prix_supp
-        
-        # Construire la description
-        modele_txt = f"{ticket.get('marque', '')} {ticket.get('modele', '')}"
-        if ticket.get('modele_autre'):
-            modele_txt += f" ({ticket['modele_autre']})"
-        
-        panne_txt = ticket.get('panne', '')
-        if ticket.get('panne_detail'):
+        if total <= 0:
+            return False, "Montant total à 0 : rien à envoyer"
+
+        modele_txt = f"{ticket.get('marque','')} {ticket.get('modele','')}".strip()
+        panne_txt = (ticket.get("panne") or "").strip()
+        if ticket.get("panne_detail"):
             panne_txt += f" ({ticket['panne_detail']})"
-        
-        description = f"Reparation {modele_txt} - {panne_txt}"
-        if ticket.get('type_ecran'):
+
+        description = f"Reparation {modele_txt} - {panne_txt}".strip()
+        if ticket.get("type_ecran"):
             description += f" [{ticket['type_ecran']}]"
-        
-        # Nettoyer la description
-        description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
-        description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
-        
-        # Construire comme dans la doc - avec URLSearchParams style (dict)
-        # Les valeurs numériques doivent être des INT pas des strings
-        post_data = {
-            "idboutique": shopid,
-            "key": apikey,
-            "idUser": int(user_id),
-            "idcaisse": int(caisse_id),
-            "payment": int(payment_mode),
-            "deliveryMethod": int(delivery_method),
-            "publicComment": f"Ticket: {ticket.get('ticket_code', '')}",
-        }
-        
-        # DEBUG
-        st.success("**📤 DONNÉES ENVOYÉES (format dict) :**")
-        for k, v in post_data.items():
-            if k != "key":
-                st.write(f"• `{k}` = `{v}` (type: {type(v).__name__})")
-        
-        # Ajouter le client si présent
-        if ticket.get('client_nom') or ticket.get('client_prenom'):
-            post_data["client[nom]"] = ticket.get('client_nom', '')
-            post_data["client[prenom]"] = ticket.get('client_prenom', '')
-            post_data["client[telephone]"] = ticket.get('client_tel', '')
-            if ticket.get('client_email'):
-                post_data["client[email]"] = ticket.get('client_email', '')
-        
-        # Convertir en liste pour ajouter itemsList[]
-        from urllib.parse import urlencode
-        
-        # Construire le body manuellement
-        body_parts = []
-        for k, v in post_data.items():
-            body_parts.append(f"{k}={v}")
-        
-        # Ajouter les articles
-        if ticket.get('reparation_supp') and prix_supp > 0:
-            body_parts.append(f"itemsList[]=Free_{devis:.2f}_{description}")
-            rep_supp = ticket.get('reparation_supp', 'Reparation supplementaire')
-            rep_supp = rep_supp.replace("_", " ").replace("é", "e").replace("è", "e")
-            body_parts.append(f"itemsList[]=Free_{prix_supp:.2f}_{rep_supp}")
+
+        # IMPORTANT : underscores = séparateurs côté API. On évite les "_" dans le titre.
+        description = description.replace("_", " ")
+
+        # Construire payload en *liste de tuples* (permet itemsList[] répétés + encoding correct)
+        payload = [
+            ("idboutique", shopid),
+            ("key", apikey),
+            ("idUser", int(user_id)),
+            ("idcaisse", int(caisse_id)),
+            ("payment", int(payment_mode)),
+            ("deliveryMethod", int(delivery_method)),
+            ("publicComment", f"Ticket: {ticket.get('ticket_code','')}"),
+        ]
+
+        # Client optionnel
+        if ticket.get("client_nom") or ticket.get("client_prenom"):
+            payload += [
+                ("client[nom]", ticket.get("client_nom", "")),
+                ("client[prenom]", ticket.get("client_prenom", "")),
+                ("client[telephone]", ticket.get("client_tel", "")),
+            ]
+            if ticket.get("client_email"):
+                payload.append(("client[email]", ticket.get("client_email")))
+
+        # Items
+        if ticket.get("reparation_supp") and prix_supp > 0:
+            payload.append(("itemsList[]", f"Free_{devis:.2f}_{description}"))
+            rep_supp = (ticket.get("reparation_supp") or "Reparation supplementaire").replace("_", " ")
+            payload.append(("itemsList[]", f"Free_{prix_supp:.2f}_{rep_supp}"))
         else:
-            body_parts.append(f"itemsList[]=Free_{total:.2f}_{description}")
-        
-        body = "&".join(body_parts)
-        
-        st.code(body[:500], language="text")
-        
-        # Envoyer la requête
-        response = requests.post(
+            payload.append(("itemsList[]", f"Free_{total:.2f}_{description}"))
+
+        # Debug: afficher le body réellement encodé
+        req = requests.Request(
+            "POST",
             "https://caisse.enregistreuse.fr/workers/webapp.php",
-            data=body,
+            data=payload,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=15
-        )
-        
-        # Debug: afficher ce qui a été envoyé
-        payment_sent = payment_mode
-        caisse_info = f", caisse={caisse_id}"
-        
-        if response.status_code == 200:
-            try:
-                result = response.json()
-                if result.get("result") == "OK":
-                    return True, f"Vente créée ! (payment={payment_sent}{caisse_info})"
-                elif "id" in str(result).lower():
-                    return True, f"Vente créée ! {result}"
-                else:
-                    return False, f"Erreur API: {result.get('errorMessage', result)} (payment={payment_sent}{caisse_info})"
-            except:
-                # Si pas JSON, vérifier si c'est un succès (nombre = ID de vente)
-                text = response.text.strip()
-                if text.isdigit():
-                    return True, f"Vente créée ! ID: {text}"
-                elif "OK" in text:
-                    return True, f"Vente créée !"
-                return False, f"Réponse: {text[:100]} (payment={payment_sent}{caisse_info})"
-        else:
-            return False, f"Erreur HTTP {response.status_code}: {response.text[:100]}"
-            
+        ).prepare()
+
+        st.success("📤 Body réellement ENCODÉ envoyé à l'API:")
+        body_str = req.body.decode("utf-8") if isinstance(req.body, (bytes, bytearray)) else str(req.body)
+        st.code(body_str[:800], "text")
+
+        s = requests.Session()
+        res = s.send(req, timeout=15)
+
+        if res.status_code != 200:
+            return False, f"HTTP {res.status_code}: {res.text[:300]}"
+
+        # API: parfois JSON, parfois texte
+        try:
+            data = res.json()
+            if data.get("result") == "OK":
+                return True, f"Vente créée (idcaisse={caisse_id}, idUser={user_id}, payment={payment_mode})"
+            return False, f"Erreur API: {data.get('errorMessage', data)}"
+        except:
+            txt = (res.text or "").strip()
+            if txt.isdigit() or "OK" in txt.upper():
+                return True, f"Vente créée: {txt}"
+            return False, f"Réponse API: {txt[:300]}"
+
     except Exception as e:
-        return False, f"Erreur: {str(e)}"
+        return False, f"Erreur: {e}"
 
 def export_clients_excel():
     """Exporte la liste des clients en Excel"""
