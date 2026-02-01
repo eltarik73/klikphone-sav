@@ -5534,28 +5534,33 @@ def ui_accueil():
         selected = filtre_actif is None
         if st.button(f"📋 **{nb_total}**\nTotal", key="kpi_total", use_container_width=True, type="primary" if selected else "secondary"):
             st.session_state.filtre_kpi = None
+            st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
     with col_k2:
         selected = filtre_actif == "En attente de diagnostic"
         if st.button(f"⏳ **{nb_attente}**\nDiagnostic", key="kpi_attente", use_container_width=True, type="primary" if selected else "secondary"):
             st.session_state.filtre_kpi = "En attente de diagnostic"
+            st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
     with col_k3:
         selected = filtre_actif == "En cours de réparation"
         if st.button(f"🔧 **{nb_encours}**\nRéparation", key="kpi_encours", use_container_width=True, type="primary" if selected else "secondary"):
             st.session_state.filtre_kpi = "En cours de réparation"
+            st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
     with col_k4:
         selected = filtre_actif == "En attente d'accord client"
         color = "primary" if (selected or nb_attente_accord > 0) else "secondary"
         if st.button(f"⚠️ **{nb_attente_accord}**\nAccord", key="kpi_accord", use_container_width=True, type=color):
             st.session_state.filtre_kpi = "En attente d'accord client"
+            st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
     with col_k5:
         selected = filtre_actif == "En attente de pièce"
         color = "primary" if (selected or nb_attente_piece > 0) else "secondary"
         if st.button(f"📦 **{nb_attente_piece}**\nPièces", key="kpi_pieces", use_container_width=True, type=color):
             st.session_state.filtre_kpi = "En attente de pièce"
+            st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
 
 # === TABS ===
@@ -8148,22 +8153,23 @@ def ui_tech():
     
     st.markdown("---")
     
-    # Récupérer les tickets
-    if filtre_statut == "Tous":
-        tickets = chercher_tickets()
-    else:
-        tickets = chercher_tickets(statut=filtre_statut)
+    # Récupérer TOUS les tickets
+    all_tickets_tech = chercher_tickets()
+    
+    # Filtrer par statut si sélectionné (sauf "Tous" et "Clôturé" qui sont gérés par onglets)
+    if filtre_statut not in ["Tous", "Clôturé"]:
+        all_tickets_tech = [t for t in all_tickets_tech if t.get('statut') == filtre_statut]
     
     # Filtrer par technicien
     if filtre_tech == "🔴 Non assignés":
-        tickets = [t for t in tickets if not t.get('technicien_assigne')]
+        all_tickets_tech = [t for t in all_tickets_tech if not t.get('technicien_assigne')]
     elif filtre_tech not in ["👥 Tous"]:
-        tickets = [t for t in tickets if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
+        all_tickets_tech = [t for t in all_tickets_tech if t.get('technicien_assigne') and filtre_tech in t.get('technicien_assigne', '')]
     
     # Filtrer par recherche
     if recherche:
         recherche_lower = recherche.lower()
-        tickets = [t for t in tickets if 
+        all_tickets_tech = [t for t in all_tickets_tech if 
                    recherche_lower in t.get('ticket_code', '').lower() or
                    recherche_lower in t.get('client_nom', '').lower() or
                    recherche_lower in t.get('client_prenom', '').lower() or
@@ -8171,145 +8177,119 @@ def ui_tech():
                    recherche_lower in t.get('modele', '').lower() or
                    recherche_lower in t.get('client_tel', '').lower()]
     
-    # Trier
-    if "Ancien" in tri:
-        tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
-    elif "Statut" in tri:
-        ordre_statut = {s: i for i, s in enumerate(STATUTS)}
-        tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
+    # Séparer actifs et archives
+    tickets_actifs = [t for t in all_tickets_tech if t.get('statut') != 'Clôturé']
+    tickets_archives = [t for t in all_tickets_tech if t.get('statut') == 'Clôturé']
     
-    # Pagination
-    ITEMS_PER_PAGE = 6
-    total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    # Onglets Actifs / Archives
+    tab_actifs, tab_archives = st.tabs([f"📋 Actifs ({len(tickets_actifs)})", f"📦 Archives ({len(tickets_archives)})"])
     
-    if "tech_page" not in st.session_state:
-        st.session_state.tech_page = 1
-    
-    current_page = st.session_state.tech_page
-    start_idx = (current_page - 1) * ITEMS_PER_PAGE
-    end_idx = start_idx + ITEMS_PER_PAGE
-    tickets_page = tickets[start_idx:end_idx]
-    
-    st.markdown(f"**{len(tickets)} réparation(s)** • Page {current_page}/{total_pages}")
-    
-    # En-tete du tableau avec st.columns (aligné avec les lignes)
-    col_props_tech = [1, 1.4, 1.6, 1, 1.4, 0.6]
-    
-    header_cols = st.columns(col_props_tech)
-    headers_tech = ["Ticket", "Client", "Appareil", "Tech", "Statut", ""]
-    
-    st.markdown("""
-    <style>
-    .tech-header {
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        margin: -12px -16px 12px -16px;
-        padding: 14px 16px;
-        border-radius: 12px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    for i, col in enumerate(header_cols):
-        with col:
-            st.markdown(f'<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">{headers_tech[i]}</div>', unsafe_allow_html=True)
-    
-    st.markdown('<hr style="margin:8px 0;border:none;border-top:1px solid #e5e5e5;">', unsafe_allow_html=True)
-    
-    # Affichage en liste avec boutons
-    for t in tickets_page:
-        tid = t['id']
-        status_class = get_status_class(t.get('statut', ''))
-        
-        # Modèle COMPLET VISIBLE
-        marque = t.get('marque', '')
-        modele_nom = t.get('modele', '')
-        if t.get('modele_autre'):
-            modele_nom = t['modele_autre']
-        
-        # Afficher marque + modèle ensemble
-        appareil_complet = f"{marque} {modele_nom}".strip()
-        if len(appareil_complet) > 24:
-            appareil_display = appareil_complet[:22] + "..."
+    # Fonction pour afficher une liste de tickets
+    def afficher_liste_tickets_tech(tickets, prefix_key="actifs"):
+        # Trier
+        if "Ancien" in tri:
+            tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''))
+        elif "Statut" in tri:
+            ordre_statut = {s: i for i, s in enumerate(STATUTS)}
+            tickets = sorted(tickets, key=lambda x: ordre_statut.get(x.get('statut', ''), 99))
         else:
-            appareil_display = appareil_complet
+            tickets = sorted(tickets, key=lambda x: x.get('date_depot', ''), reverse=True)
         
-        # Catégorie pour icône
-        categorie = t.get('categorie', 'Smartphone')
-        device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
-        device_icon = device_icons.get(categorie, "📱")
+        # Pagination
+        ITEMS_PER_PAGE = 6
+        total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
         
-        # Technicien avec couleur
-        tech = t.get('technicien_assigne', '')
-        tech_display = "—"
-        tech_color = "#9CA3AF"
-        if tech:
-            for m in get_membres_equipe():
-                if m['nom'] in tech:
-                    tech_display = m['nom']
-                    tech_color = m['couleur']
-                    break
+        page_key = f"tech_page_{prefix_key}"
+        if page_key not in st.session_state:
+            st.session_state[page_key] = 1
         
-        # Indicateur accord client
-        accord_icon = ""
-        if t.get('statut') == "En attente d'accord client":
-            accord_icon = "⚠️ "
+        current_page = st.session_state[page_key]
+        start_idx = (current_page - 1) * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        tickets_page = tickets[start_idx:end_idx]
         
-        # Colonnes alignées avec le header
-        row_cols = st.columns(col_props_tech)
+        if not tickets:
+            st.info("Aucune réparation dans cette catégorie")
+            return
+            
+        st.markdown(f"**{len(tickets)} réparation(s)** • Page {current_page}/{total_pages}")
         
-        with row_cols[0]:
-            st.markdown(f'''
-            <div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
-            ''', unsafe_allow_html=True)
+        # En-tete du tableau
+        col_props_tech = [1, 1.4, 1.6, 1, 1.4, 0.6]
+        header_cols = st.columns(col_props_tech)
+        headers_tech = ["Ticket", "Client", "Appareil", "Tech", "Statut", ""]
         
-        with row_cols[1]:
-            client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()
-            if len(client_nom) > 16:
-                client_nom = client_nom[:14] + "..."
-            st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
+        for i, col in enumerate(header_cols):
+            with col:
+                st.markdown(f'<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">{headers_tech[i]}</div>', unsafe_allow_html=True)
         
-        with row_cols[2]:
-            # Appareil avec icône et modèle VISIBLE
-            st.markdown(f'''
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:14px;">{device_icon}</span>
-                <span style="font-size:12px;font-weight:500;color:#171717;" title="{appareil_complet}">{appareil_display}</span>
-            </div>
-            ''', unsafe_allow_html=True)
+        st.markdown('<hr style="margin:8px 0;border:none;border-top:1px solid #e5e5e5;">', unsafe_allow_html=True)
         
-        with row_cols[3]:
-            if tech_display != "—":
-                st.markdown(f'<span style="background:{tech_color};color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:500;">{tech_display}</span>', unsafe_allow_html=True)
-            else:
-                st.markdown('<span style="color:#a3a3a3;font-size:11px;font-style:italic;">—</span>', unsafe_allow_html=True)
+        # Affichage en liste
+        for t in tickets_page:
+            tid = t['id']
+            status_class = get_status_class(t.get('statut', ''))
+            marque = t.get('marque', '')
+            modele_nom = t.get('modele_autre') if t.get('modele_autre') else t.get('modele', '')
+            appareil_complet = f"{marque} {modele_nom}".strip()
+            appareil_display = appareil_complet[:22] + "..." if len(appareil_complet) > 24 else appareil_complet
+            
+            categorie = t.get('categorie', 'Smartphone')
+            device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
+            device_icon = device_icons.get(categorie, "📱")
+            
+            tech = t.get('technicien_assigne', '')
+            tech_display, tech_color = "—", "#9CA3AF"
+            if tech:
+                for m in get_membres_equipe():
+                    if m['nom'] in tech:
+                        tech_display, tech_color = m['nom'], m['couleur']
+                        break
+            
+            row_cols = st.columns(col_props_tech)
+            with row_cols[0]:
+                st.markdown(f'<div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{t["ticket_code"]}</div>', unsafe_allow_html=True)
+            with row_cols[1]:
+                client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()[:16]
+                st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
+            with row_cols[2]:
+                st.markdown(f'<div style="display:flex;align-items:center;gap:6px;"><span>{device_icon}</span><span style="font-size:12px;" title="{appareil_complet}">{appareil_display}</span></div>', unsafe_allow_html=True)
+            with row_cols[3]:
+                if tech_display != "—":
+                    st.markdown(f'<span style="background:{tech_color};color:white;padding:3px 8px;border-radius:12px;font-size:10px;">{tech_display}</span>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<span style="color:#a3a3a3;font-size:11px;">—</span>', unsafe_allow_html=True)
+            with row_cols[4]:
+                statut = t.get('statut', '')
+                statut_short = statut[:14] + "..." if len(statut) > 14 else statut
+                st.markdown(f'<span class="badge {status_class}" style="font-size:10px;">{statut_short}</span>', unsafe_allow_html=True)
+            with row_cols[5]:
+                if st.button("→", key=f"tech_open_{prefix_key}_{tid}", use_container_width=True):
+                    st.session_state.tech_selected = tid
+                    st.rerun()
+            st.markdown('<hr style="margin:6px 0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
         
-        with row_cols[4]:
-            statut = t.get('statut', '')
-            statut_short = statut[:14] + "..." if len(statut) > 14 else statut
-            st.markdown(f'{accord_icon}<span class="badge {status_class}" style="font-size:10px;" title="{statut}">{statut_short}</span>', unsafe_allow_html=True)
-        
-        with row_cols[5]:
-            if st.button("→", key=f"tech_open_{tid}", use_container_width=True):
-                st.session_state.tech_selected = tid
-                st.rerun()
-        
-        st.markdown('<hr style="margin:6px 0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
+        # Pagination
+        if total_pages > 1:
+            col_prev, col_pages, col_next = st.columns([1, 3, 1])
+            with col_prev:
+                if current_page > 1 and st.button("◀ Préc", key=f"tech_prev_{prefix_key}"):
+                    st.session_state[page_key] = current_page - 1
+                    st.rerun()
+            with col_pages:
+                st.markdown(f"<div style='text-align:center;'>Page {current_page}/{total_pages}</div>", unsafe_allow_html=True)
+            with col_next:
+                if current_page < total_pages and st.button("Suiv ▶", key=f"tech_next_{prefix_key}"):
+                    st.session_state[page_key] = current_page + 1
+                    st.rerun()
     
-    # Navigation pagination
-    if total_pages > 1:
-        col_prev, col_pages, col_next = st.columns([1, 3, 1])
-        with col_prev:
-            if current_page > 1:
-                if st.button("◀ Préc", key="tech_prev"):
-                    st.session_state.tech_page = current_page - 1
-                    st.rerun()
-        with col_pages:
-            st.markdown(f"<div style='text-align:center;'>Page {current_page} / {total_pages}</div>", unsafe_allow_html=True)
-        with col_next:
-            if current_page < total_pages:
-                if st.button("Suiv ▶", key="tech_next"):
-                    st.session_state.tech_page = current_page + 1
-                    st.rerun()
+    # Utiliser les onglets
+    with tab_actifs:
+        afficher_liste_tickets_tech(tickets_actifs, "actifs")
+    
+    with tab_archives:
+        st.info("💡 Cliquez sur un dossier archivé pour le rouvrir si nécessaire")
+        afficher_liste_tickets_tech(tickets_archives, "archives")
 
 def tech_detail_ticket(tid):
     t = get_ticket_full(tid=tid)
@@ -8548,22 +8528,6 @@ def tech_detail_ticket(tid):
             help="Visible uniquement par l'équipe (atelier/accueil).",
         )
 
-
-        # Note privée (équipe uniquement) — mémo interne (non imprimé)
-        note_privee_tech_val = st.text_area(
-            "Note privée (équipe uniquement)",
-            value=get_param("NOTE_PRIVEE_TECH") or "",
-            height=80,
-            key=f"note_privee_tech_{tid}",
-            help="Non imprimée, non visible client. Mémo interne technicien.",
-        )
-        col_np_t1, col_np_t2 = st.columns([4, 1], gap="small")
-        with col_np_t2:
-            if st.button("OK", key=f"save_note_privee_tech_{tid}", type="secondary", use_container_width=True):
-                set_param("NOTE_PRIVEE_TECH", note_privee_tech_val.strip())
-                st.toast("✅ Note privée enregistrée")
-                st.rerun()
-
         commentaire_public_edit = st.text_area(
             "Commentaire public (visible sur le ticket client)",
             value=t.get('commentaire_client') or "",
@@ -8574,7 +8538,7 @@ def tech_detail_ticket(tid):
 
         col_save_notes, _sp = st.columns([1, 3], gap="small")
         with col_save_notes:
-            if st.button("OK", key=f"tech_save_notes_{tid}", type="primary", use_container_width=True):
+            if st.button("💾 Enregistrer notes", key=f"tech_save_notes_{tid}", type="primary", use_container_width=True):
                 update_ticket(tid, notes_internes=notes_internes_edit, commentaire_client=commentaire_public_edit)
                 st.toast("✅ Notes mises à jour")
                 st.rerun()
@@ -8773,28 +8737,28 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     # === SECTION INFÉRIEURE ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
-    # Changer statut - Toggle avec session_state
-    if f"show_statuts_{tid}" not in st.session_state:
-        st.session_state[f"show_statuts_{tid}"] = False
+    # === CHANGEMENT DE STATUT - TOUJOURS VISIBLE ===
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:2px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="font-weight:700;color:#1e293b;margin-bottom:12px;font-size:1rem;">🔄 Changer le statut</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    col_toggle2, col_spacer2 = st.columns([3, 1])
-    with col_toggle2:
-        if st.button("⚙️ Changer le statut manuellement" + (" ▼" if st.session_state[f"show_statuts_{tid}"] else " ▶"), 
-                     key=f"toggle_statuts_{tid}", use_container_width=True, type="secondary"):
-            st.session_state[f"show_statuts_{tid}"] = not st.session_state[f"show_statuts_{tid}"]
-            st.rerun()
-    
-    if st.session_state[f"show_statuts_{tid}"]:
-        st.markdown("""<div style="background:white;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:16px;margin-top:-10px;">""", unsafe_allow_html=True)
-        st.caption("⚠️ Utilisez les boutons d'action ci-dessus pour un workflow optimal.")
-        cols = st.columns(3)
-        for i, s in enumerate(STATUTS):
-            with cols[i % 3]:
-                is_current = (s == statut_actuel)
-                if st.button(s, key=f"tech_status_{tid}_{s}", use_container_width=True, disabled=is_current, type="primary" if is_current else "secondary"):
-                    changer_statut(tid, s)
-                    st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Afficher les statuts en grille - TOUJOURS VISIBLE
+    cols = st.columns(4)
+    for i, s in enumerate(STATUTS):
+        with cols[i % 4]:
+            is_current = (s == statut_actuel)
+            # Icônes pour chaque statut
+            icons = {"En attente de diagnostic": "🔍", "En attente de pièce": "📦", 
+                    "En attente d'accord client": "⏳", "En cours de réparation": "🔧",
+                    "Réparation terminée": "✅", "Rendu au client": "🤝", "Clôturé": "📁"}
+            icon = icons.get(s, "")
+            label = s.replace("En attente de ", "").replace("En cours de ", "").replace("Réparation ", "")
+            if st.button(f"{icon} {label}", key=f"tech_status_{tid}_{s}", use_container_width=True, 
+                        disabled=is_current, type="primary" if is_current else "secondary"):
+                changer_statut(tid, s)
+                st.rerun()
     
     # Footer
     st.markdown("""
