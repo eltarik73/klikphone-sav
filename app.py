@@ -3301,13 +3301,8 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         # Préparer les données
         payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        caisse_id = get_param("CAISSE_ID")  # Ne pas mettre de valeur par défaut
-        
-        # DEBUG COMPLET
-        st.error(f"🔴 DEBUG CAISSE_ID récupéré de la BDD: '{caisse_id}' (type: {type(caisse_id).__name__})")
-        
-        if not caisse_id:
-            st.error("⚠️ CAISSE_ID EST VIDE ! Vérifiez dans Config > Caisse que vous avez bien sauvegardé l'ID 49343")
+        caisse_id = get_param("CAISSE_ID")
+        user_id = get_param("CAISSE_USER_ID")
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
@@ -3327,11 +3322,11 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         if ticket.get('type_ecran'):
             description += f" [{ticket['type_ecran']}]"
         
-        # Nettoyer la description (pas de caractères spéciaux problématiques)
+        # Nettoyer la description
         description = description.replace("_", " ").replace("é", "e").replace("è", "e").replace("ê", "e")
         description = description.replace("à", "a").replace("ù", "u").replace("ô", "o").replace("î", "i")
         
-        # Construire les données POST comme liste de tuples (permet clés dupliquées)
+        # Construire les données POST
         post_data = [
             ("idboutique", shopid),
             ("key", apikey),
@@ -3340,17 +3335,19 @@ def envoyer_vers_caisse(ticket, payment_override=None):
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
         ]
         
-        # IMPORTANT: Ajouter l'ID de la caisse
+        # IMPORTANT: Ajouter idcaisse
         if caisse_id and str(caisse_id).strip():
             post_data.append(("idcaisse", str(caisse_id).strip()))
         
-        # DEBUG - Afficher EXACTEMENT ce qui sera envoyé
-        st.write("---")
-        st.write("**📤 DONNÉES ENVOYÉES À L'API :**")
+        # IMPORTANT: Ajouter idUser pour éviter "webservice"
+        if user_id and str(user_id).strip():
+            post_data.append(("idUser", str(user_id).strip()))
+        
+        # DEBUG - Afficher ce qui sera envoyé
+        st.write("**📤 DONNÉES ENVOYÉES :**")
         for key, val in post_data:
-            if key != "key":  # Ne pas afficher la clé API
+            if key != "key":
                 st.write(f"• `{key}` = `{val}`")
-        st.write("---")
         
         # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
@@ -7814,10 +7811,10 @@ def staff_config():
         st.markdown("---")
         st.markdown("#### 💳 Configuration des modes de paiement et caisse")
         
-        col_btn1, col_btn2 = st.columns(2)
+        col_btn1, col_btn2, col_btn3 = st.columns(3)
         
         with col_btn1:
-            if st.button("🔄 Récupérer mes MODES DE PAIEMENT", use_container_width=True):
+            if st.button("🔄 MODES PAIEMENT", use_container_width=True):
                 apikey = get_param("CAISSE_APIKEY")
                 shopid = get_param("CAISSE_SHOPID")
                 if apikey and shopid:
@@ -7827,25 +7824,18 @@ def staff_config():
                             f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
                             timeout=10
                         )
-                        st.write(f"**Status:** {response.status_code}")
-                        
                         if response.status_code == 200:
-                            try:
-                                data = response.json()
-                                st.success(f"✅ {len(data)} modes trouvés !")
-                                for m in data:
-                                    mode_id = m.get('id', m.get('ID', ''))
-                                    mode_nom = m.get('nom', m.get('name', m.get('label', str(m))))
-                                    st.write(f"- **ID {mode_id}** : {mode_nom}")
-                            except:
-                                st.code(response.text[:500])
+                            data = response.json()
+                            st.success(f"✅ {len(data)} modes trouvés !")
+                            for m in data:
+                                mode_id = m.get('id', '')
+                                mode_nom = m.get('nomlong', m.get('nom', str(m)))
+                                st.write(f"- **ID {mode_id}** : {mode_nom}")
                     except Exception as e:
-                        st.error(f"❌ Erreur: {str(e)}")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
+                        st.error(f"❌ {e}")
         
         with col_btn2:
-            if st.button("🔄 Récupérer mes CAISSES", use_container_width=True):
+            if st.button("🔄 CAISSES", use_container_width=True):
                 apikey = get_param("CAISSE_APIKEY")
                 shopid = get_param("CAISSE_SHOPID")
                 if apikey and shopid:
@@ -7855,67 +7845,74 @@ def staff_config():
                             f"https://caisse.enregistreuse.fr/workers/getCashbox.php?idboutique={shopid}&key={apikey}&format=json",
                             timeout=10
                         )
-                        st.write(f"**Status:** {response.status_code}")
-                        
                         if response.status_code == 200:
-                            try:
-                                data = response.json()
-                                st.success(f"✅ {len(data)} caisses trouvées !")
-                                for c in data:
-                                    caisse_id = c.get('id', c.get('ID', ''))
-                                    caisse_nom = c.get('nom', c.get('name', c.get('label', str(c))))
-                                    st.write(f"- **ID {caisse_id}** : {caisse_nom}")
-                            except:
-                                st.code(response.text[:500])
+                            data = response.json()
+                            st.success(f"✅ {len(data)} caisses !")
+                            for c in data:
+                                st.write(f"- **ID {c.get('id', '')}** : {c.get('nom', c)}")
                     except Exception as e:
-                        st.error(f"❌ Erreur: {str(e)}")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
+                        st.error(f"❌ {e}")
+        
+        with col_btn3:
+            if st.button("🔄 UTILISATEURS", use_container_width=True):
+                apikey = get_param("CAISSE_APIKEY")
+                shopid = get_param("CAISSE_SHOPID")
+                if apikey and shopid:
+                    try:
+                        import requests
+                        response = requests.get(
+                            f"https://caisse.enregistreuse.fr/workers/getUsers.php?idboutique={shopid}&key={apikey}&format=json",
+                            timeout=10
+                        )
+                        if response.status_code == 200:
+                            data = response.json()
+                            st.success(f"✅ {len(data)} utilisateurs !")
+                            for u in data:
+                                user_id = u.get('id', '')
+                                user_nom = u.get('login', u.get('nom', str(u)))
+                                st.write(f"- **ID {user_id}** : {user_nom}")
+                            st.error("⚠️ NE PAS utiliser 'Webservices' !")
+                    except Exception as e:
+                        st.error(f"❌ {e}")
         
         # Saisie des IDs
+        st.markdown("---")
         st.markdown("##### 📝 Configurer les IDs")
-        st.warning("⚠️ **IMPORTANT:** Cliquez sur les boutons ci-dessus pour trouver vos vrais IDs !")
         
         current_cb = get_param("CAISSE_CB_ID") or ""
         current_esp = get_param("CAISSE_ESP_ID") or ""
         current_caisse = get_param("CAISSE_ID") or ""
+        current_user = get_param("CAISSE_USER_ID") or ""
         
-        col_id1, col_id2, col_id3 = st.columns(3)
+        col_id1, col_id2 = st.columns(2)
         with col_id1:
-            new_cb_id = st.text_input("ID Carte bancaire", value=current_cb, placeholder="Ex: 5", key="manual_cb_id")
+            new_cb_id = st.text_input("💳 ID Carte bancaire", value=current_cb, placeholder="528273", key="manual_cb_id")
         with col_id2:
-            new_esp_id = st.text_input("ID Espèces", value=current_esp, placeholder="Ex: 3", key="manual_esp_id")
-        with col_id3:
-            new_caisse_id = st.text_input("ID Caisse", value=current_caisse, placeholder="Ex: 49343", key="manual_caisse_id", help="OBLIGATOIRE pour éviter webservice")
+            new_esp_id = st.text_input("💵 ID Espèces", value=current_esp, placeholder="528275", key="manual_esp_id")
         
-        if st.button("💾 Sauvegarder les IDs", type="primary", use_container_width=True):
-            # Sauvegarder
+        col_id3, col_id4 = st.columns(2)
+        with col_id3:
+            new_caisse_id = st.text_input("🏪 ID Caisse (GENERALE)", value=current_caisse, placeholder="49343", key="manual_caisse_id")
+        with col_id4:
+            new_user_id = st.text_input("👤 ID Utilisateur (PAS Webservices!)", value=current_user, placeholder="ID de klikphone ou oualid", key="manual_user_id")
+        
+        st.error("⚠️ **L'ID Utilisateur est OBLIGATOIRE !** Sinon ça ira toujours vers 'webservice'. Cliquez sur UTILISATEURS pour trouver l'ID de 'klikphone' ou 'oualid'.")
+        
+        if st.button("💾 SAUVEGARDER TOUS LES IDs", type="primary", use_container_width=True):
             set_param("CAISSE_CB_ID", new_cb_id.strip())
             set_param("CAISSE_ESP_ID", new_esp_id.strip())
             set_param("CAISSE_ID", new_caisse_id.strip())
+            set_param("CAISSE_USER_ID", new_user_id.strip())
             
-            # Forcer la suppression du cache pour CAISSE_ID
-            for key in ["_cache_param_CAISSE_CB_ID", "_cache_param_CAISSE_ESP_ID", "_cache_param_CAISSE_ID"]:
+            # Invalider cache
+            for key in ["_cache_param_CAISSE_CB_ID", "_cache_param_CAISSE_ESP_ID", "_cache_param_CAISSE_ID", "_cache_param_CAISSE_USER_ID"]:
                 if key in st.session_state:
                     del st.session_state[key]
             
-            # Vérifier que c'est bien sauvegardé
-            verif_caisse = get_param("CAISSE_ID")
-            st.success(f"✅ Sauvegardé ! CB={new_cb_id} | Espèces={new_esp_id} | Caisse={new_caisse_id}")
-            st.info(f"🔍 Vérification: CAISSE_ID en BDD = '{verif_caisse}'")
+            st.success(f"✅ Sauvegardé ! CB={new_cb_id} | ESP={new_esp_id} | Caisse={new_caisse_id} | User={new_user_id}")
             st.rerun()
         
-        # Afficher l'état actuel avec bouton de vérification
-        st.info(f"📌 **Valeurs actuelles:** CB=**{current_cb or '(vide)'}** | Espèces=**{current_esp or '(vide)'}** | Caisse=**{current_caisse or '(VIDE!)'}**")
-        
-        if st.button("🔍 Vérifier valeurs en BDD"):
-            # Forcer lecture directe sans cache
-            conn = get_db()
-            for param_name in ["CAISSE_CB_ID", "CAISSE_ESP_ID", "CAISSE_ID"]:
-                r = conn.cursor().execute("SELECT valeur FROM params WHERE cle=?", (param_name,)).fetchone()
-                val = r["valeur"] if r else "(non trouvé)"
-                st.write(f"**{param_name}** = `{val}`")
-            conn.close()
+        st.info(f"📌 **Actuellement:** CB=**{current_cb or '?'}** | ESP=**{current_esp or '?'}** | Caisse=**{current_caisse or '?'}** | User=**{current_user or '⚠️ MANQUANT!'}**")
         
         # Méthode de livraison
         st.markdown("---")
