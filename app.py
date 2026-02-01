@@ -3298,13 +3298,16 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         if not apikey or not shopid:
             return False, "Configuration API manquante (APIKEY ou SHOPID)"
         
-        # Préparer les données - IMPORTANT: payment_override est utilisé directement
+        # Préparer les données
         payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        caisse_id = get_param("CAISSE_ID") or ""
+        caisse_id = get_param("CAISSE_ID")  # Ne pas mettre de valeur par défaut
         
-        # DEBUG - Afficher les valeurs récupérées
-        st.warning(f"🔍 DEBUG: payment={payment_mode}, caisse_id='{caisse_id}', delivery={delivery_method}")
+        # DEBUG COMPLET
+        st.error(f"🔴 DEBUG CAISSE_ID récupéré de la BDD: '{caisse_id}' (type: {type(caisse_id).__name__})")
+        
+        if not caisse_id:
+            st.error("⚠️ CAISSE_ID EST VIDE ! Vérifiez dans Config > Caisse que vous avez bien sauvegardé l'ID 49343")
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
@@ -3337,12 +3340,17 @@ def envoyer_vers_caisse(ticket, payment_override=None):
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
         ]
         
-        # Ajouter l'ID de la caisse - TOUJOURS l'ajouter si configuré
-        if caisse_id and caisse_id.strip():
+        # IMPORTANT: Ajouter l'ID de la caisse
+        if caisse_id and str(caisse_id).strip():
             post_data.append(("idcaisse", str(caisse_id).strip()))
-            st.info(f"✅ idcaisse ajouté: {caisse_id}")
-        else:
-            st.error("❌ CAISSE_ID est vide ! Les ventes iront vers webservice")
+        
+        # DEBUG - Afficher EXACTEMENT ce qui sera envoyé
+        st.write("---")
+        st.write("**📤 DONNÉES ENVOYÉES À L'API :**")
+        for key, val in post_data:
+            if key != "key":  # Ne pas afficher la clé API
+                st.write(f"• `{key}` = `{val}`")
+        st.write("---")
         
         # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
