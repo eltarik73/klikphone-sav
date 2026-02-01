@@ -59,7 +59,7 @@ PANNES = ["Écran casse", "Batterie", "Connecteur de charge",
           "Microphone (les gens ne m'entendent pas)", 
           "Vitre arriere", "Désoxydation", "Problème logiciel", "Diagnostic", "Autre"]
 
-STATUTS = ["En attente de diagnostic", "En attente de pièce", "En attente d'accord client",
+STATUTS = ["En attente de diagnostic", "En attente de pièce", "Pièce reçue", "En attente d'accord client",
            "En cours de réparation", "Réparation terminée", "Rendu au client", "Clôturé"]
 
 # Membres équipe par défaut
@@ -3262,6 +3262,7 @@ def wa_link(tel, msg):
 
 def get_status_class(statut):
     if "diagnostic" in statut.lower(): return "status-diagnostic"
+    elif "reçue" in statut.lower() or "recue" in statut.lower(): return "status-piece-recue"
     elif "pièce" in statut.lower() or "piece" in statut.lower(): return "status-piece"
     elif "accord" in statut.lower(): return "status-accord"
     elif "cours" in statut.lower(): return "status-encours"
@@ -3274,6 +3275,7 @@ def get_status_badge(statut):
     colors = {
         "En attente de diagnostic": ("#FEF3C7", "#92400E", "🔍"),
         "En attente de pièce": ("#FEE2E2", "#B91C1C", "📦"),
+        "Pièce reçue": ("#D1FAE5", "#047857", "📬"),
         "En attente d'accord client": ("#FEF3C7", "#B45309", "⏳"),
         "En cours de réparation": ("#DBEAFE", "#1D4ED8", "🔧"),
         "Réparation terminée": ("#D1FAE5", "#047857", "✅"),
@@ -5650,35 +5652,6 @@ def staff_liste_demandes():
     tickets_actifs = [t for t in all_tickets if t.get('statut') != 'Clôturé']
     tickets_archives = [t for t in all_tickets if t.get('statut') == 'Clôturé']
     
-    # Afficher le compteur
-    st.markdown(f"""
-    <div style="display:flex;gap:16px;margin-bottom:12px;">
-        <span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">
-            📋 {len(tickets_actifs)} actif(s)
-        </span>
-        <span style="background:#f3f4f6;color:#6b7280;padding:4px 12px;border-radius:20px;font-size:13px;">
-            📦 {len(tickets_archives)} archivé(s)
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Utiliser les tickets actifs pour l'affichage principal
-    tickets = tickets_actifs
-    
-    # Pagination
-    ITEMS_PER_PAGE = 8
-    total_pages = max(1, (len(tickets) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
-    
-    if "accueil_page" not in st.session_state:
-        st.session_state.accueil_page = 1
-    
-    current_page = st.session_state.accueil_page
-    start_idx = (current_page - 1) * ITEMS_PER_PAGE
-    end_idx = start_idx + ITEMS_PER_PAGE
-    tickets_page = tickets[start_idx:end_idx]
-    
-    # === NOUVEAU DESIGN TABLEAU v3 - Streamlit columns alignées ===
-    
     # Fonction helper pour obtenir les initiales
     def get_initials(nom, prenom):
         n = nom[0].upper() if nom else ""
@@ -5695,11 +5668,52 @@ def staff_liste_demandes():
             "Commande": "📦"
         }
         return icons.get(categorie, "📱")
-
-    # Proportions des colonnes (utilisées partout pour l'alignement)
-    col_props = [1.0, 1.6, 1.8, 1.1, 1.6, 0.9, 0.5]
     
-    # Header du tableau
+    # Utiliser les tickets actifs pour l'affichage principal
+    tickets = tickets_actifs
+    
+    # Afficher compteurs avec bouton pour accéder aux archives
+    col_count1, col_count2 = st.columns([3, 2])
+    with col_count1:
+        st.markdown(f"""
+        <div style="display:flex;gap:12px;margin-bottom:12px;">
+            <span style="background:#dcfce7;color:#166534;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;">📋 {len(tickets_actifs)} actif(s)</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_count2:
+        if st.button(f"📦 Voir {len(tickets_archives)} archivé(s)", key="btn_voir_archives", type="secondary"):
+            st.session_state.show_archives = not st.session_state.get("show_archives", False)
+            st.rerun()
+    
+    # Si on montre les archives
+    if st.session_state.get("show_archives", False):
+        st.markdown("### 📦 Tickets archivés")
+        st.info("💡 Cliquez sur un ticket pour le réouvrir si nécessaire")
+        for t in tickets_archives[:30]:
+            col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns([1, 1.5, 1.5, 1, 0.5])
+            with col_a1:
+                st.markdown(f"**{t['ticket_code']}**")
+            with col_a2:
+                st.write(f"{t.get('client_nom', '')} {t.get('client_prenom', '')}")
+            with col_a3:
+                modele = t.get('modele_autre') or f"{t.get('marque', '')} {t.get('modele', '')}"
+                st.write(modele[:25])
+            with col_a4:
+                st.write(fmt_date(t.get('date_cloture', t.get('date_maj', '')))[:10])
+            with col_a5:
+                if st.button("👁️", key=f"view_arch_{t['id']}", help="Voir/Rouvrir"):
+                    st.session_state.edit_id = t['id']
+                    st.rerun()
+            st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #e5e7eb;'>", unsafe_allow_html=True)
+        if len(tickets_archives) > 30:
+            st.info(f"📋 {len(tickets_archives) - 30} autres tickets archivés...")
+        st.markdown("---")
+        if st.button("⬅️ Retour aux tickets actifs", key="btn_retour_actifs"):
+            st.session_state.show_archives = False
+            st.rerun()
+        return
+    
+    # Pagination
     st.markdown("""
     <style>
     .ticket-table-wrapper {
@@ -5917,30 +5931,6 @@ def staff_liste_demandes():
                 if st.button("Suivant →", key="accueil_next", type="secondary", use_container_width=True):
                     st.session_state.accueil_page = current_page + 1
                     st.rerun()
-    
-    # === SECTION TICKETS ARCHIVÉS ===
-    if tickets_archives:
-        st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
-        with st.expander(f"📦 Tickets archivés ({len(tickets_archives)})", expanded=False):
-            for t in tickets_archives[:20]:  # Limiter à 20 pour performance
-                col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns([1, 1.5, 1.5, 1, 0.5])
-                with col_a1:
-                    st.markdown(f"**{t['ticket_code']}**")
-                with col_a2:
-                    st.write(f"{t.get('client_nom', '')} {t.get('client_prenom', '')}")
-                with col_a3:
-                    modele = t.get('modele_autre') or f"{t.get('marque', '')} {t.get('modele', '')}"
-                    st.write(modele[:25])
-                with col_a4:
-                    st.write(fmt_date(t.get('date_cloture', t.get('date_maj', '')))[:10])
-                with col_a5:
-                    if st.button("👁️", key=f"view_arch_{t['id']}", help="Voir"):
-                        st.session_state.edit_id = t['id']
-                        st.rerun()
-                st.markdown("<hr style='margin:4px 0;border:none;border-top:1px solid #e5e7eb;'>", unsafe_allow_html=True)
-            
-            if len(tickets_archives) > 20:
-                st.info(f"📋 {len(tickets_archives) - 20} autres tickets archivés...")
 
 def staff_traiter_demande(tid):
     t = get_ticket_full(tid=tid)
@@ -6099,7 +6089,7 @@ def staff_traiter_demande(tid):
         st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="detail-card-header">🎫 Tickets & Documents</div>', unsafe_allow_html=True)
         
-        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+        col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns(5)
         with col_t1:
             if st.button("🎫 Client", key=f"show_client_{tid}", use_container_width=True):
                 st.session_state[f"show_ticket_{tid}"] = "client" if st.session_state.get(f"show_ticket_{tid}") != "client" else None
@@ -6109,10 +6099,14 @@ def staff_traiter_demande(tid):
                 st.session_state[f"show_ticket_{tid}"] = "staff" if st.session_state.get(f"show_ticket_{tid}") != "staff" else None
                 st.rerun()
         with col_t3:
+            if st.button("🖨️ Double", key=f"show_double_{tid}", use_container_width=True, type="primary"):
+                st.session_state[f"show_ticket_{tid}"] = "double" if st.session_state.get(f"show_ticket_{tid}") != "double" else None
+                st.rerun()
+        with col_t4:
             if st.button("📝 Devis", key=f"show_devis_{tid}", use_container_width=True):
                 st.session_state[f"show_ticket_{tid}"] = "devis" if st.session_state.get(f"show_ticket_{tid}") != "devis" else None
                 st.rerun()
-        with col_t4:
+        with col_t5:
             if st.button("🧾 Reçu", key=f"show_facture_{tid}", use_container_width=True):
                 st.session_state[f"show_ticket_{tid}"] = "facture" if st.session_state.get(f"show_ticket_{tid}") != "facture" else None
                 st.rerun()
@@ -6123,6 +6117,9 @@ def staff_traiter_demande(tid):
                 st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
             elif ticket_type == "staff":
                 st.components.v1.html(ticket_staff_html(t), height=750, scrolling=True)
+            elif ticket_type == "double":
+                st.info("🖨️ Ce bouton imprime le ticket CLIENT et le ticket STAFF sur 2 pages séparées")
+                st.components.v1.html(ticket_combined_html(t), height=850, scrolling=True)
             elif ticket_type == "devis":
                 st.components.v1.html(ticket_devis_facture_html(t, "devis"), height=700, scrolling=True)
             elif ticket_type == "facture":
@@ -8439,14 +8436,18 @@ def tech_detail_ticket(tid):
         # --- APERÇU TICKETS (EN HAUT) ---
         st.markdown("""<div style="margin-top:16px;margin-bottom:8px;font-weight:600;color:#374151;">🎫 Aperçu & Impression</div>""", unsafe_allow_html=True)
         
-        col_tk1, col_tk2 = st.columns(2)
+        col_tk1, col_tk2, col_tk3 = st.columns(3)
         with col_tk1:
-            if st.button("🎫 Ticket Client", key=f"tech_show_client_{tid}", use_container_width=True):
+            if st.button("🎫 Client", key=f"tech_show_client_{tid}", use_container_width=True):
                 st.session_state[f"tech_show_ticket_{tid}"] = "client"
                 st.rerun()
         with col_tk2:
-            if st.button("📋 Ticket Staff", key=f"tech_show_staff_{tid}", use_container_width=True):
+            if st.button("📋 Staff", key=f"tech_show_staff_{tid}", use_container_width=True):
                 st.session_state[f"tech_show_ticket_{tid}"] = "staff"
+                st.rerun()
+        with col_tk3:
+            if st.button("🖨️ Double", key=f"tech_show_double_{tid}", use_container_width=True, type="primary"):
+                st.session_state[f"tech_show_ticket_{tid}"] = "double"
                 st.rerun()
 
         # Affichage du ticket
@@ -8457,6 +8458,8 @@ def tech_detail_ticket(tid):
             with col_hd:
                 if tech_ticket_type == "client":
                     st.markdown('<div style="background:linear-gradient(135deg,rgba(251,146,60,0.2),rgba(249,115,22,0.1));padding:10px;border-radius:8px;border-left:4px solid #fb923c;"><strong>🎫 TICKET CLIENT</strong></div>', unsafe_allow_html=True)
+                elif tech_ticket_type == "double":
+                    st.markdown('<div style="background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(22,163,74,0.1));padding:10px;border-radius:8px;border-left:4px solid #22c55e;"><strong>🖨️ DOUBLE - 2 PAGES SÉPARÉES</strong></div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div style="background:linear-gradient(135deg,rgba(107,114,128,0.2),rgba(75,85,99,0.1));padding:10px;border-radius:8px;border-left:4px solid #6b7280;"><strong>📋 TICKET STAFF</strong></div>', unsafe_allow_html=True)
             with col_cl:
@@ -8466,6 +8469,8 @@ def tech_detail_ticket(tid):
             
             if tech_ticket_type == "client":
                 st.components.v1.html(ticket_client_html(t), height=700, scrolling=True)
+            elif tech_ticket_type == "double":
+                st.components.v1.html(ticket_combined_html(t), height=850, scrolling=True)
             else:
                 st.components.v1.html(ticket_staff_html(t), height=750, scrolling=True)
 
@@ -8737,28 +8742,90 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     # === SECTION INFÉRIEURE ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
-    # === CHANGEMENT DE STATUT - TOUJOURS VISIBLE ===
+    # === CHANGEMENT DE STATUT - MENU DÉROULANT ===
     st.markdown("""
     <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:2px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;">
-        <div style="font-weight:700;color:#1e293b;margin-bottom:12px;font-size:1rem;">🔄 Changer le statut</div>
+        <div style="font-weight:700;color:#1e293b;margin-bottom:8px;font-size:1rem;">🔄 Changer le statut</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Afficher les statuts en grille - TOUJOURS VISIBLE
-    cols = st.columns(4)
-    for i, s in enumerate(STATUTS):
-        with cols[i % 4]:
-            is_current = (s == statut_actuel)
-            # Icônes pour chaque statut
-            icons = {"En attente de diagnostic": "🔍", "En attente de pièce": "📦", 
-                    "En attente d'accord client": "⏳", "En cours de réparation": "🔧",
-                    "Réparation terminée": "✅", "Rendu au client": "🤝", "Clôturé": "📁"}
-            icon = icons.get(s, "")
-            label = s.replace("En attente de ", "").replace("En cours de ", "").replace("Réparation ", "")
-            if st.button(f"{icon} {label}", key=f"tech_status_{tid}_{s}", use_container_width=True, 
-                        disabled=is_current, type="primary" if is_current else "secondary"):
-                changer_statut(tid, s)
-                st.rerun()
+    col_statut, col_btn = st.columns([3, 1])
+    with col_statut:
+        idx_statut = STATUTS.index(statut_actuel) if statut_actuel in STATUTS else 0
+        nouveau_statut = st.selectbox("Nouveau statut", STATUTS, index=idx_statut, key=f"tech_new_status_{tid}", label_visibility="collapsed")
+    with col_btn:
+        if st.button("✅ Appliquer", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True, disabled=(nouveau_statut == statut_actuel)):
+            changer_statut(tid, nouveau_statut)
+            st.success(f"Statut changé : {nouveau_statut}")
+            st.rerun()
+    
+    # === CONTACTER LE CLIENT ===
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:14px;padding:16px;margin-top:16px;">
+        <div style="font-weight:700;color:#047857;margin-bottom:12px;font-size:1rem;">📞 Contacter le client</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    client_tel = t.get('client_tel', '')
+    client_email = t.get('client_email', '')
+    client_prenom = t.get('client_prenom', '')
+    client_nom = t.get('client_nom', '')
+    ticket_code = t['ticket_code']
+    modele_appareil = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
+    panne_txt = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
+    nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
+    tel_boutique = get_param("TEL_BOUTIQUE") or ""
+    
+    # Messages prédéfinis selon le statut
+    messages_predefinis = {
+        "Pièce reçue": f"Bonjour {client_prenom}, la pièce pour votre {modele_appareil} est arrivée ! Nous allons commencer la réparation. {nom_boutique}",
+        "Réparation terminée": f"Bonjour {client_prenom}, votre {modele_appareil} est prêt ! Vous pouvez venir le récupérer. {nom_boutique} - {tel_boutique}",
+        "En attente d'accord client": f"Bonjour {client_prenom}, nous avons diagnostiqué votre {modele_appareil}. Merci de nous contacter pour valider le devis. {nom_boutique}",
+        "En attente de pièce": f"Bonjour {client_prenom}, nous avons commandé la pièce pour votre {modele_appareil}. Nous vous préviendrons dès réception. {nom_boutique}",
+    }
+    
+    # Sélection du type de message
+    type_msg = st.selectbox("Type de message", ["Personnalisé", "Pièce reçue", "Réparation terminée", "En attente d'accord", "Pièce commandée"], key=f"tech_msg_type_{tid}")
+    
+    # Message par défaut selon le type
+    default_msg = ""
+    if type_msg == "Pièce reçue":
+        default_msg = messages_predefinis.get("Pièce reçue", "")
+    elif type_msg == "Réparation terminée":
+        default_msg = messages_predefinis.get("Réparation terminée", "")
+    elif type_msg == "En attente d'accord":
+        default_msg = messages_predefinis.get("En attente d'accord client", "")
+    elif type_msg == "Pièce commandée":
+        default_msg = messages_predefinis.get("En attente de pièce", "")
+    
+    message_client = st.text_area("Message", value=default_msg, height=100, key=f"tech_msg_content_{tid}", placeholder="Écrivez votre message...")
+    
+    # Boutons d'envoi
+    col_wa, col_sms, col_email = st.columns(3)
+    
+    with col_wa:
+        if client_tel:
+            tel_wa = "".join(filter(str.isdigit, client_tel))
+            if tel_wa.startswith("0"):
+                tel_wa = "33" + tel_wa[1:]
+            wa_url = f"https://wa.me/{tel_wa}?text={urllib.parse.quote(message_client)}"
+            st.markdown(f'''<a href="{wa_url}" target="_blank" style="display:block;background:#25D366;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">📱 WhatsApp</a>''', unsafe_allow_html=True)
+        else:
+            st.button("📱 WhatsApp", disabled=True, use_container_width=True)
+    
+    with col_sms:
+        if client_tel:
+            sms_url = sms_link(client_tel, message_client)
+            st.markdown(f'''<a href="{sms_url}" style="display:block;background:#3B82F6;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">💬 SMS</a>''', unsafe_allow_html=True)
+        else:
+            st.button("💬 SMS", disabled=True, use_container_width=True)
+    
+    with col_email:
+        if client_email:
+            email_url = email_link(client_email, f"Votre réparation {ticket_code} - {nom_boutique}", message_client)
+            st.markdown(f'''<a href="{email_url}" style="display:block;background:#6366F1;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">📧 Email</a>''', unsafe_allow_html=True)
+        else:
+            st.button("📧 Email", disabled=True, use_container_width=True)
     
     # Footer
     st.markdown("""
