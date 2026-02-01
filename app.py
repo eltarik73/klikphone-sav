@@ -2527,6 +2527,51 @@ class _PgConnProxy:
         return getattr(self._conn, name)
 
 
+def _apply_sqlite_pragmas(conn: sqlite3.Connection) -> None:
+    """Active des PRAGMA SQLite pour de meilleures perfs (sûrs pour une appli Streamlit)."""
+    try:
+        cur = conn.cursor()
+        # Concurrence lecture/écriture + moins de verrous
+        cur.execute("PRAGMA journal_mode=WAL;")
+        # Compromis perf/sécurité : OK pour une appli boutique
+        cur.execute("PRAGMA synchronous=NORMAL;")
+        # Fichiers temporaires en RAM
+        cur.execute("PRAGMA temp_store=MEMORY;")
+        # Cache page (négatif = en KB). Ajuste si besoin.
+        cur.execute("PRAGMA cache_size=-200000;")  # ~200 MB
+        # Timeout sur verrous
+        cur.execute("PRAGMA busy_timeout=5000;")
+        # Intégrité FK (si ajoutée plus tard)
+        cur.execute("PRAGMA foreign_keys=ON;")
+    except Exception:
+        # Ne jamais casser l'appli pour un PRAGMA non supporté
+        pass
+
+
+def _get_sqlite_conn_session() -> sqlite3.Connection:
+    """Connexion SQLite conservée en session (évite open/close permanent)."""
+    key = "_sqlite_conn"
+    conn = st.session_state.get(key)
+    if conn is None:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        _apply_sqlite_pragmas(conn)
+        st.session_state[key] = conn
+    return conn
+
+
+class _SqliteConnProxy:
+    def __init__(self, conn: sqlite3.Connection):
+        self._conn = conn
+
+    def close(self):
+        # Ne PAS fermer la connexion conservée en session
+        pass
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 def get_db():
     """Retourne une connexion DB.
 
@@ -2536,9 +2581,7 @@ def get_db():
     if is_postgres():
         return _PgConnProxy(_pg_connect())
 
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _SqliteConnProxy(_get_sqlite_conn_session())
 
 def init_db():
     # Sur Supabase/Postgres, le schéma est créé via le SQL Editor.
@@ -2680,6 +2723,36 @@ def init_db():
             for m in modeles_list:
                 c.execute("INSERT OR IGNORE INTO catalog_modeles (categorie, marque, modele) VALUES (?, ?, ?)", (cat, marque, m))
     
+    # -------------------------------------------------------------------------
+    # OPTIMISATIONS SCHEMA / PERF (SQLite)
+    # -------------------------------------------------------------------------
+    # 1) Colonne de recherche normalisée pour éviter le scan Python sur gros volumes
+    try:
+        cols = [r["name"] for r in c.execute("PRAGMA table_info(clients)").fetchall()]
+        if "search_key" not in cols:
+            c.execute("ALTER TABLE clients ADD COLUMN search_key TEXT DEFAULT ''")
+        # Backfill léger (seulement si vide)
+        c.execute("SELECT id, nom, prenom, telephone, email, societe FROM clients WHERE search_key IS NULL OR search_key = ''")
+        rows = c.fetchall()
+        for r in rows:
+            sk = normalize_search(f"{r['nom']} {r['prenom']} {r['telephone']} {r['email']} {r['societe']}")
+            c.execute("UPDATE clients SET search_key=? WHERE id=?", (sk, r["id"]))
+    except Exception:
+        pass
+
+    # 2) Indexes pour accélérer les recherches et les listes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_clients_tel ON clients(telephone)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_clients_search_key ON clients(search_key)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tickets_code ON tickets(ticket_code)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tickets_client ON tickets(client_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tickets_statut ON tickets(statut)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tickets_date_depot ON tickets(date_depot)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_cmd_ticket ON commandes_pieces(ticket_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_cmd_statut ON commandes_pieces(statut)")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -2760,13 +2833,14 @@ def ajouter_modele(cat, marque, modele):
 def get_or_create_client(nom, tel, prenom="", email="", societe="", carte_camby=0):
     conn = get_db()
     c = conn.cursor()
+    sk = normalize_search(f"{nom} {prenom} {tel} {email} {societe}")
     c.execute("SELECT id FROM clients WHERE telephone=?", (tel,))
     r = c.fetchone()
     if r:
         cid = r["id"]
-        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=? WHERE id=?", (nom, prenom, email, societe, carte_camby, cid))
+        c.execute("UPDATE clients SET nom=?, prenom=?, email=?, societe=?, carte_camby=?, search_key=? WHERE id=?", (nom, prenom, email, societe, carte_camby, sk, cid))
     else:
-        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby) VALUES (?,?,?,?,?,?)", (nom, prenom, tel, email, societe, carte_camby))
+        c.execute("INSERT INTO clients (nom, prenom, telephone, email, societe, carte_camby, search_key) VALUES (?,?,?,?,?,?,?)", (nom, prenom, tel, email, societe, carte_camby, sk))
         cid = c.lastrowid
     conn.commit()
     conn.close()
@@ -2796,30 +2870,58 @@ def get_all_clients():
     return clients
 
 def chercher_clients(query):
-    """Recherche clients avec normalisation (sans accents, insensible à la casse)"""
+    """Recherche clients.
+
+    Optimisation:
+    - Si la colonne clients.search_key existe (créée automatiquement), on utilise une requête SQL + index.
+    - Sinon, fallback sur l'ancienne recherche Python (plus lente sur gros volumes).
+    """
     if not query or len(query) < 2:
         return []
-    
+
     query_norm = normalize_search(query)
+
+    # Fast path SQL (SQLite + colonne search_key)
+    try:
+        if not is_postgres():
+            conn = get_db()
+            c = conn.cursor()
+            cols = [r["name"] for r in c.execute("PRAGMA table_info(clients)").fetchall()]
+            has_sk = "search_key" in cols
+            if has_sk:
+                c.execute(
+                    """SELECT c.*,
+                              (SELECT COUNT(1) FROM tickets t WHERE t.client_id = c.id) AS nb_tickets
+                           FROM clients c
+                           WHERE c.search_key LIKE ?
+                              OR c.telephone LIKE ?
+                              OR c.email LIKE ?
+                              OR c.societe LIKE ?
+                           ORDER BY c.nom, c.prenom
+                           LIMIT 50""",
+                    (f"%{query_norm}%", f"%{query}%", f"%{query}%", f"%{query}%")
+                )
+                rows = [dict(r) for r in c.fetchall()]
+                conn.close()
+                return rows
+            conn.close()
+    except Exception:
+        pass
+
+    # Fallback: ancienne méthode (scan en mémoire)
     clients = get_all_clients()
-    
     resultats = []
     for c in clients:
-        # Normaliser les champs du client
         nom_norm = normalize_search(c.get('nom', ''))
         prenom_norm = normalize_search(c.get('prenom', ''))
         tel_norm = normalize_search(c.get('telephone', ''))
         email_norm = normalize_search(c.get('email', ''))
-        
-        # Rechercher dans tous les champs
-        if (query_norm in nom_norm or 
-            query_norm in prenom_norm or 
-            query_norm in tel_norm or
-            query_norm in email_norm or
-            query_norm in f"{nom_norm} {prenom_norm}" or
-            query_norm in f"{prenom_norm} {nom_norm}"):
+        societe_norm = normalize_search(c.get('societe', ''))
+        if (query_norm in nom_norm or query_norm in prenom_norm or query_norm in tel_norm or
+            query_norm in email_norm or query_norm in societe_norm):
             resultats.append(c)
-    
+            if len(resultats) >= 50:
+                break
     return resultats
 
 def get_client_by_id(client_id):
@@ -2837,6 +2939,23 @@ def update_client(client_id, nom=None, prenom=None, telephone=None, email=None, 
     c = conn.cursor()
     updates = []
     params = []
+    # Si la colonne search_key existe, on la maintient automatiquement (recherche plus rapide)
+    try:
+        cols = [r["name"] for r in c.execute("PRAGMA table_info(clients)").fetchall()]
+        has_search_key = "search_key" in cols
+    except Exception:
+        has_search_key = False
+
+    if has_search_key and any(v is not None for v in [nom, prenom, telephone, email, societe]):
+        c.execute("SELECT nom, prenom, telephone, email, societe FROM clients WHERE id=?", (client_id,))
+        cur = c.fetchone()
+        _nom = nom if nom is not None else (cur["nom"] if cur else "")
+        _prenom = prenom if prenom is not None else (cur["prenom"] if cur else "")
+        _tel = telephone if telephone is not None else (cur["telephone"] if cur else "")
+        _email = email if email is not None else (cur["email"] if cur else "")
+        _soc = societe if societe is not None else (cur["societe"] if cur else "")
+        updates.append("search_key=?")
+        params.append(normalize_search(f"{_nom} {_prenom} {_tel} {_email} {_soc}"))
     if nom is not None: updates.append("nom=?"); params.append(nom)
     if prenom is not None: updates.append("prenom=?"); params.append(prenom)
     if telephone is not None: updates.append("telephone=?"); params.append(telephone)
@@ -3300,7 +3419,6 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         # Préparer les données - IMPORTANT: payment_override est utilisé directement
         payment_mode = str(payment_override) if payment_override else "-1"
         delivery_method = get_param("CAISSE_DELIVERY_METHOD") or "4"
-        caisse_id = get_param("CAISSE_ID") or ""
         
         # Calculer le montant total
         devis = float(ticket.get('devis_estime') or 0)
@@ -3333,10 +3451,6 @@ def envoyer_vers_caisse(ticket, payment_override=None):
             ("publicComment", f"Ticket: {ticket.get('ticket_code', '')}"),
         ]
         
-        # Ajouter l'ID de la caisse si configuré
-        if caisse_id:
-            post_data.append(("idcaisse", caisse_id))
-        
         # Ajouter les infos client si présentes
         if ticket.get('client_nom') or ticket.get('client_prenom'):
             post_data.append(("client[nom]", ticket.get('client_nom', '')))
@@ -3366,25 +3480,24 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         
         # Debug: afficher ce qui a été envoyé
         payment_sent = payment_mode
-        caisse_info = f", caisse={caisse_id}" if caisse_id else ""
         
         if response.status_code == 200:
             try:
                 result = response.json()
                 if result.get("result") == "OK":
-                    return True, f"Vente créée ! (payment={payment_sent}{caisse_info})"
+                    return True, f"✅ Vente créée ! (payment={payment_sent})"
                 elif "id" in str(result).lower():
-                    return True, f"Vente créée ! {result}"
+                    return True, f"✅ Vente créée ! ID: {result} (payment={payment_sent})"
                 else:
-                    return False, f"Erreur API: {result.get('errorMessage', result)} (payment={payment_sent}{caisse_info})"
+                    return False, f"Erreur API: {result.get('errorMessage', result)} (payment envoyé: {payment_sent})"
             except:
                 # Si pas JSON, vérifier si c'est un succès (nombre = ID de vente)
                 text = response.text.strip()
                 if text.isdigit():
-                    return True, f"Vente créée ! ID: {text}"
+                    return True, f"✅ Vente créée ! ID: {text} (payment={payment_sent})"
                 elif "OK" in text:
-                    return True, f"Vente créée !"
-                return False, f"Réponse: {text[:100]} (payment={payment_sent}{caisse_info})"
+                    return True, f"✅ Vente créée ! (payment={payment_sent})"
+                return False, f"Réponse inattendue: {text[:100]} (payment={payment_sent})"
         else:
             return False, f"Erreur HTTP {response.status_code}: {response.text[:100]}"
             
@@ -6240,69 +6353,35 @@ Merci de nous confirmer votre accord.
             st.info("💡 Renseignez un devis pour envoyer vers la caisse")
         else:
             # Récupérer les IDs configurés
-            cb_id = get_param("CAISSE_CB_ID") or ""
-            esp_id = get_param("CAISSE_ESP_ID") or ""
-            caisse_id = get_param("CAISSE_ID") or ""
+            cb_id = get_param("CAISSE_CB_ID") or "2"
+            esp_id = get_param("CAISSE_ESP_ID") or "1"
             
-            # Vérifier si configuré
-            if not cb_id and not esp_id:
-                st.error("⚠️ **Modes de paiement non configurés !**")
-                st.warning("Allez dans **⚙️ Config > 💳 Caisse** et cliquez sur **'Récupérer mes MODES DE PAIEMENT'**")
-            elif not caisse_id:
-                st.error("⚠️ **Caisse non configurée !** (Les ventes iront vers 'webservice')")
-                st.warning("Allez dans **⚙️ Config > 💳 Caisse** et cliquez sur **'Récupérer mes CAISSES'** puis entrez l'ID")
-                
-                # Permettre quand même d'envoyer
-                mode_envoi = st.radio(
-                    "Mode de paiement",
-                    ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
-                    index=0,
-                    key=f"mode_paiement_envoi_{tid}",
-                    horizontal=True
-                )
-                
-                if mode_envoi == "💳 Carte bancaire":
-                    mode_val = cb_id
-                elif mode_envoi == "💵 Espèces":
-                    mode_val = esp_id
+            # Mode de paiement
+            mode_envoi = st.radio(
+                "Mode de paiement",
+                ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
+                index=0,
+                key=f"mode_paiement_envoi_{tid}",
+                horizontal=True
+            )
+            
+            # Mapper vers les IDs configurés
+            mode_map = {
+                "💳 Carte bancaire": cb_id,
+                "💵 Espèces": esp_id,
+                "📝 Non payée": "-1"
+            }
+            mode_val = mode_map[mode_envoi]
+            
+            # Debug
+            st.caption(f"🔧 ID envoyé: **{mode_val}** (CB={cb_id}, ESP={esp_id})")
+            
+            if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
+                success, message = envoyer_vers_caisse(t, payment_override=mode_val)
+                if success:
+                    st.success(f"✅ {message}")
                 else:
-                    mode_val = "-1"
-                
-                st.caption(f"🔧 payment={mode_val} | **caisse=NON CONFIGURÉE**")
-                
-                if st.button(f"📤 Envoyer (caisse webservice)", key=f"send_caisse_{tid}", type="secondary", use_container_width=True):
-                    success, message = envoyer_vers_caisse(t, payment_override=mode_val)
-                    if success:
-                        st.success(f"✅ {message}")
-                    else:
-                        st.error(f"❌ {message}")
-            else:
-                # Tout est configuré !
-                st.success(f"✅ Config OK: CB={cb_id} | ESP={esp_id} | Caisse={caisse_id}")
-                
-                mode_envoi = st.radio(
-                    "Mode de paiement",
-                    ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
-                    index=0,
-                    key=f"mode_paiement_envoi_{tid}",
-                    horizontal=True
-                )
-                
-                if mode_envoi == "💳 Carte bancaire":
-                    mode_val = cb_id
-                elif mode_envoi == "💵 Espèces":
-                    mode_val = esp_id
-                else:
-                    mode_val = "-1"
-                
-                st.caption(f"🔧 payment={mode_val} | idcaisse={caisse_id}")
-                
-                if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
-                    success, message = envoyer_vers_caisse(t, payment_override=mode_val)
-                    if success:
-                        st.success(f"✅ {message}")
-                    else:
-                        st.error(f"❌ {message}")
+                    st.error(f"❌ {message}")
     
     # =================================================================
     # ZONE BAS: Notes (gauche) + Notifications (droite)
@@ -7797,90 +7876,58 @@ def staff_config():
         
         # Récupérer les modes de paiement de votre caisse
         st.markdown("---")
-        st.markdown("#### 💳 Configuration des modes de paiement et caisse")
+        st.markdown("#### 💳 Vos modes de paiement")
         
-        col_btn1, col_btn2 = st.columns(2)
-        
-        with col_btn1:
-            if st.button("🔄 Récupérer mes MODES DE PAIEMENT", use_container_width=True):
-                apikey = get_param("CAISSE_APIKEY")
-                shopid = get_param("CAISSE_SHOPID")
-                if apikey and shopid:
-                    try:
-                        import requests
-                        response = requests.get(
-                            f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
-                            timeout=10
-                        )
-                        st.write(f"**Status:** {response.status_code}")
-                        
-                        if response.status_code == 200:
-                            try:
-                                data = response.json()
-                                st.success(f"✅ {len(data)} modes trouvés !")
+        if st.button("🔄 Récupérer mes modes de paiement depuis la caisse", use_container_width=True):
+            apikey = get_param("CAISSE_APIKEY")
+            shopid = get_param("CAISSE_SHOPID")
+            if apikey and shopid:
+                try:
+                    import requests
+                    response = requests.get(
+                        f"https://caisse.enregistreuse.fr/workers/getPaymentModes.php?idboutique={shopid}&key={apikey}&format=json",
+                        timeout=10
+                    )
+                    st.write(f"**Status:** {response.status_code}")
+                    st.write(f"**Réponse brute:** {response.text[:500]}")
+                    
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            if isinstance(data, list) and len(data) > 0:
+                                st.success(f"✅ {len(data)} modes de paiement trouvés !")
                                 for m in data:
-                                    mode_id = m.get('id', m.get('ID', ''))
-                                    mode_nom = m.get('nom', m.get('name', m.get('label', str(m))))
-                                    st.write(f"- **ID {mode_id}** : {mode_nom}")
-                            except:
-                                st.code(response.text[:500])
-                    except Exception as e:
-                        st.error(f"❌ Erreur: {str(e)}")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
+                                    st.write(f"- **ID {m.get('id')}** : {m.get('nom', m.get('name', m))}")
+                            elif isinstance(data, dict):
+                                st.info("Réponse JSON (dict):")
+                                st.json(data)
+                            else:
+                                st.warning(f"Format inattendu: {type(data)}")
+                        except Exception as e:
+                            st.error(f"Erreur JSON: {e}")
+                except Exception as e:
+                    st.error(f"❌ Erreur: {str(e)}")
+            else:
+                st.warning("⚠️ Configurez d'abord l'API")
         
-        with col_btn2:
-            if st.button("🔄 Récupérer mes CAISSES", use_container_width=True):
-                apikey = get_param("CAISSE_APIKEY")
-                shopid = get_param("CAISSE_SHOPID")
-                if apikey and shopid:
-                    try:
-                        import requests
-                        response = requests.get(
-                            f"https://caisse.enregistreuse.fr/workers/getCashbox.php?idboutique={shopid}&key={apikey}&format=json",
-                            timeout=10
-                        )
-                        st.write(f"**Status:** {response.status_code}")
-                        
-                        if response.status_code == 200:
-                            try:
-                                data = response.json()
-                                st.success(f"✅ {len(data)} caisses trouvées !")
-                                for c in data:
-                                    caisse_id = c.get('id', c.get('ID', ''))
-                                    caisse_nom = c.get('nom', c.get('name', c.get('label', str(c))))
-                                    st.write(f"- **ID {caisse_id}** : {caisse_nom}")
-                            except:
-                                st.code(response.text[:500])
-                    except Exception as e:
-                        st.error(f"❌ Erreur: {str(e)}")
-                else:
-                    st.warning("⚠️ Configurez d'abord l'API")
+        # Saisie manuelle des IDs
+        st.markdown("##### 📝 Configurer les IDs manuellement")
+        current_cb = get_param("CAISSE_CB_ID") or "2"
+        current_esp = get_param("CAISSE_ESP_ID") or "1"
         
-        # Saisie des IDs
-        st.markdown("##### 📝 Configurer les IDs")
-        st.warning("⚠️ **IMPORTANT:** Cliquez sur les boutons ci-dessus pour trouver vos vrais IDs !")
-        
-        current_cb = get_param("CAISSE_CB_ID") or ""
-        current_esp = get_param("CAISSE_ESP_ID") or ""
-        current_caisse = get_param("CAISSE_ID") or ""
-        
-        col_id1, col_id2, col_id3 = st.columns(3)
+        col_id1, col_id2 = st.columns(2)
         with col_id1:
-            new_cb_id = st.text_input("ID Carte bancaire", value=current_cb, placeholder="Ex: 5", key="manual_cb_id")
+            new_cb_id = st.text_input("ID pour Carte bancaire", value=current_cb, key="manual_cb_id")
         with col_id2:
-            new_esp_id = st.text_input("ID Espèces", value=current_esp, placeholder="Ex: 3", key="manual_esp_id")
-        with col_id3:
-            new_caisse_id = st.text_input("ID Caisse", value=current_caisse, placeholder="Ex: 1", key="manual_caisse_id", help="Laissez vide pour caisse par défaut")
+            new_esp_id = st.text_input("ID pour Espèces", value=current_esp, key="manual_esp_id")
         
         if st.button("💾 Sauvegarder les IDs", type="primary", use_container_width=True):
             set_param("CAISSE_CB_ID", new_cb_id.strip())
             set_param("CAISSE_ESP_ID", new_esp_id.strip())
-            set_param("CAISSE_ID", new_caisse_id.strip())
-            st.success(f"✅ Sauvegardé ! CB={new_cb_id} | Espèces={new_esp_id} | Caisse={new_caisse_id}")
+            st.success(f"✅ Sauvegardé ! CB = {new_cb_id} | Espèces = {new_esp_id}")
             st.rerun()
         
-        st.info(f"📌 **Valeurs actuelles:** CB=**{current_cb or '(vide)'}** | Espèces=**{current_esp or '(vide)'}** | Caisse=**{current_caisse or '(défaut)'}**")
+        st.caption(f"📌 Valeurs actuelles : CB = **{current_cb}** | Espèces = **{current_esp}**")
         
         # Méthode de livraison
         st.markdown("---")
