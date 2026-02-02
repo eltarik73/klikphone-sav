@@ -2745,9 +2745,46 @@ def get_db():
     return _SqliteConnProxy(st.session_state._sqlite_conn)
 
 def init_db():
-    # Sur Supabase/Postgres, le schéma est créé via le SQL Editor.
+    # Sur Supabase/Postgres, créer les tables et exécuter les migrations
     if is_postgres():
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Migrations pour PostgreSQL - ajouter les colonnes si elles n'existent pas
+        pg_migrations = [
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS type_ecran TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS historique TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS date_cloture TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS technicien_assigne TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS date_recuperation TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS client_contacte INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS client_accord INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS paye INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS msg_whatsapp INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS msg_sms INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS msg_email INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reparation_supp TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS prix_supp REAL",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS commande_piece INTEGER DEFAULT 0",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS imei TEXT",
+            "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS commentaire_client TEXT",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS societe TEXT",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS carte_camby INTEGER DEFAULT 0",
+        ]
+        
+        for sql in pg_migrations:
+            try:
+                c.execute(sql)
+                conn.commit()
+            except Exception as e:
+                try:
+                    conn.rollback()
+                except:
+                    pass
+        
+        conn.close()
         return
+    
     conn = get_db()
     c = conn.cursor()
     
@@ -2772,6 +2809,8 @@ def init_db():
         devis_estime REAL, acompte REAL DEFAULT 0, tarif_final REAL,
         personne_charge TEXT,
         technicien_assigne TEXT,
+        type_ecran TEXT,
+        historique TEXT,
         commande_piece INTEGER DEFAULT 0,
         date_recuperation TEXT,
         client_contacte INTEGER DEFAULT 0,
@@ -3410,7 +3449,9 @@ def update_ticket(tid, **kw):
         vals = list(kw.values()) + [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tid]
         c.execute(f"UPDATE tickets SET {fields}, date_maj=? WHERE id=?", vals)
         conn.commit()
-    except Exception:
+    except Exception as e:
+        # Log l'erreur pour debug
+        st.error(f"❌ Erreur update_ticket: {e}")
         try:
             conn.rollback()
         except:
@@ -6811,6 +6852,13 @@ def staff_traiter_demande(tid):
         
         # Précision sur la réparation (pour toutes les pannes)
         type_ecran_actuel = t.get('type_ecran') or ""
+        
+        # DEBUG TEMPORAIRE - à supprimer après test
+        if type_ecran_actuel:
+            st.success(f"✅ type_ecran récupéré: '{type_ecran_actuel}'")
+        else:
+            st.warning("⚠️ type_ecran est vide dans la base")
+        
         if new_panne == "Écran casse":
             label_precision = "📱 Type d'écran"
             placeholder_precision = "Ex: Original, OLED, Incell, Premium..."
