@@ -6449,9 +6449,14 @@ def staff_liste_demandes():
             appareil_full = f"{marque} {modele}".strip()
             
             # Ajouter type_ecran/précision si présent (en bleu, bien visible)
+            # Échapper les caractères HTML pour éviter les bugs
+            type_ecran_safe = (type_ecran or '').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').strip()
             type_ecran_badge = ""
-            if type_ecran and type_ecran.strip():
-                type_ecran_badge = f'<div style="background:#3b82f6;color:white;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;margin-top:2px;display:inline-block;">{type_ecran}</div>'
+            if type_ecran_safe:
+                # Tronquer si trop long
+                if len(type_ecran_safe) > 30:
+                    type_ecran_safe = type_ecran_safe[:28] + "..."
+                type_ecran_badge = f'<span style="background:#3b82f6;color:white;padding:2px 6px;border-radius:4px;font-size:9px;display:inline-block;margin-top:2px;">{type_ecran_safe}</span>'
             
             if len(appareil_full) > 22:
                 appareil_display = appareil_full[:20] + "..."
@@ -6499,45 +6504,28 @@ def staff_liste_demandes():
                 except:
                     pass
             
-            # Wrapper de ligne
-            st.markdown('<div class="ticket-row-wrapper">', unsafe_allow_html=True)
+            # Wrapper de ligne - SUPPRIMÉ car cause des bugs d'affichage
+            # st.markdown('<div class="ticket-row-wrapper">', unsafe_allow_html=True)
             
             # Colonnes de la ligne
             row_cols = st.columns(col_props)
             
             # Ticket
             with row_cols[0]:
-                st.markdown(f'''
-                <div>
-                    <div style="font-family:'SF Mono',Monaco,monospace;font-size:12px;font-weight:600;color:#171717;">{t['ticket_code']}</div>
-                    <div style="font-size:10px;color:#a3a3a3;">{date_formatted}</div>
-                </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div><div style="font-family:monospace;font-size:12px;font-weight:600;color:#171717;">{t["ticket_code"]}</div><div style="font-size:10px;color:#a3a3a3;">{date_formatted}</div></div>', unsafe_allow_html=True)
             
             # Client
             with row_cols[1]:
-                st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ffedd5,#fed7aa);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#ea580c;flex-shrink:0;">{initials}</div>
-                    <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:12px;font-weight:500;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{client_full}</div>
-                        <div style="font-size:10px;color:#a3a3a3;font-family:monospace;">{client_tel}</div>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ffedd5,#fed7aa);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#ea580c;flex-shrink:0;">{initials}</div><div style="min-width:0;overflow:hidden;"><div style="font-size:12px;font-weight:500;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{client_full}</div><div style="font-size:10px;color:#a3a3a3;font-family:monospace;">{client_tel}</div></div></div>', unsafe_allow_html=True)
             
             # Appareil - MODELE BIEN VISIBLE + TYPE ECRAN
             with row_cols[2]:
-                st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:28px;height:28px;border-radius:6px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{device_icon}</div>
-                    <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}</div>
-                        <div style="font-size:10px;color:#737373;">{categorie}</div>
-                        {type_ecran_badge}
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
+                # Construire le HTML de manière sûre
+                appareil_html = f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;border-radius:6px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{device_icon}</div><div style="min-width:0;overflow:hidden;"><div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}</div><div style="font-size:10px;color:#737373;">{categorie}</div>'
+                if type_ecran_badge:
+                    appareil_html += type_ecran_badge
+                appareil_html += '</div></div>'
+                st.markdown(appareil_html, unsafe_allow_html=True)
             
             # Technicien
             with row_cols[3]:
@@ -6549,13 +6537,7 @@ def staff_liste_demandes():
             
             # Contact
             with row_cols[5]:
-                st.markdown(f'''
-                <div style="display:flex;align-items:center;gap:3px;">
-                    <div style="width:22px;height:22px;border-radius:5px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{wa_color};" title="WhatsApp {'✓' if t.get('msg_whatsapp') else ''}">📱</div>
-                    <div style="width:22px;height:22px;border-radius:5px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{sms_color};" title="SMS {'✓' if t.get('msg_sms') else ''}">💬</div>
-                    <div style="width:22px;height:22px;border-radius:5px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{email_color};" title="Email {'✓' if t.get('msg_email') else ''}">✉️</div>
-                </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div style="display:flex;align-items:center;gap:3px;"><div style="width:22px;height:22px;border-radius:5px;background:{wa_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{wa_color};">📱</div><div style="width:22px;height:22px;border-radius:5px;background:{sms_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{sms_color};">💬</div><div style="width:22px;height:22px;border-radius:5px;background:{email_bg};display:flex;align-items:center;justify-content:center;font-size:10px;color:{email_color};">✉️</div></div>', unsafe_allow_html=True)
             
             # Action - Bouton Streamlit
             with row_cols[6]:
@@ -6563,7 +6545,8 @@ def staff_liste_demandes():
                     st.session_state.edit_id = t['id']
                     st.rerun()
             
-            st.markdown('</div>', unsafe_allow_html=True)  # Fermer row wrapper
+            # Séparateur entre les lignes
+            st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
         
         # Footer pagination
         pagination_dots = ""
@@ -6571,13 +6554,7 @@ def staff_liste_demandes():
             active_style = "background:#f97316;transform:scale(1.2);" if i + 1 == current_page else "background:#d4d4d4;"
             pagination_dots += f'<div style="width:8px;height:8px;border-radius:50%;{active_style}"></div>'
         
-        st.markdown(f'''
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fafafa;border-top:1px solid #e5e5e5;">
-            <div style="font-size:12px;color:#737373;">{len(tickets)} ticket(s) • Page {current_page}/{total_pages}</div>
-            <div style="display:flex;gap:6px;">{pagination_dots}</div>
-        </div>
-        </div>
-        ''', unsafe_allow_html=True)  # Fermer le wrapper principal
+        st.markdown(f'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fafafa;border-top:1px solid #e5e5e5;border-radius:0 0 16px 16px;"><div style="font-size:12px;color:#737373;">{len(tickets)} ticket(s) • Page {current_page}/{total_pages}</div><div style="display:flex;gap:6px;">{pagination_dots}</div></div></div>', unsafe_allow_html=True)  # Le dernier </div> ferme ticket-table-wrapper
     
     # Navigation pagination (boutons Streamlit)
     if total_pages > 1:
@@ -9042,11 +9019,14 @@ def ui_tech():
             appareil_complet = f"{marque} {modele_nom}".strip()
             appareil_display = appareil_complet[:22] + "..." if len(appareil_complet) > 24 else appareil_complet
             
-            # Type d'écran/précision pour affichage
-            type_ecran = t.get('type_ecran', '')
+            # Type d'écran/précision pour affichage - échapper les caractères HTML
+            type_ecran = (t.get('type_ecran') or '').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').strip()
             type_ecran_badge = ""
-            if type_ecran and type_ecran.strip():
-                type_ecran_badge = f'<span style="background:#3b82f6;color:white;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;margin-left:6px;">{type_ecran}</span>'
+            if type_ecran:
+                # Tronquer si trop long
+                if len(type_ecran) > 25:
+                    type_ecran = type_ecran[:23] + "..."
+                type_ecran_badge = f'<span style="background:#3b82f6;color:white;padding:1px 6px;border-radius:4px;font-size:9px;margin-left:4px;">{type_ecran}</span>'
             
             categorie = t.get('categorie', 'Smartphone')
             device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
@@ -9126,43 +9106,19 @@ def tech_detail_ticket(tid):
     status_class = get_status_class(statut_actuel)
     camby_badge = '<span style="background:#8b5cf6;color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;">CAMBY</span>' if t.get('client_carte_camby') else ""
     
-    # Type d'écran / Précision
-    type_ecran = (t.get('type_ecran') or '').strip()
+    # Type d'écran / Précision - échapper les caractères HTML
+    type_ecran = (t.get('type_ecran') or '').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').strip()
     panne_base = t.get('panne', '')
     precision_label = "Type écran" if panne_base == "Écran casse" else "Précision"
     
     # Construire le header HTML
-    header_html = f'''<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:16px;padding:24px;margin-bottom:20px;color:white;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-            <div>
-                <div style="font-size:2rem;font-weight:800;letter-spacing:-0.02em;">🎫 {t['ticket_code']}</div>
-                <div style="font-size:1.1rem;opacity:0.9;margin-top:4px;">{t.get('client_nom','')} {t.get('client_prenom','')}{camby_badge}</div>
-            </div>
-            <span class="badge {status_class}" style="font-size:0.95rem;padding:10px 18px;">{statut_actuel}</span>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);">
-            <div style="flex:1;min-width:120px;">
-                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Appareil</div>
-                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📱 {modele_txt}</div>
-            </div>
-            <div style="flex:1;min-width:120px;">
-                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Réparation</div>
-                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">🔧 {panne}</div>
-            </div>'''
+    header_html = f'<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:16px;padding:24px;margin-bottom:20px;color:white;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;"><div><div style="font-size:2rem;font-weight:800;letter-spacing:-0.02em;">🎫 {t["ticket_code"]}</div><div style="font-size:1.1rem;opacity:0.9;margin-top:4px;">{t.get("client_nom","")} {t.get("client_prenom","")}{camby_badge}</div></div><span class="badge {status_class}" style="font-size:0.95rem;padding:10px 18px;">{statut_actuel}</span></div><div style="display:flex;flex-wrap:wrap;gap:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);"><div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Appareil</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📱 {modele_txt}</div></div><div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Réparation</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;">🔧 {panne}</div></div>'
     
     # Ajouter type_ecran si présent
     if type_ecran:
-        header_html += f'''<div style="flex:1;min-width:120px;">
-                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div>
-                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div>
-            </div>'''
+        header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div></div>'
     
-    header_html += f'''<div style="flex:1;min-width:120px;">
-                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Téléphone</div>
-                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📞 {t.get('client_tel','N/A')}</div>
-            </div>
-        </div>
-    </div>'''
+    header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Téléphone</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📞 {t.get("client_tel","N/A")}</div></div></div></div>'
     
     st.markdown(header_html, unsafe_allow_html=True)
     
