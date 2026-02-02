@@ -3520,7 +3520,8 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         # URL avec idcaisse dans le querystring (comme leur exemple curl)
         api_url = f"https://caisse.enregistreuse.fr/workers/webapp.php?idboutique={shopid}&key={apikey}&idUser={user_id}&idcaisse={caisse_id}&payment={payment_mode}&deliveryMethod={delivery_method}"
         
-        st.info(f"🔗 URL: ...idUser={user_id}&idcaisse={caisse_id}&payment={payment_mode}")
+        st.info(f"🔗 URL: ...idUser={user_id}&idcaisse={caisse_id}&**payment={payment_mode}**")
+        st.warning(f"💰 Mode paiement envoyé: {payment_mode} (-1=non payé, autre=ID mode paiement)")
 
         # Payload POST : seulement les données variables (client, items)
         payload = [
@@ -3555,8 +3556,11 @@ def envoyer_vers_caisse(ticket, payment_override=None):
 
         try:
             data = res.json()
-            if data.get("result") == "OK":
-                return True, f"✅ Vente créée ! (idcaisse={caisse_id}, idUser={user_id})"
+            result = str(data.get("result", "")).upper()
+            if result == "OK":
+                order_id = data.get("orderID", "")
+                invoice = data.get("invoice", "")
+                return True, f"✅ Vente créée ! Commande #{order_id}"
             return False, f"Erreur API: {data.get('errorMessage', data)}"
         except:
             txt = (res.text or "").strip()
