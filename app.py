@@ -13,6 +13,8 @@ from datetime import datetime
 import re
 import functools
 import unicodedata
+import hashlib
+import time
 
 # Option Postgres (Supabase)
 try:
@@ -22,6 +24,49 @@ except Exception:
     psycopg2 = None
 
 import urllib.parse
+
+# =============================================================================
+# GESTION DES COOKIES POUR CONNEXION PERSISTANTE
+# =============================================================================
+def get_cookie_manager():
+    """Injecte le JavaScript pour lire les cookies et les envoie via query_params"""
+    # Lire le token depuis query_params si présent
+    params = st.query_params
+    return params.get("auth_token", None)
+
+def set_auth_cookie(user, target):
+    """Génère un token d'authentification et le stocke dans l'URL"""
+    # Créer un token simple basé sur l'utilisateur et la cible
+    token_data = f"{user}:{target}:{int(time.time())}"
+    token = hashlib.md5(token_data.encode()).hexdigest()[:16]
+    
+    # Stocker dans session_state pour référence
+    st.session_state[f"auth_token_{target}"] = token
+    st.session_state[f"auth_user_{target}"] = user
+    
+    # Stocker dans query_params pour persistance
+    st.query_params["auth_token"] = f"{target}:{user}:{token}"
+
+def check_auth_cookie():
+    """Vérifie si un cookie d'auth valide existe"""
+    params = st.query_params
+    token = params.get("auth_token", None)
+    
+    if token:
+        try:
+            parts = token.split(":")
+            if len(parts) >= 3:
+                target = parts[0]  # accueil ou tech
+                user = parts[1]
+                return target, user
+        except:
+            pass
+    return None, None
+
+def clear_auth_cookie():
+    """Supprime le cookie d'authentification"""
+    if "auth_token" in st.query_params:
+        del st.query_params["auth_token"]
 
 # =============================================================================
 # FONCTION DE NORMALISATION POUR RECHERCHE (sans accents, minuscules)
@@ -6075,6 +6120,7 @@ def ui_accueil():
             st.session_state.auth = False
             st.session_state.utilisateur_connecte = None
             st.session_state.pop("saved_pin_accueil", None)
+            clear_auth_cookie()  # Supprimer le token persistant
             st.rerun()
     
     # === KPI CARDS CLIQUABLES ===
@@ -6390,6 +6436,7 @@ def staff_liste_demandes():
             marque = t.get('marque', '')
             modele = t.get('modele', '')
             categorie = t.get('categorie', 'Smartphone')
+            type_ecran = t.get('type_ecran', '')
             
             # Pour les commandes pièces, afficher la description
             if categorie == 'Commande':
@@ -6400,6 +6447,12 @@ def staff_liste_demandes():
             
             # Combiner marque + modèle pour affichage clair
             appareil_full = f"{marque} {modele}".strip()
+            
+            # Ajouter type_ecran si présent (en bleu)
+            type_ecran_badge = ""
+            if type_ecran:
+                type_ecran_badge = f'<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:9px;margin-left:4px;">{type_ecran}</span>'
+            
             if len(appareil_full) > 22:
                 appareil_display = appareil_full[:20] + "..."
             else:
@@ -6473,13 +6526,13 @@ def staff_liste_demandes():
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Appareil - MODELE BIEN VISIBLE
+            # Appareil - MODELE BIEN VISIBLE + TYPE ECRAN
             with row_cols[2]:
                 st.markdown(f'''
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="width:28px;height:28px;border-radius:6px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{device_icon}</div>
                     <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}</div>
+                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}{type_ecran_badge}</div>
                         <div style="font-size:10px;color:#737373;">{categorie}</div>
                     </div>
                 </div>
@@ -6761,11 +6814,20 @@ def staff_traiter_demande(tid):
             label_precision = "📱 Type d'écran"
             placeholder_precision = "Ex: Original, OLED, Incell, Premium..."
         else:
-            label_precision = "📝 Précision sur la réparation"
-            placeholder_precision = "Ex: Marque pièce, spécificité, remarque..."
+            label_precision = "📝 Précision réparation"
+            placeholder_precision = "Ex: Marque pièce, spécificité..."
         
-        new_type_ecran = st.text_input(label_precision, value=type_ecran_actuel, placeholder=placeholder_precision, key=f"type_ecran_{tid}")
-        # Note: type_ecran sera sauvegardé avec les notes pour éviter erreur si colonne absente
+        # Type d'écran avec bouton OK
+        col_te1, col_te2 = st.columns([4, 1])
+        with col_te1:
+            new_type_ecran = st.text_input(label_precision, value=type_ecran_actuel, placeholder=placeholder_precision, key=f"type_ecran_{tid}")
+        with col_te2:
+            st.markdown('<div style="height:28px;"></div>', unsafe_allow_html=True)
+            if st.button("OK", key=f"save_type_ecran_{tid}", type="primary", use_container_width=True):
+                if new_type_ecran != type_ecran_actuel:
+                    update_ticket(tid, type_ecran=new_type_ecran)
+                    st.success("✓")
+                    st.rerun()
         
         # Technicien
         membres = get_membres_equipe()
@@ -8855,6 +8917,7 @@ def ui_tech():
             st.session_state.auth = False
             st.session_state.utilisateur_connecte = None
             st.session_state.pop("saved_pin_tech", None)
+            clear_auth_cookie()  # Supprimer le token persistant
             st.rerun()
     
     # Si un ticket est sélectionné, afficher directement le detail
@@ -8976,6 +9039,10 @@ def ui_tech():
             appareil_complet = f"{marque} {modele_nom}".strip()
             appareil_display = appareil_complet[:22] + "..." if len(appareil_complet) > 24 else appareil_complet
             
+            # Type d'écran pour affichage
+            type_ecran = t.get('type_ecran', '')
+            type_ecran_badge = f'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;font-size:9px;margin-left:4px;">{type_ecran}</span>' if type_ecran else ''
+            
             categorie = t.get('categorie', 'Smartphone')
             device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
             device_icon = device_icons.get(categorie, "📱")
@@ -8995,7 +9062,7 @@ def ui_tech():
                 client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()[:16]
                 st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
             with row_cols[2]:
-                st.markdown(f'<div style="display:flex;align-items:center;gap:6px;"><span>{device_icon}</span><span style="font-size:12px;" title="{appareil_complet}">{appareil_display}</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="display:flex;align-items:center;gap:6px;"><span>{device_icon}</span><span style="font-size:12px;" title="{appareil_complet}">{appareil_display}</span>{type_ecran_badge}</div>', unsafe_allow_html=True)
             with row_cols[3]:
                 if tech_display != "—":
                     st.markdown(f'<span style="background:{tech_color};color:white;padding:3px 8px;border-radius:12px;font-size:10px;">{tech_display}</span>', unsafe_allow_html=True)
@@ -9782,13 +9849,14 @@ def ui_auth(mode):
         st.markdown("**Code PIN**")
         pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input", label_visibility="collapsed")
         
-        # Checkbox pour mémoriser
-        remember = st.checkbox("Se souvenir de moi (cette session)", key="remember_pin", value=True)
+        # Checkbox pour mémoriser (connexion permanente)
+        remember = st.checkbox("🔒 Rester connecté (même après fermeture)", key="remember_pin", value=True)
         
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("← Retour", use_container_width=True):
                 st.session_state.mode = None
+                clear_auth_cookie()  # Nettoyer le token si retour
                 st.rerun()
         with col_btn2:
             if st.button("Valider →", type="primary", use_container_width=True):
@@ -9797,9 +9865,12 @@ def ui_auth(mode):
                     st.session_state.mode = target
                     st.session_state.auth = True
                     st.session_state.utilisateur_connecte = utilisateur
+                    st.session_state[saved_key] = True
+                    
+                    # Si "Rester connecté", sauvegarder dans l'URL (persistant)
                     if remember:
-                        st.session_state[saved_key] = True
-                        st.session_state.global_auth = True
+                        set_auth_cookie(utilisateur, target)
+                    
                     # Notification de connexion (en arrière-plan)
                     try:
                         notif_connexion(utilisateur, titre)
@@ -9818,6 +9889,15 @@ def main():
     
     if "mode" not in st.session_state: st.session_state.mode = None
     if "auth" not in st.session_state: st.session_state.auth = False
+    
+    # === VÉRIFICATION CONNEXION PERSISTANTE (via URL token) ===
+    if not st.session_state.auth:
+        target, user = check_auth_cookie()
+        if target and user:
+            st.session_state.mode = target
+            st.session_state.auth = True
+            st.session_state.utilisateur_connecte = user
+            st.session_state[f"saved_pin_{target}"] = True
     
     # Si l'URL contient un ticket, aller directement vers le suivi
     params = st.query_params
