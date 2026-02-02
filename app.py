@@ -2867,7 +2867,7 @@ def check_client_exists(tel):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=5)
 def get_all_clients():
     """Récupère tous les clients - CACHED 30s"""
     conn = get_db()
@@ -3013,7 +3013,7 @@ def search_clients(query):
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
-@st.cache_data(ttl=20)  # Cache 20 secondes pour les commandes
+@st.cache_data(ttl=5)  # Cache 20 secondes pour les commandes
 def _get_commandes_pieces_cached(ticket_id, statut):
     """Version cachée de get_commandes_pieces"""
     conn = get_db()
@@ -3087,7 +3087,7 @@ def delete_commande_piece(commande_id):
     clear_commandes_cache()
 
 # Fonctions membres équipe
-@st.cache_data(ttl=60)  # Cache pendant 60 secondes
+@st.cache_data(ttl=10)  # Cache pendant 60 secondes
 def get_membres_equipe():
     """Récupère tous les membres de l'équipe"""
     conn = get_db()
@@ -3154,7 +3154,7 @@ def get_ticket(tid=None, code=None):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=10)  # Cache 10 secondes pour ticket individuel
+@st.cache_data(ttl=5)  # Cache 10 secondes pour ticket individuel
 def _get_ticket_full_cached(tid, code):
     """Version cachée de get_ticket_full"""
     conn = get_db()
@@ -3252,7 +3252,7 @@ def ajouter_historique(tid, texte):
         pass  # Colonne n'existe pas encore
     conn.close()
 
-@st.cache_data(ttl=15)  # Cache 15 secondes pour les tickets
+@st.cache_data(ttl=5)  # Cache 15 secondes pour les tickets
 def _chercher_tickets_cached(statut, tel, code, nom):
     """Version cachée de chercher_tickets"""
     conn = get_db()
@@ -3279,6 +3279,25 @@ def clear_tickets_cache():
     """Invalide le cache des tickets"""
     try:
         _chercher_tickets_cached.clear()
+    except:
+        pass
+
+def clear_all_caches():
+    """Invalide tous les caches pour forcer le rafraîchissement"""
+    try:
+        _chercher_tickets_cached.clear()
+    except:
+        pass
+    try:
+        _get_ticket_full_cached.clear()
+    except:
+        pass
+    try:
+        get_all_clients.clear()
+    except:
+        pass
+    try:
+        _get_commandes_cached.clear()
     except:
         pass
 
@@ -3520,8 +3539,7 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         # URL avec idcaisse dans le querystring (comme leur exemple curl)
         api_url = f"https://caisse.enregistreuse.fr/workers/webapp.php?idboutique={shopid}&key={apikey}&idUser={user_id}&idcaisse={caisse_id}&payment={payment_mode}&deliveryMethod={delivery_method}"
         
-        st.info(f"🔗 URL: ...idUser={user_id}&idcaisse={caisse_id}&**payment={payment_mode}**")
-        st.warning(f"💰 Mode paiement envoyé: {payment_mode} (-1=non payé, autre=ID mode paiement)")
+        # Debug supprimé pour interface propre
 
         # Payload POST : seulement les données variables (client, items)
         payload = [
@@ -3546,8 +3564,7 @@ def envoyer_vers_caisse(ticket, payment_override=None):
         else:
             payload.append(("itemsList[]", f"Free_{total:.2f}_{description}"))
 
-        st.success(f"📤 Envoi avec idcaisse={caisse_id} dans l'URL")
-        
+
         # Envoyer
         res = requests.post(api_url, data=payload, timeout=15)
 
@@ -4840,10 +4857,6 @@ def ui_client():
             if st.session_state.show_ticket_depot:
                 st.components.v1.html(ticket_client_html(t), height=750, scrolling=True)
         
-        # Forcer un rerun pour le compteur
-        time.sleep(1)
-        st.rerun()
-        
         return
     
     # === INTERFACE CLIENT PREMIUM ===
@@ -5442,9 +5455,6 @@ def client_step6():
                 reset_client()
                 st.rerun()
         
-        # Forcer rerun pour le compteur
-        time.sleep(1)
-        st.rerun()
         return
     
     st.markdown("""
@@ -6465,7 +6475,7 @@ Merci de nous confirmer votre accord.
                 mode_envoi = st.radio(
                     "Mode de paiement",
                     ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
-                    index=0,
+                    index=2,
                     key=f"mode_paiement_envoi_{tid}",
                     horizontal=True
                 )
@@ -6476,8 +6486,6 @@ Merci de nous confirmer votre accord.
                     mode_val = esp_id
                 else:
                     mode_val = "-1"
-                
-                st.caption(f"🔧 payment={mode_val} | **caisse=NON CONFIGURÉE**")
                 
                 if st.button(f"📤 Envoyer (caisse webservice)", key=f"send_caisse_{tid}", type="secondary", use_container_width=True):
                     success, message = envoyer_vers_caisse(t, payment_override=mode_val)
@@ -6487,12 +6495,11 @@ Merci de nous confirmer votre accord.
                         st.error(f"❌ {message}")
             else:
                 # Tout est configuré !
-                st.success(f"✅ Config OK: CB={cb_id} | ESP={esp_id} | Caisse={caisse_id}")
-                
+                # Config OK
                 mode_envoi = st.radio(
                     "Mode de paiement",
                     ["💳 Carte bancaire", "💵 Espèces", "📝 Non payée"],
-                    index=0,
+                    index=2,
                     key=f"mode_paiement_envoi_{tid}",
                     horizontal=True
                 )
@@ -6503,8 +6510,6 @@ Merci de nous confirmer votre accord.
                     mode_val = esp_id
                 else:
                     mode_val = "-1"
-                
-                st.caption(f"🔧 payment={mode_val} | idcaisse={caisse_id}")
                 
                 if st.button(f"📤 Envoyer à la caisse ({total_ticket:.2f} €)", key=f"send_caisse_{tid}", type="primary", use_container_width=True):
                     success, message = envoyer_vers_caisse(t, payment_override=mode_val)
