@@ -62,6 +62,119 @@ PANNES = ["Écran casse", "Batterie", "Connecteur de charge",
 STATUTS = ["En attente de diagnostic", "En attente de pièce", "Pièce reçue", "En attente d'accord client",
            "En cours de réparation", "Réparation terminée", "Rendu au client", "Clôturé"]
 
+# Messages prédéfinis par statut (avec placeholders)
+MESSAGES_PREDEFINIES = {
+    "diagnostic_termine": {
+        "titre": "📋 Diagnostic terminé",
+        "message": """Bonjour {prenom},
+
+Le diagnostic de votre {appareil} est terminé.
+
+Problème identifié : {panne}
+Réparation proposée : {reparation}
+Montant estimé : {prix}€
+
+Merci de nous confirmer votre accord pour procéder à la réparation.
+
+Cordialement,
+L'équipe Klikphone
+📞 04 79 60 89 22"""
+    },
+    "attente_piece": {
+        "titre": "📦 En attente de pièce",
+        "message": """Bonjour {prenom},
+
+Nous avons commandé la pièce nécessaire pour la réparation de votre {appareil}.
+
+Délai estimé : 2-5 jours ouvrés.
+
+Nous vous recontacterons dès réception.
+
+Cordialement,
+L'équipe Klikphone"""
+    },
+    "piece_recue": {
+        "titre": "📬 Pièce reçue",
+        "message": """Bonjour {prenom},
+
+Bonne nouvelle ! La pièce pour votre {appareil} est arrivée.
+
+Nous allons procéder à la réparation dans les plus brefs délais.
+
+Cordialement,
+L'équipe Klikphone"""
+    },
+    "reparation_terminee": {
+        "titre": "✅ Réparation terminée",
+        "message": """Bonjour {prenom},
+
+Votre {appareil} est réparé et prêt à être récupéré ! 🎉
+
+📍 Klikphone - 79 Place Saint Léger, Chambéry
+🕐 Lundi-Samedi 10h-19h
+
+Montant à régler : {prix}€
+
+N'oubliez pas votre pièce d'identité.
+
+À bientôt !
+L'équipe Klikphone"""
+    },
+    "relance": {
+        "titre": "🔔 Relance - Appareil à récupérer",
+        "message": """Bonjour {prenom},
+
+Votre {appareil} vous attend chez Klikphone depuis plusieurs jours.
+
+Merci de passer le récupérer à votre convenance.
+
+📍 79 Place Saint Léger, Chambéry
+🕐 Lundi-Samedi 10h-19h
+
+Cordialement,
+L'équipe Klikphone"""
+    },
+    "demande_accord": {
+        "titre": "⏳ Demande d'accord",
+        "message": """Bonjour {prenom},
+
+Suite au diagnostic de votre {appareil}, voici notre proposition :
+
+Réparation : {reparation}
+Montant : {prix}€
+
+Merci de nous confirmer si vous souhaitez procéder à la réparation.
+
+Cordialement,
+L'équipe Klikphone
+📞 04 79 60 89 22"""
+    },
+    "refus_reparation": {
+        "titre": "❌ Appareil non réparé",
+        "message": """Bonjour {prenom},
+
+Suite à votre décision, nous n'avons pas procédé à la réparation de votre {appareil}.
+
+Vous pouvez venir le récupérer à notre boutique.
+
+📍 Klikphone - 79 Place Saint Léger, Chambéry
+🕐 Lundi-Samedi 10h-19h
+
+Cordialement,
+L'équipe Klikphone"""
+    },
+    "personnalise": {
+        "titre": "💬 Message personnalisé",
+        "message": """Bonjour {prenom},
+
+[Votre message ici]
+
+Cordialement,
+L'équipe Klikphone
+📞 04 79 60 89 22"""
+    }
+}
+
 # Membres équipe par défaut
 MEMBRES_EQUIPE_DEFAUT = [
     {"nom": "Marina", "role": "Technicien Apple", "couleur": "#EC4899"},  # Rose
@@ -3464,7 +3577,143 @@ def wa_link(tel, msg):
     if t.startswith("0"): t = "33" + t[1:]
     return f"https://wa.me/{t}?text={urllib.parse.quote(msg)}"
 
-def get_status_class(statut):
+def sms_link_simple(tel, msg):
+    """Génère un lien SMS"""
+    t = "".join(filter(str.isdigit, tel))
+    return f"sms:{t}?body={urllib.parse.quote(msg)}"
+
+def generer_message(template_key, ticket, client):
+    """Génère un message à partir d'un template et des données du ticket/client"""
+    if template_key not in MESSAGES_PREDEFINIES:
+        return "", ""
+    
+    template = MESSAGES_PREDEFINIES[template_key]
+    
+    # Construire l'appareil
+    appareil = f"{ticket.get('marque', '')} {ticket.get('modele', '')}".strip()
+    if ticket.get('modele_autre'):
+        appareil += f" ({ticket['modele_autre']})"
+    if not appareil:
+        appareil = ticket.get('categorie', 'Appareil')
+    
+    # Prix
+    prix = ticket.get('prix_estime') or ticket.get('prix_final') or ticket.get('prix_supp') or 0
+    
+    # Réparation
+    reparation = ticket.get('panne', '') or ticket.get('panne_detail', '')
+    if ticket.get('reparation_supp'):
+        reparation = ticket['reparation_supp']
+    
+    # Remplacer les placeholders
+    message = template["message"].format(
+        prenom=client.get('prenom', 'Client'),
+        nom=client.get('nom', ''),
+        appareil=appareil,
+        panne=ticket.get('panne', '') or ticket.get('panne_detail', 'À diagnostiquer'),
+        reparation=reparation,
+        prix=prix,
+        ticket_code=ticket.get('ticket_code', '')
+    )
+    
+    return template["titre"], message
+
+def widget_envoyer_message(ticket, client, key_prefix="msg"):
+    """Widget pour envoyer un message prédéfini au client"""
+    if not client:
+        st.warning("Client non trouvé")
+        return
+    
+    tel = client.get('telephone', '')
+    email = client.get('email', '')
+    prenom = client.get('prenom', 'Client')
+    
+    st.markdown("### 📨 Envoyer un message au client")
+    
+    # Sélection du type de message
+    options_messages = {
+        "diagnostic_termine": "📋 Diagnostic terminé",
+        "demande_accord": "⏳ Demande d'accord",
+        "attente_piece": "📦 En attente de pièce",
+        "piece_recue": "📬 Pièce reçue", 
+        "reparation_terminee": "✅ Réparation terminée",
+        "relance": "🔔 Relance - À récupérer",
+        "refus_reparation": "❌ Appareil non réparé",
+        "personnalise": "💬 Message personnalisé"
+    }
+    
+    col_type, col_spacer = st.columns([3, 1])
+    with col_type:
+        type_msg = st.selectbox(
+            "Type de message",
+            options=list(options_messages.keys()),
+            format_func=lambda x: options_messages[x],
+            key=f"{key_prefix}_type"
+        )
+    
+    # Générer le message
+    titre, message = generer_message(type_msg, ticket, client)
+    
+    # Zone d'édition du message
+    message_final = st.text_area(
+        "Message (modifiable)",
+        value=message,
+        height=200,
+        key=f"{key_prefix}_content"
+    )
+    
+    st.markdown("---")
+    st.markdown("**📤 Envoyer via :**")
+    
+    col_wa, col_sms, col_email = st.columns(3)
+    
+    with col_wa:
+        if tel:
+            wa_url = wa_link(tel, message_final)
+            st.markdown(f"""
+            <a href="{wa_url}" target="_blank" style="
+                display:block;text-align:center;padding:12px;
+                background:#25D366;color:white;border-radius:8px;
+                text-decoration:none;font-weight:600;">
+                📱 WhatsApp
+            </a>
+            """, unsafe_allow_html=True)
+        else:
+            st.button("📱 WhatsApp", disabled=True, key=f"{key_prefix}_wa_disabled", use_container_width=True)
+            st.caption("Pas de téléphone")
+    
+    with col_sms:
+        if tel:
+            sms_url = sms_link_simple(tel, message_final)
+            st.markdown(f"""
+            <a href="{sms_url}" style="
+                display:block;text-align:center;padding:12px;
+                background:#3B82F6;color:white;border-radius:8px;
+                text-decoration:none;font-weight:600;">
+                💬 SMS
+            </a>
+            """, unsafe_allow_html=True)
+        else:
+            st.button("💬 SMS", disabled=True, key=f"{key_prefix}_sms_disabled", use_container_width=True)
+            st.caption("Pas de téléphone")
+    
+    with col_email:
+        if email:
+            email_url = f"mailto:{email}?subject={urllib.parse.quote(titre)}&body={urllib.parse.quote(message_final)}"
+            st.markdown(f"""
+            <a href="{email_url}" style="
+                display:block;text-align:center;padding:12px;
+                background:#F97316;color:white;border-radius:8px;
+                text-decoration:none;font-weight:600;">
+                📧 Email
+            </a>
+            """, unsafe_allow_html=True)
+        else:
+            st.button("📧 Email", disabled=True, key=f"{key_prefix}_email_disabled", use_container_width=True)
+            st.caption("Pas d'email")
+    
+    # Afficher les coordonnées du client
+    st.markdown("---")
+    st.caption(f"📞 {tel or 'Non renseigné'} | 📧 {email or 'Non renseigné'}")
     if "diagnostic" in statut.lower(): return "status-diagnostic"
     elif "reçue" in statut.lower() or "recue" in statut.lower(): return "status-piece-recue"
     elif "pièce" in statut.lower() or "piece" in statut.lower(): return "status-piece"
@@ -6755,6 +7004,12 @@ Merci de nous confirmer votre accord.
         if st.button("OK", key=f"save_pub_{tid}", type="primary", use_container_width=True):
             update_ticket(tid, commentaire_client=new_note_pub)
             st.rerun()
+    
+    # === WIDGET ENVOI MESSAGE ===
+    st.markdown("---")
+    client_info = get_client(cid=t.get('client_id'))
+    if client_info:
+        widget_envoyer_message(t, client_info, key_prefix=f"msg_{tid}")
 
 
 def staff_gestion_clients():
@@ -9146,73 +9401,10 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     # === SECTION INFÉRIEURE: CONTACTER LE CLIENT ===
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
-    # === CONTACTER LE CLIENT ===
-    st.markdown("""
-    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:14px;padding:16px;">
-        <div style="font-weight:700;color:#047857;margin-bottom:12px;font-size:1rem;">📞 Contacter le client</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    client_tel = t.get('client_tel', '')
-    client_email = t.get('client_email', '')
-    client_prenom = t.get('client_prenom', '')
-    client_nom = t.get('client_nom', '')
-    ticket_code = t['ticket_code']
-    modele_appareil = t.get('modele_autre') if t.get('modele_autre') else f"{t.get('marque','')} {t.get('modele','')}"
-    panne_txt = t.get('panne_detail') if t.get('panne_detail') else t.get('panne', '')
-    nom_boutique = get_param("NOM_BOUTIQUE") or "Klikphone"
-    tel_boutique = get_param("TEL_BOUTIQUE") or ""
-    
-    # Messages prédéfinis selon le statut
-    messages_predefinis = {
-        "Pièce reçue": f"Bonjour {client_prenom}, la pièce pour votre {modele_appareil} est arrivée ! Nous allons commencer la réparation. {nom_boutique}",
-        "Réparation terminée": f"Bonjour {client_prenom}, votre {modele_appareil} est prêt ! Vous pouvez venir le récupérer. {nom_boutique} - {tel_boutique}",
-        "En attente d'accord client": f"Bonjour {client_prenom}, nous avons diagnostiqué votre {modele_appareil}. Merci de nous contacter pour valider le devis. {nom_boutique}",
-        "En attente de pièce": f"Bonjour {client_prenom}, nous avons commandé la pièce pour votre {modele_appareil}. Nous vous préviendrons dès réception. {nom_boutique}",
-    }
-    
-    # Sélection du type de message
-    type_msg = st.selectbox("Type de message", ["Personnalisé", "Pièce reçue", "Réparation terminée", "En attente d'accord", "Pièce commandée"], key=f"tech_msg_type_{tid}")
-    
-    # Message par défaut selon le type
-    default_msg = ""
-    if type_msg == "Pièce reçue":
-        default_msg = messages_predefinis.get("Pièce reçue", "")
-    elif type_msg == "Réparation terminée":
-        default_msg = messages_predefinis.get("Réparation terminée", "")
-    elif type_msg == "En attente d'accord":
-        default_msg = messages_predefinis.get("En attente d'accord client", "")
-    elif type_msg == "Pièce commandée":
-        default_msg = messages_predefinis.get("En attente de pièce", "")
-    
-    message_client = st.text_area("Message", value=default_msg, height=100, key=f"tech_msg_content_{tid}", placeholder="Écrivez votre message...")
-    
-    # Boutons d'envoi
-    col_wa, col_sms, col_email = st.columns(3)
-    
-    with col_wa:
-        if client_tel:
-            tel_wa = "".join(filter(str.isdigit, client_tel))
-            if tel_wa.startswith("0"):
-                tel_wa = "33" + tel_wa[1:]
-            wa_url = f"https://wa.me/{tel_wa}?text={urllib.parse.quote(message_client)}"
-            st.markdown(f'''<a href="{wa_url}" target="_blank" style="display:block;background:#25D366;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">📱 WhatsApp</a>''', unsafe_allow_html=True)
-        else:
-            st.button("📱 WhatsApp", disabled=True, use_container_width=True)
-    
-    with col_sms:
-        if client_tel:
-            sms_url = sms_link(client_tel, message_client)
-            st.markdown(f'''<a href="{sms_url}" style="display:block;background:#3B82F6;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">💬 SMS</a>''', unsafe_allow_html=True)
-        else:
-            st.button("💬 SMS", disabled=True, use_container_width=True)
-    
-    with col_email:
-        if client_email:
-            email_url = email_link(client_email, f"Votre réparation {ticket_code} - {nom_boutique}", message_client)
-            st.markdown(f'''<a href="{email_url}" style="display:block;background:#6366F1;color:white;text-align:center;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">📧 Email</a>''', unsafe_allow_html=True)
-        else:
-            st.button("📧 Email", disabled=True, use_container_width=True)
+    # Récupérer les infos client et afficher le widget de message
+    client_info = get_client(cid=t.get('client_id'))
+    if client_info:
+        widget_envoyer_message(t, client_info, key_prefix=f"tech_msg_{tid}")
     
     # Footer
     st.markdown("""
