@@ -3444,7 +3444,7 @@ def notif_deconnexion(utilisateur):
     envoyer_notification_discord("s'est déconnecté", "🔴")
 
 def widget_discord():
-    """Widget Discord dans la sidebar"""
+    """Widget Discord en bas de page"""
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     if not utilisateur:
         return
@@ -3452,41 +3452,34 @@ def widget_discord():
     # ID du serveur Discord
     discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
     
-    # Initialiser l'état
-    if "show_discord" not in st.session_state:
-        st.session_state.show_discord = False
+    # Séparateur
+    st.markdown("---")
     
-    # Dans la sidebar
-    with st.sidebar:
-        st.markdown("---")
-        
-        if st.session_state.show_discord:
-            st.markdown("### 💬 Chat Discord")
-            # Afficher le widget Discord
+    # Afficher le widget Discord dans un expander
+    with st.expander("💬 **Chat équipe Discord** - Cliquez pour ouvrir", expanded=False):
+        col1, col2 = st.columns([3, 1])
+        with col1:
             st.components.v1.html(f"""
                 <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
-                        width="100%" height="350" frameborder="0"
-                        style="border-radius:8px;"
+                        width="100%" height="400" frameborder="0"
+                        style="border-radius:12px;"
                         sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
                 </iframe>
-            """, height=360)
+            """, height=410)
+        with col2:
+            st.markdown("""
+            **💡 Aide**
             
-            if st.button("✕ Fermer", key="close_discord", use_container_width=True):
-                st.session_state.show_discord = False
-                st.rerun()
-        else:
-            if st.button("💬 Chat équipe", key="open_discord", use_container_width=True, type="primary"):
-                st.session_state.show_discord = True
-                st.rerun()
-        
-        # Lien direct vers Discord (toujours visible)
-        st.markdown(f"""
-        <a href="https://discord.com/channels/{discord_server_id}" target="_blank" 
-           style="display:block;text-align:center;padding:10px;background:#5865F2;color:white;
-                  border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-            🚀 Ouvrir Discord
-        </a>
-        """, unsafe_allow_html=True)
+            - Cliquez sur **Rejoindre** pour accéder au chat
+            - Installez l'app Discord sur votre téléphone pour les notifications
+            """)
+            st.markdown(f"""
+            <a href="https://discord.com/channels/{discord_server_id}" target="_blank" 
+               style="display:block;text-align:center;padding:12px;background:#5865F2;color:white;
+                      border-radius:8px;text-decoration:none;font-weight:600;">
+                🚀 Ouvrir Discord
+            </a>
+            """, unsafe_allow_html=True)
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -5728,9 +5721,6 @@ def ui_accueil():
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
-    # Widget chat/notifications dans la sidebar
-    widget_discord()
-    
     # === HEADER NAV ===
     st.markdown(f"""
     <div class="nav-header">
@@ -5823,6 +5813,9 @@ def ui_accueil():
         staff_attestation()
     with tab6:
         staff_config()
+    
+    # Widget Discord en bas
+    widget_discord()
     
     # Footer
     st.markdown("""
@@ -8476,9 +8469,6 @@ def ui_tech():
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
-    # Widget chat/notifications dans la sidebar
-    widget_discord()
-    
     col1, col2, col3, col4 = st.columns([5, 1.5, 1.5, 1.5])
     with col1:
         st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
@@ -8675,6 +8665,9 @@ def ui_tech():
     with tab_archives:
         st.info("💡 Cliquez sur un dossier archivé pour le rouvrir si nécessaire")
         afficher_liste_tickets_tech(tickets_archives, "archives")
+    
+    # Widget Discord en bas
+    widget_discord()
 
 def tech_detail_ticket(tid):
     t = get_ticket_full(tid=tid)
