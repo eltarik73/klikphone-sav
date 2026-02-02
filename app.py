@@ -3187,10 +3187,16 @@ def update_ticket(tid, **kw):
     if not kw: return
     conn = get_db()
     c = conn.cursor()
-    fields = ", ".join([f"{k}=?" for k in kw.keys()])
-    vals = list(kw.values()) + [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tid]
-    c.execute(f"UPDATE tickets SET {fields}, date_maj=? WHERE id=?", vals)
-    conn.commit()
+    try:
+        fields = ", ".join([f"{k}=?" for k in kw.keys()])
+        vals = list(kw.values()) + [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tid]
+        c.execute(f"UPDATE tickets SET {fields}, date_maj=? WHERE id=?", vals)
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except:
+            pass
     conn.close()
     # Invalider les caches
     clear_tickets_cache()
@@ -3202,16 +3208,27 @@ def changer_statut(tid, statut):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Récupérer l'ancien statut et l'historique
+    ancien_statut = ""
+    historique_actuel = ""
     try:
         c.execute("SELECT statut, historique FROM tickets WHERE id=?", (tid,))
         row = c.fetchone()
         ancien_statut = row['statut'] if row else ""
         historique_actuel = row['historique'] or "" if row else ""
-    except:
-        c.execute("SELECT statut FROM tickets WHERE id=?", (tid,))
-        row = c.fetchone()
-        ancien_statut = row['statut'] if row else ""
-        historique_actuel = ""
+    except Exception:
+        try:
+            conn.rollback()  # Rollback pour PostgreSQL
+        except:
+            pass
+        try:
+            c.execute("SELECT statut FROM tickets WHERE id=?", (tid,))
+            row = c.fetchone()
+            ancien_statut = row['statut'] if row else ""
+        except:
+            try:
+                conn.rollback()
+            except:
+                pass
     
     # Ajouter l'entrée dans l'historique
     log_entry = f"[{datetime.now().strftime('%d/%m %H:%M')}] Statut: {ancien_statut} → {statut}"
@@ -3222,13 +3239,25 @@ def changer_statut(tid, statut):
             c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=?, historique=? WHERE id=?", (statut, now, now, new_historique, tid))
         else:
             c.execute("UPDATE tickets SET statut=?, date_maj=?, historique=? WHERE id=?", (statut, now, new_historique, tid))
-    except:
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()  # Rollback pour PostgreSQL
+        except:
+            pass
         # Fallback si colonne historique n'existe pas
-        if statut == "Clôturé":
-            c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=? WHERE id=?", (statut, now, now, tid))
-        else:
-            c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
-    conn.commit()
+        try:
+            if statut == "Clôturé":
+                c.execute("UPDATE tickets SET statut=?, date_maj=?, date_cloture=? WHERE id=?", (statut, now, now, tid))
+            else:
+                c.execute("UPDATE tickets SET statut=?, date_maj=? WHERE id=?", (statut, now, tid))
+            conn.commit()
+        except:
+            try:
+                conn.rollback()
+            except:
+                pass
+    
     conn.close()
     # Invalider les caches
     clear_tickets_cache()
@@ -3248,8 +3277,11 @@ def ajouter_historique(tid, texte):
         new_historique = historique.rstrip() + f"\n{entry}" if historique.strip() else entry
         c.execute("UPDATE tickets SET historique=? WHERE id=?", (new_historique, tid))
         conn.commit()
-    except:
-        pass  # Colonne n'existe pas encore
+    except Exception:
+        try:
+            conn.rollback()  # Rollback pour PostgreSQL
+        except:
+            pass
     conn.close()
 
 @st.cache_data(ttl=5)  # Cache 15 secondes pour les tickets
@@ -8264,7 +8296,7 @@ def ui_tech():
     with col_f3:
         st.selectbox("Tri", ["📅 Récent", "📅 Ancien", "🏷️ Statut"], key="tech_tri")
     with col_f4:
-        st.text_input("🔍 Recherche", placeholder="Ticket, nom, téléphone...", key="tech_recherche", label_visibility="collapsed")
+        st.text_input("Recherche", placeholder="Ticket, nom, téléphone...", key="tech_recherche")
     
     # Récupérer les valeurs depuis session_state
     filtre_statut = st.session_state.get("tech_filtre_statut", "Tous")
