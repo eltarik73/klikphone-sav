@@ -3452,6 +3452,7 @@ def widget_discord():
     
     # Lien d'invitation Discord
     discord_invite = get_param("DISCORD_INVITE") or "https://discord.gg/cH92yENyNc"
+    discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
     
     # Séparateur
     st.markdown("---")
@@ -3469,13 +3470,20 @@ def widget_discord():
             """, height=510)
         with col2:
             st.markdown("""
-            **Aide**
+            **💡 Aide**
             
-            Cliquez sur **Rejoindre** dans le widget pour accéder au chat Discord
+            Le widget affiche les membres en ligne.
             
-            Installez l'app Discord sur votre téléphone pour recevoir les notifications
+            Pour discuter, ouvrez Discord :
             """)
-            st.link_button("🚀 Rejoindre Discord", discord_invite, use_container_width=True)
+            
+            # Bouton pour ouvrir Discord (membres existants)
+            st.link_button("💬 Ouvrir Discord", f"https://discord.com/channels/{discord_server_id}", use_container_width=True, type="primary")
+            
+            st.markdown("---")
+            st.caption("Inviter un collègue :")
+            # Bouton pour inviter (nouveaux membres)
+            st.link_button("📨 Lien d'invitation", discord_invite, use_container_width=True)
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
