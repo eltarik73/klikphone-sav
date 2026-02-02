@@ -5693,6 +5693,12 @@ def client_step6():
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
 # =============================================================================
 def ui_accueil():
+    # Vérification auth
+    if not st.session_state.get("auth"):
+        st.session_state.mode = "auth_accueil"
+        st.rerun()
+        return
+    
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
@@ -8446,6 +8452,12 @@ def staff_config():
 # INTERFACE TECHNICIEN
 # =============================================================================
 def ui_tech():
+    # Vérification auth
+    if not st.session_state.get("auth"):
+        st.session_state.mode = "auth_tech"
+        st.rerun()
+        return
+    
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
@@ -9426,25 +9438,28 @@ def ui_home():
 
 
 def ui_auth(mode):
-    titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
     target = "accueil" if mode == "accueil" else "tech"
+    
+    # IMPORTANT: Vérifier si déjà connecté AVANT d'afficher quoi que ce soit
+    saved_key = f"saved_pin_{target}"
+    if saved_key in st.session_state and st.session_state[saved_key]:
+        st.session_state.mode = target
+        st.session_state.auth = True
+        st.rerun()
+        return  # Ne rien afficher
+    
+    titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
     pin_param = "PIN_ACCUEIL" if mode == "accueil" else "PIN_TECH"
     
+    # Page vide avec juste le formulaire de connexion
     st.markdown(f"""
-    <div style="text-align:center; padding:1.5rem 0;">
+    <div style="text-align:center; padding:3rem 0;">
         <div style="color:#f97316; font-size: 1.5rem; font-weight: 700;">🔐 {titre}</div>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Vérifier si le PIN est déjà mémorisé dans session_state
-        saved_key = f"saved_pin_{target}"
-        if saved_key in st.session_state and st.session_state[saved_key]:
-            st.session_state.mode = target
-            st.session_state.auth = True
-            st.rerun()
-        
         # Liste des membres (sans appel DB pour rapidité)
         noms_membres = ["Marina", "Jonathan", "Tarik", "Oualid", "Agent accueil"]
         
@@ -9473,8 +9488,11 @@ def ui_auth(mode):
                     if remember:
                         st.session_state[saved_key] = True
                         st.session_state.global_auth = True
-                    # Notification de connexion
-                    notif_connexion(utilisateur, titre)
+                    # Notification de connexion (en arrière-plan)
+                    try:
+                        notif_connexion(utilisateur, titre)
+                    except:
+                        pass
                     st.rerun()
                 else:
                     st.error("❌ Code incorrect")
@@ -9496,17 +9514,41 @@ def main():
     
     mode = st.session_state.mode
     
-    if mode is None: ui_home()
-    elif mode == "client": ui_client()
-    elif mode == "auth_accueil": ui_auth("accueil")
-    elif mode == "auth_tech": ui_auth("tech")
+    # Vérifier auto-connexion AVANT tout affichage
+    if mode == "auth_accueil":
+        if "saved_pin_accueil" in st.session_state and st.session_state.saved_pin_accueil:
+            st.session_state.mode = "accueil"
+            st.session_state.auth = True
+            st.rerun()
+    elif mode == "auth_tech":
+        if "saved_pin_tech" in st.session_state and st.session_state.saved_pin_tech:
+            st.session_state.mode = "tech"
+            st.session_state.auth = True
+            st.rerun()
+    
+    # Affichage selon le mode
+    if mode is None: 
+        ui_home()
+    elif mode == "client": 
+        ui_client()
+    elif mode == "auth_accueil": 
+        ui_auth("accueil")
+    elif mode == "auth_tech": 
+        ui_auth("tech")
     elif mode == "accueil":
-        if st.session_state.auth: ui_accueil()
-        else: st.session_state.mode = "auth_accueil"; st.rerun()
+        if st.session_state.auth: 
+            ui_accueil()
+        else: 
+            st.session_state.mode = "auth_accueil"
+            st.rerun()
     elif mode == "tech":
-        if st.session_state.auth: ui_tech()
-        else: st.session_state.mode = "auth_tech"; st.rerun()
-    elif mode == "suivi": ui_suivi()
+        if st.session_state.auth: 
+            ui_tech()
+        else: 
+            st.session_state.mode = "auth_tech"
+            st.rerun()
+    elif mode == "suivi": 
+        ui_suivi()
 
 if __name__ == "__main__":
     main()
