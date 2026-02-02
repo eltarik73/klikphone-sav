@@ -2651,6 +2651,23 @@ def init_db():
         couleur TEXT,
         actif INTEGER DEFAULT 1)""")
     
+    # Table messages équipe (chat interne)
+    c.execute("""CREATE TABLE IF NOT EXISTS messages_equipe (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        auteur TEXT,
+        message TEXT,
+        date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
+    
+    # Table notifications app (événements automatiques)
+    c.execute("""CREATE TABLE IF NOT EXISTS notifications_app (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT,
+        auteur TEXT,
+        message TEXT,
+        ticket_code TEXT,
+        lu INTEGER DEFAULT 0,
+        date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
+    
     # Migrations diverses - commit après chaque pour PostgreSQL
     migrations = [
         "ALTER TABLE tickets ADD COLUMN commentaire_client TEXT",
@@ -3141,6 +3158,92 @@ def supprimer_membre_equipe(membre_id):
     conn.commit()
     conn.close()
 
+# =============================================================================
+# FONCTIONS CHAT ÉQUIPE & NOTIFICATIONS
+# =============================================================================
+
+def envoyer_message_equipe(auteur, message):
+    """Envoie un message dans le chat équipe"""
+    conn = get_db()
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        c.execute("INSERT INTO messages_equipe (auteur, message, date_creation) VALUES (?, ?, ?)", 
+                 (auteur, message, now))
+        conn.commit()
+    except:
+        try:
+            conn.rollback()
+        except:
+            pass
+    conn.close()
+
+def get_messages_equipe(limit=50):
+    """Récupère les derniers messages du chat"""
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT * FROM messages_equipe ORDER BY date_creation DESC LIMIT ?", (limit,))
+        messages = [dict(row) for row in c.fetchall()]
+    except:
+        messages = []
+    conn.close()
+    return messages[::-1]  # Inverser pour avoir les plus anciens en premier
+
+def ajouter_notification_app(type_notif, auteur, message, ticket_code=None):
+    """Ajoute une notification dans l'app"""
+    conn = get_db()
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        c.execute("INSERT INTO notifications_app (type, auteur, message, ticket_code, date_creation) VALUES (?, ?, ?, ?, ?)", 
+                 (type_notif, auteur, message, ticket_code, now))
+        conn.commit()
+    except:
+        try:
+            conn.rollback()
+        except:
+            pass
+    conn.close()
+
+def get_notifications_app(limit=30):
+    """Récupère les dernières notifications"""
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT * FROM notifications_app ORDER BY date_creation DESC LIMIT ?", (limit,))
+        notifs = [dict(row) for row in c.fetchall()]
+    except:
+        notifs = []
+    conn.close()
+    return notifs
+
+def get_notifications_non_lues():
+    """Compte les notifications non lues"""
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT COUNT(*) FROM notifications_app WHERE lu=0")
+        count = c.fetchone()[0]
+    except:
+        count = 0
+    conn.close()
+    return count
+
+def marquer_notifications_lues():
+    """Marque toutes les notifications comme lues"""
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE notifications_app SET lu=1 WHERE lu=0")
+        conn.commit()
+    except:
+        try:
+            conn.rollback()
+        except:
+            pass
+    conn.close()
+
 def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei="", commande_piece=0):
     conn = get_db()
     c = conn.cursor()
@@ -3417,22 +3520,160 @@ def envoyer_notification_discord(message, emoji="📢"):
 
 def notif_nouveau_ticket(ticket_code, appareil, panne):
     """Notification pour nouveau ticket"""
+    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
+    message = f"Nouveau ticket {ticket_code} - {appareil} - {panne}"
+    # Discord
     envoyer_notification_discord(f"Nouveau ticket **{ticket_code}** - {appareil} - {panne}", "🆕")
+    # App
+    ajouter_notification_app("nouveau_ticket", utilisateur, message, ticket_code)
 
 def notif_changement_statut(ticket_code, ancien_statut, nouveau_statut):
     """Notification pour changement de statut"""
+    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
+    message = f"{ticket_code} : {ancien_statut} → {nouveau_statut}"
+    # Discord
     envoyer_notification_discord(f"**{ticket_code}** : {ancien_statut} → **{nouveau_statut}**", "🔄")
+    # App
+    ajouter_notification_app("statut", utilisateur, message, ticket_code)
 
 def notif_accord_client(ticket_code, accepte=True):
     """Notification pour accord/refus client"""
+    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
     if accepte:
+        message = f"{ticket_code} : Client a ACCEPTÉ le devis"
         envoyer_notification_discord(f"**{ticket_code}** : Client a ACCEPTÉ le devis ✅", "✅")
+        ajouter_notification_app("accord", utilisateur, message, ticket_code)
     else:
+        message = f"{ticket_code} : Client a REFUSÉ le devis"
         envoyer_notification_discord(f"**{ticket_code}** : Client a REFUSÉ le devis", "❌")
+        ajouter_notification_app("refus", utilisateur, message, ticket_code)
 
 def notif_reparation_terminee(ticket_code):
     """Notification pour réparation terminée"""
+    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
+    message = f"{ticket_code} : Réparation terminée ! Prêt pour récupération"
+    # Discord
     envoyer_notification_discord(f"**{ticket_code}** : Réparation terminée ! Prêt pour récupération", "🎉")
+    # App
+    ajouter_notification_app("termine", utilisateur, message, ticket_code)
+
+def notif_connexion(utilisateur, interface):
+    """Notification de connexion"""
+    message = f"s'est connecté à {interface}"
+    envoyer_notification_discord(message, "🟢")
+    ajouter_notification_app("connexion", utilisateur, f"Connexion à {interface}", None)
+
+def notif_deconnexion(utilisateur):
+    """Notification de déconnexion"""
+    envoyer_notification_discord("s'est déconnecté", "🔴")
+    ajouter_notification_app("deconnexion", utilisateur, "Déconnexion", None)
+
+def widget_chat_notifications():
+    """Widget de chat et notifications dans la sidebar"""
+    utilisateur = st.session_state.get("utilisateur_connecte", "")
+    if not utilisateur:
+        return
+    
+    with st.sidebar:
+        st.markdown(f"### 💬 Communication")
+        
+        # Compteur notifications non lues
+        nb_non_lues = get_notifications_non_lues()
+        
+        tab_notif, tab_chat = st.tabs([f"🔔 Notifs ({nb_non_lues})", "💬 Chat"])
+        
+        with tab_notif:
+            # Marquer comme lues quand on ouvre
+            if nb_non_lues > 0:
+                if st.button("✓ Tout marquer comme lu", key="mark_read", use_container_width=True):
+                    marquer_notifications_lues()
+                    st.rerun()
+            
+            # Afficher les notifications
+            notifications = get_notifications_app(limit=20)
+            if notifications:
+                for n in notifications:
+                    date_str = n.get('date_creation', '')[:16].replace('T', ' ')
+                    try:
+                        dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
+                        date_affiche = dt.strftime("%d/%m %H:%M")
+                    except:
+                        date_affiche = date_str[-5:]
+                    
+                    # Icône selon le type
+                    type_notif = n.get('type', '')
+                    icons = {
+                        'nouveau_ticket': '🆕',
+                        'statut': '🔄',
+                        'accord': '✅',
+                        'refus': '❌',
+                        'termine': '🎉',
+                        'connexion': '🟢',
+                        'deconnexion': '🔴'
+                    }
+                    icon = icons.get(type_notif, '📢')
+                    
+                    # Style non lu
+                    bg_color = "#fff7ed" if n.get('lu') == 0 else "#f8fafc"
+                    
+                    st.markdown(f"""
+                    <div style="background:{bg_color};padding:8px;border-radius:8px;margin-bottom:6px;border-left:3px solid #f97316;">
+                        <div style="font-size:10px;color:#94a3b8;">{date_affiche} • {n.get('auteur', '')}</div>
+                        <div style="font-size:12px;color:#1e293b;">{icon} {n.get('message', '')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Aucune notification")
+        
+        with tab_chat:
+            # Zone de saisie du message
+            col_msg, col_btn = st.columns([4, 1])
+            with col_msg:
+                nouveau_msg = st.text_input("Message", key="chat_input", placeholder="Votre message...", label_visibility="collapsed")
+            with col_btn:
+                if st.button("📤", key="send_chat", use_container_width=True):
+                    if nouveau_msg and nouveau_msg.strip():
+                        envoyer_message_equipe(utilisateur, nouveau_msg.strip())
+                        st.rerun()
+            
+            st.markdown("---")
+            
+            # Afficher les messages
+            messages = get_messages_equipe(limit=30)
+            if messages:
+                for m in messages:
+                    date_str = m.get('date_creation', '')
+                    try:
+                        dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
+                        date_affiche = dt.strftime("%H:%M")
+                    except:
+                        date_affiche = date_str[-5:]
+                    
+                    auteur = m.get('auteur', '')
+                    is_me = auteur == utilisateur
+                    
+                    # Trouver la couleur du membre
+                    couleur = "#64748b"
+                    membres = get_membres_equipe()
+                    for membre in membres:
+                        if membre['nom'] == auteur:
+                            couleur = membre.get('couleur', '#64748b')
+                            break
+                    
+                    st.markdown(f"""
+                    <div style="padding:6px 10px;border-radius:10px;margin-bottom:4px;
+                                background:{'#f0fdf4' if is_me else '#f8fafc'};
+                                border-left:3px solid {couleur};">
+                        <div style="font-size:10px;color:{couleur};font-weight:600;">{auteur} • {date_affiche}</div>
+                        <div style="font-size:13px;color:#1e293b;">{m.get('message', '')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Aucun message")
+            
+            # Bouton rafraîchir
+            if st.button("🔄 Rafraîchir", key="refresh_chat", use_container_width=True):
+                st.rerun()
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -5674,6 +5915,9 @@ def ui_accueil():
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
+    # Widget chat/notifications dans la sidebar
+    widget_chat_notifications()
+    
     # === HEADER NAV ===
     st.markdown(f"""
     <div class="nav-header">
@@ -5694,9 +5938,9 @@ def ui_accueil():
             st.rerun()
     with col_logout:
         if st.button("🚪 Sortir", key="logout_acc", type="secondary", use_container_width=True):
-            # Notification Discord de déconnexion
+            # Notification de déconnexion
             if utilisateur:
-                envoyer_notification_discord("s'est déconnecté", "🔴")
+                notif_deconnexion(utilisateur)
             st.session_state.mode = None
             st.session_state.auth = False
             st.session_state.utilisateur_connecte = None
@@ -8398,6 +8642,9 @@ def ui_tech():
     # Utilisateur connecté
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
+    # Widget chat/notifications dans la sidebar
+    widget_chat_notifications()
+    
     col1, col2, col3, col4 = st.columns([5, 1.5, 1.5, 1.5])
     with col1:
         st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
@@ -8410,9 +8657,9 @@ def ui_tech():
             st.rerun()
     with col4:
         if st.button("🚪 Sortir", key="logout_tech", use_container_width=True):
-            # Notification Discord de déconnexion
+            # Notification de déconnexion
             if utilisateur:
-                envoyer_notification_discord("s'est déconnecté", "🔴")
+                notif_deconnexion(utilisateur)
             st.session_state.mode = None
             st.session_state.auth = False
             st.session_state.utilisateur_connecte = None
@@ -9423,8 +9670,8 @@ def ui_auth(mode):
                     if remember:
                         st.session_state[saved_key] = True
                         st.session_state.global_auth = True
-                    # Notification Discord de connexion
-                    envoyer_notification_discord(f"s'est connecté à **{titre}**", "🟢")
+                    # Notification de connexion
+                    notif_connexion(utilisateur, titre)
                     st.rerun()
                 else:
                     st.error("❌ Code incorrect")
