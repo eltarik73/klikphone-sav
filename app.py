@@ -7010,7 +7010,7 @@ Merci de nous confirmer votre accord.
     
     # === WIDGET ENVOI MESSAGE ===
     st.markdown("---")
-    client_info = get_client(cid=t.get('client_id'))
+    client_info = get_client_by_id(t.get('client_id'))
     if client_info:
         widget_envoyer_message(t, client_info, key_prefix=f"msg_{tid}")
 
@@ -9405,7 +9405,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     
     # Récupérer les infos client et afficher le widget de message
-    client_info = get_client(cid=t.get('client_id'))
+    client_info = get_client_by_id(t.get('client_id'))
     if client_info:
         widget_envoyer_message(t, client_info, key_prefix=f"tech_msg_{tid}")
     
