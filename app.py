@@ -3714,6 +3714,9 @@ def widget_envoyer_message(ticket, client, key_prefix="msg"):
     # Afficher les coordonnées du client
     st.markdown("---")
     st.caption(f"📞 {tel or 'Non renseigné'} | 📧 {email or 'Non renseigné'}")
+
+def get_status_class(statut):
+    """Retourne la classe CSS pour un statut"""
     if "diagnostic" in statut.lower(): return "status-diagnostic"
     elif "reçue" in statut.lower() or "recue" in statut.lower(): return "status-piece-recue"
     elif "pièce" in statut.lower() or "piece" in statut.lower(): return "status-piece"
