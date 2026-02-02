@@ -3597,21 +3597,21 @@ def generer_message(template_key, ticket, client):
         appareil = ticket.get('categorie', 'Appareil')
     
     # Prix - utiliser les bons noms de colonnes
-    devis = ticket.get('devis') or 0
+    devis = ticket.get('devis_estime') or 0  # Colonne correcte
     prix_supp = ticket.get('prix_supp') or 0
     tarif_final = ticket.get('tarif_final') or 0
     
     # Priorité: tarif_final > devis + prix_supp > devis
     if tarif_final:
-        prix = tarif_final
+        prix = float(tarif_final)
     elif devis or prix_supp:
         prix = float(devis or 0) + float(prix_supp or 0)
     else:
         prix = 0
     
     # Formater le prix
-    if prix:
-        prix_str = f"{float(prix):.2f}".replace('.00', '')
+    if prix > 0:
+        prix_str = f"{prix:.2f}".replace('.00', '')
     else:
         prix_str = "À définir"
     
