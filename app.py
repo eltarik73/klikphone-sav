@@ -68,6 +68,7 @@ MEMBRES_EQUIPE_DEFAUT = [
     {"nom": "Jonathan", "role": "Technicien Multimarque", "couleur": "#22C55E"},  # Vert
     {"nom": "Tarik", "role": "Manager", "couleur": "#8B5CF6"},  # Violet
     {"nom": "Oualid", "role": "Accueil", "couleur": "#3B82F6"},  # Bleu
+    {"nom": "Agent accueil", "role": "Accueil", "couleur": "#F97316"},  # Orange
 ]
 
 MARQUES = {
@@ -2689,6 +2690,16 @@ def init_db():
                      (m['nom'], m['role'], m['couleur']))
         conn.commit()
     
+    # Ajouter Agent accueil s'il n'existe pas
+    try:
+        c.execute("SELECT COUNT(*) FROM membres_equipe WHERE nom='Agent accueil'")
+        if c.fetchone()[0] == 0:
+            c.execute("INSERT INTO membres_equipe (nom, role, couleur) VALUES (?, ?, ?)", 
+                     ("Agent accueil", "Accueil", "#F97316"))
+            conn.commit()
+    except:
+        pass
+    
     # Params défaut
     params = {
         "PIN_ACCUEIL": "2626", "PIN_TECH": "2626",
@@ -2702,7 +2713,8 @@ def init_db():
         "SMTP_USER": "",
         "SMTP_PASS": "",
         "SMTP_FROM": "",
-        "SMTP_FROM_NAME": "Klikphone"
+        "SMTP_FROM_NAME": "Klikphone",
+        "DISCORD_WEBHOOK": "https://discord.com/api/webhooks/1467818235994046519/73YIHJz3Wm-bSQ5-SDZhktGk3HQ6G6LJ-txeCePhbC_OWpT8dcYhjoeSYmnfiMoTKr8y"
     }
     for k, v in params.items():
         c.execute("INSERT OR IGNORE INTO params (cle, valeur) VALUES (?, ?)", (k, v))
@@ -3142,6 +3154,11 @@ def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_deta
     conn.commit()
     conn.close()
     clear_tickets_cache()
+    
+    # Notification Discord
+    appareil = modele_autre if modele_autre else f"{marque} {modele}"
+    notif_nouveau_ticket(code, appareil, panne or panne_detail or "Réparation")
+    
     return code
 
 def get_ticket(tid=None, code=None):
@@ -3262,6 +3279,19 @@ def changer_statut(tid, statut):
     # Invalider les caches
     clear_tickets_cache()
     clear_ticket_full_cache()
+    
+    # Notification Discord pour changement de statut
+    try:
+        t = get_ticket(tid=tid)
+        if t:
+            ticket_code = t.get('ticket_code', f'#{tid}')
+            # Notification spéciale pour réparation terminée
+            if statut == "Réparation terminée":
+                notif_reparation_terminee(ticket_code)
+            elif ancien_statut and ancien_statut != statut:
+                notif_changement_statut(ticket_code, ancien_statut, statut)
+    except:
+        pass
 
 def ajouter_historique(tid, texte):
     """Ajoute une entrée dans l'historique du ticket"""
@@ -3360,6 +3390,49 @@ def fmt_date(d):
 
 def fmt_prix(p):
     return f"{p:.2f} €" if p else "N/A"
+
+def envoyer_notification_discord(message, emoji="📢"):
+    """Envoie une notification vers Discord via webhook"""
+    try:
+        import requests
+        webhook_url = get_param("DISCORD_WEBHOOK")
+        if not webhook_url:
+            return False
+        
+        # Ajouter l'utilisateur connecté s'il existe
+        utilisateur = st.session_state.get("utilisateur_connecte", "")
+        if utilisateur:
+            contenu = f"{emoji} **{utilisateur}** : {message}"
+        else:
+            contenu = f"{emoji} {message}"
+        
+        response = requests.post(
+            webhook_url,
+            json={"content": contenu},
+            timeout=5
+        )
+        return response.status_code == 204
+    except:
+        return False
+
+def notif_nouveau_ticket(ticket_code, appareil, panne):
+    """Notification pour nouveau ticket"""
+    envoyer_notification_discord(f"Nouveau ticket **{ticket_code}** - {appareil} - {panne}", "🆕")
+
+def notif_changement_statut(ticket_code, ancien_statut, nouveau_statut):
+    """Notification pour changement de statut"""
+    envoyer_notification_discord(f"**{ticket_code}** : {ancien_statut} → **{nouveau_statut}**", "🔄")
+
+def notif_accord_client(ticket_code, accepte=True):
+    """Notification pour accord/refus client"""
+    if accepte:
+        envoyer_notification_discord(f"**{ticket_code}** : Client a ACCEPTÉ le devis ✅", "✅")
+    else:
+        envoyer_notification_discord(f"**{ticket_code}** : Client a REFUSÉ le devis", "❌")
+
+def notif_reparation_terminee(ticket_code):
+    """Notification pour réparation terminée"""
+    envoyer_notification_discord(f"**{ticket_code}** : Réparation terminée ! Prêt pour récupération", "🎉")
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -5598,6 +5671,9 @@ def client_step6():
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
 # =============================================================================
 def ui_accueil():
+    # Utilisateur connecté
+    utilisateur = st.session_state.get("utilisateur_connecte", "")
+    
     # === HEADER NAV ===
     st.markdown(f"""
     <div class="nav-header">
@@ -5606,6 +5682,7 @@ def ui_accueil():
             <span class="nav-logo-text">KLIKPHONE</span>
             <span style="color:var(--neutral-400);font-size:var(--text-sm);margin-left:8px;">SAV Manager</span>
         </div>
+        {f'<div style="color:#10b981;font-size:14px;font-weight:600;">👤 {utilisateur}</div>' if utilisateur else ''}
     </div>
     """, unsafe_allow_html=True)
     
@@ -5616,9 +5693,14 @@ def ui_accueil():
             st.session_state.mode = "tech"
             st.rerun()
     with col_logout:
-        if st.button("Sortir", key="logout_acc", type="secondary", use_container_width=True):
+        if st.button("🚪 Sortir", key="logout_acc", type="secondary", use_container_width=True):
+            # Notification Discord de déconnexion
+            if utilisateur:
+                envoyer_notification_discord("s'est déconnecté", "🔴")
             st.session_state.mode = None
             st.session_state.auth = False
+            st.session_state.utilisateur_connecte = None
+            st.session_state.pop("saved_pin_accueil", None)
             st.rerun()
     
     # === KPI CARDS CLIQUABLES ===
@@ -6420,6 +6502,8 @@ def staff_traiter_demande(tid):
             if st.button("✅ CLIENT A ACCEPTÉ", key=f"btn_accord_{tid}", type="primary", use_container_width=True):
                 update_ticket(tid, client_accord=1)
                 changer_statut(tid, "En cours de réparation")
+                # Notification Discord
+                notif_accord_client(t.get('ticket_code', ''), accepte=True)
                 st.rerun()
         
         # --- CONTACT CLIENT ---
@@ -7472,7 +7556,7 @@ def staff_nouvelle_demande():
             st.success(f"Demande créée : {code}")
 
 def staff_config():
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité", "💳 Caisse"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité", "💳 Caisse", "🔔 Discord"])
     
     with tab1:
         st.markdown("### Informations de la boutique")
@@ -8261,22 +8345,78 @@ def staff_config():
             </ol>
         </div>
         """, unsafe_allow_html=True)
+    
+    with tab8:
+        st.markdown("### 🔔 Notifications Discord")
+        st.markdown("Recevez des notifications automatiques dans Discord quand des événements se produisent.")
+        
+        discord_webhook = st.text_input(
+            "URL Webhook Discord", 
+            value=get_param("DISCORD_WEBHOOK") or "",
+            placeholder="https://discord.com/api/webhooks/...",
+            type="password"
+        )
+        
+        if st.button("💾 Enregistrer", key="save_discord", type="primary"):
+            set_param("DISCORD_WEBHOOK", discord_webhook)
+            st.success("✅ Webhook Discord enregistré!")
+        
+        st.markdown("---")
+        
+        # Test du webhook
+        st.markdown("**Tester la connexion**")
+        if st.button("🔔 Envoyer une notification test", key="test_discord"):
+            if discord_webhook:
+                success = envoyer_notification_discord("Test de connexion depuis Klikphone SAV! 🎉", "✅")
+                if success:
+                    st.success("✅ Notification envoyée! Vérifiez votre channel Discord.")
+                else:
+                    st.error("❌ Erreur lors de l'envoi. Vérifiez l'URL du webhook.")
+            else:
+                st.warning("⚠️ Entrez d'abord l'URL du webhook")
+        
+        st.markdown("---")
+        st.markdown("""
+        **📋 Notifications envoyées automatiquement:**
+        - 🆕 Nouveau ticket créé
+        - 🔄 Changement de statut
+        - ✅ Client a accepté/refusé le devis
+        - 🎉 Réparation terminée
+        - 🟢 Connexion d'un membre de l'équipe
+        - 🔴 Déconnexion
+        
+        **💡 Comment obtenir l'URL webhook:**
+        1. Dans Discord, clic droit sur un channel → Modifier le channel
+        2. Intégrations → Webhooks → Nouveau webhook
+        3. Copier l'URL du webhook
+        """)
 
 # =============================================================================
 # INTERFACE TECHNICIEN
 # =============================================================================
 def ui_tech():
-    col1, col2, col3 = st.columns([6, 2, 2])
+    # Utilisateur connecté
+    utilisateur = st.session_state.get("utilisateur_connecte", "")
+    
+    col1, col2, col3, col4 = st.columns([5, 1.5, 1.5, 1.5])
     with col1:
         st.markdown("<h1 class='page-title'>🔧 Espace Technicien</h1>", unsafe_allow_html=True)
     with col2:
+        if utilisateur:
+            st.markdown(f"<div style='padding:8px;text-align:center;color:#10b981;font-weight:600;'>👤 {utilisateur}</div>", unsafe_allow_html=True)
+    with col3:
         if st.button("🏠 Accueil", key="goto_accueil", type="secondary", use_container_width=True):
             st.session_state.mode = "accueil"
             st.rerun()
-    with col3:
+    with col4:
         if st.button("🚪 Sortir", key="logout_tech", use_container_width=True):
+            # Notification Discord de déconnexion
+            if utilisateur:
+                envoyer_notification_discord("s'est déconnecté", "🔴")
             st.session_state.mode = None
             st.session_state.auth = False
+            st.session_state.utilisateur_connecte = None
+            st.session_state.pop("saved_pin_tech", None)
             st.rerun()
     
     # Si un ticket est sélectionné, afficher directement le detail
@@ -8855,11 +8995,15 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                     update_ticket(tid, client_accord=1)
                     changer_statut(tid, "En cours de réparation")
                     ajouter_historique(tid, "✅ Client a accepté le devis")
+                    # Notification Discord
+                    notif_accord_client(t.get('ticket_code', ''), accepte=True)
                     st.success("✅ Accord validé! Réparation en cours...")
                     st.rerun()
             with col_acc2:
                 if st.button("❌ CLIENT REFUSE", key=f"tech_accord_no_{tid}", type="secondary", use_container_width=True):
                     ajouter_historique(tid, "❌ Client a refusé le devis")
+                    # Notification Discord
+                    notif_accord_client(t.get('ticket_code', ''), accepte=False)
                     st.warning("Devis refusé - Que faire?")
             
             # Relancer le client
@@ -9233,40 +9377,16 @@ def ui_home():
 def ui_auth(mode):
     titre = "Accès Accueil" if mode == "accueil" else "Accès Technicien"
     target = "accueil" if mode == "accueil" else "tech"
+    pin_param = "PIN_ACCUEIL" if mode == "accueil" else "PIN_TECH"
     
     st.markdown(f"""
     <div style="text-align:center; padding:1.5rem 0;">
-        <div style="color:#f97316; font-size: 1.5rem; font-weight: 700;">{titre}</div>
+        <div style="color:#f97316; font-size: 1.5rem; font-weight: 700;">🔐 {titre}</div>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Script pour gérer les cookies
-        st.markdown("""
-        <script>
-        function setCookie(name, value, days) {
-            var expires = "";
-            if (days) {
-                var date = new Date();
-                date.setTime(date.getTime() + (days*24*60*60*1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            document.cookie = name + "=" + (value || "") + expires + "; path=/";
-        }
-        function getCookie(name) {
-            var nameEQ = name + "=";
-            var ca = document.cookie.split(';');
-            for(var i=0; i < ca.length; i++) {
-                var c = ca[i];
-                while (c.charAt(0)==' ') c = c.substring(1,c.length);
-                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
-            }
-            return null;
-        }
-        </script>
-        """, unsafe_allow_html=True)
-        
         # Vérifier si le PIN est déjà mémorisé dans session_state
         saved_key = f"saved_pin_{target}"
         if saved_key in st.session_state and st.session_state[saved_key]:
@@ -9274,6 +9394,15 @@ def ui_auth(mode):
             st.session_state.auth = True
             st.rerun()
         
+        # Liste des membres de l'équipe
+        membres = get_membres_equipe()
+        noms_membres = [m['nom'] for m in membres]
+        
+        # Sélection de l'utilisateur
+        st.markdown("**Qui êtes-vous ?**")
+        utilisateur = st.selectbox("Utilisateur", noms_membres, key="auth_user_select", label_visibility="collapsed")
+        
+        st.markdown("**Code PIN**")
         pin = st.text_input("Code PIN", type="password", placeholder="••••", key="auth_pin_input", label_visibility="collapsed")
         
         # Checkbox pour mémoriser
@@ -9286,13 +9415,16 @@ def ui_auth(mode):
                 st.rerun()
         with col_btn2:
             if st.button("Valider →", type="primary", use_container_width=True):
-                if pin == "2626":
+                pin_correct = get_param(pin_param) or "2626"
+                if pin == pin_correct:
                     st.session_state.mode = target
                     st.session_state.auth = True
+                    st.session_state.utilisateur_connecte = utilisateur
                     if remember:
                         st.session_state[saved_key] = True
-                        # Marquer l'authentification globale
                         st.session_state.global_auth = True
+                    # Notification Discord de connexion
+                    envoyer_notification_discord(f"s'est connecté à **{titre}**", "🟢")
                     st.rerun()
                 else:
                     st.error("❌ Code incorrect")
