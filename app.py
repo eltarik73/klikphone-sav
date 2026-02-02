@@ -3625,40 +3625,56 @@ def widget_envoyer_message(ticket, client, key_prefix="msg"):
     
     tel = client.get('telephone', '')
     email = client.get('email', '')
-    prenom = client.get('prenom', 'Client')
     
     st.markdown("### 📨 Envoyer un message au client")
     
+    # Stocker ticket et client pour le callback
+    st.session_state[f"{key_prefix}_ticket_data"] = ticket
+    st.session_state[f"{key_prefix}_client_data"] = client
+    
     # Sélection du type de message
-    options_messages = {
-        "diagnostic_termine": "📋 Diagnostic terminé",
-        "demande_accord": "⏳ Demande d'accord",
-        "attente_piece": "📦 En attente de pièce",
-        "piece_recue": "📬 Pièce reçue", 
-        "reparation_terminee": "✅ Réparation terminée",
-        "relance": "🔔 Relance - À récupérer",
-        "refus_reparation": "❌ Appareil non réparé",
-        "personnalise": "💬 Message personnalisé"
-    }
+    options_messages = [
+        ("diagnostic_termine", "📋 Diagnostic terminé"),
+        ("demande_accord", "⏳ Demande d'accord"),
+        ("attente_piece", "📦 En attente de pièce"),
+        ("piece_recue", "📬 Pièce reçue"), 
+        ("reparation_terminee", "✅ Réparation terminée"),
+        ("relance", "🔔 Relance - À récupérer"),
+        ("refus_reparation", "❌ Appareil non réparé"),
+        ("personnalise", "💬 Message personnalisé")
+    ]
+    
+    # Callback pour mettre à jour le message quand le type change
+    def on_type_change():
+        new_type = st.session_state[f"{key_prefix}_type_select"]
+        t_data = st.session_state.get(f"{key_prefix}_ticket_data", {})
+        c_data = st.session_state.get(f"{key_prefix}_client_data", {})
+        _, message = generer_message(new_type, t_data, c_data)
+        st.session_state[f"{key_prefix}_message"] = message
     
     col_type, col_spacer = st.columns([3, 1])
     with col_type:
         type_msg = st.selectbox(
             "Type de message",
-            options=list(options_messages.keys()),
-            format_func=lambda x: options_messages[x],
-            key=f"{key_prefix}_type"
+            options=[opt[0] for opt in options_messages],
+            format_func=lambda x: dict(options_messages).get(x, x),
+            key=f"{key_prefix}_type_select",
+            on_change=on_type_change
         )
     
-    # Générer le message
-    titre, message = generer_message(type_msg, ticket, client)
+    # Initialiser le message si pas encore fait
+    if f"{key_prefix}_message" not in st.session_state:
+        _, message = generer_message(type_msg, ticket, client)
+        st.session_state[f"{key_prefix}_message"] = message
+    
+    # Générer le titre pour l'email
+    titre, _ = generer_message(type_msg, ticket, client)
     
     # Zone d'édition du message
     message_final = st.text_area(
         "Message (modifiable)",
-        value=message,
         height=200,
-        key=f"{key_prefix}_content"
+        key=f"{key_prefix}_message"
     )
     
     st.markdown("---")
