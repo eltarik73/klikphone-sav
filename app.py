@@ -2651,23 +2651,6 @@ def init_db():
         couleur TEXT,
         actif INTEGER DEFAULT 1)""")
     
-    # Table messages équipe (chat interne)
-    c.execute("""CREATE TABLE IF NOT EXISTS messages_equipe (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        auteur TEXT,
-        message TEXT,
-        date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
-    
-    # Table notifications app (événements automatiques)
-    c.execute("""CREATE TABLE IF NOT EXISTS notifications_app (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT,
-        auteur TEXT,
-        message TEXT,
-        ticket_code TEXT,
-        lu INTEGER DEFAULT 0,
-        date_creation TEXT DEFAULT CURRENT_TIMESTAMP)""")
-    
     # Migrations diverses - commit après chaque pour PostgreSQL
     migrations = [
         "ALTER TABLE tickets ADD COLUMN commentaire_client TEXT",
@@ -2731,7 +2714,8 @@ def init_db():
         "SMTP_PASS": "",
         "SMTP_FROM": "",
         "SMTP_FROM_NAME": "Klikphone",
-        "DISCORD_WEBHOOK": "https://discord.com/api/webhooks/1467818235994046519/73YIHJz3Wm-bSQ5-SDZhktGk3HQ6G6LJ-txeCePhbC_OWpT8dcYhjoeSYmnfiMoTKr8y"
+        "DISCORD_WEBHOOK": "https://discord.com/api/webhooks/1467818235994046519/73YIHJz3Wm-bSQ5-SDZhktGk3HQ6G6LJ-txeCePhbC_OWpT8dcYhjoeSYmnfiMoTKr8y",
+        "DISCORD_SERVER_ID": "1467817646216056964"
     }
     for k, v in params.items():
         c.execute("INSERT OR IGNORE INTO params (cle, valeur) VALUES (?, ?)", (k, v))
@@ -3158,92 +3142,6 @@ def supprimer_membre_equipe(membre_id):
     conn.commit()
     conn.close()
 
-# =============================================================================
-# FONCTIONS CHAT ÉQUIPE & NOTIFICATIONS
-# =============================================================================
-
-def envoyer_message_equipe(auteur, message):
-    """Envoie un message dans le chat équipe"""
-    conn = get_db()
-    c = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        c.execute("INSERT INTO messages_equipe (auteur, message, date_creation) VALUES (?, ?, ?)", 
-                 (auteur, message, now))
-        conn.commit()
-    except:
-        try:
-            conn.rollback()
-        except:
-            pass
-    conn.close()
-
-def get_messages_equipe(limit=50):
-    """Récupère les derniers messages du chat"""
-    conn = get_db()
-    c = conn.cursor()
-    try:
-        c.execute("SELECT * FROM messages_equipe ORDER BY date_creation DESC LIMIT ?", (limit,))
-        messages = [dict(row) for row in c.fetchall()]
-    except:
-        messages = []
-    conn.close()
-    return messages[::-1]  # Inverser pour avoir les plus anciens en premier
-
-def ajouter_notification_app(type_notif, auteur, message, ticket_code=None):
-    """Ajoute une notification dans l'app"""
-    conn = get_db()
-    c = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        c.execute("INSERT INTO notifications_app (type, auteur, message, ticket_code, date_creation) VALUES (?, ?, ?, ?, ?)", 
-                 (type_notif, auteur, message, ticket_code, now))
-        conn.commit()
-    except:
-        try:
-            conn.rollback()
-        except:
-            pass
-    conn.close()
-
-def get_notifications_app(limit=30):
-    """Récupère les dernières notifications"""
-    conn = get_db()
-    c = conn.cursor()
-    try:
-        c.execute("SELECT * FROM notifications_app ORDER BY date_creation DESC LIMIT ?", (limit,))
-        notifs = [dict(row) for row in c.fetchall()]
-    except:
-        notifs = []
-    conn.close()
-    return notifs
-
-def get_notifications_non_lues():
-    """Compte les notifications non lues"""
-    conn = get_db()
-    c = conn.cursor()
-    try:
-        c.execute("SELECT COUNT(*) FROM notifications_app WHERE lu=0")
-        count = c.fetchone()[0]
-    except:
-        count = 0
-    conn.close()
-    return count
-
-def marquer_notifications_lues():
-    """Marque toutes les notifications comme lues"""
-    conn = get_db()
-    c = conn.cursor()
-    try:
-        c.execute("UPDATE notifications_app SET lu=1 WHERE lu=0")
-        conn.commit()
-    except:
-        try:
-            conn.rollback()
-        except:
-            pass
-    conn.close()
-
 def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_detail, pin, pattern, notes, imei="", commande_piece=0):
     conn = get_db()
     c = conn.cursor()
@@ -3519,348 +3417,51 @@ def envoyer_notification_discord(message, emoji="📢"):
         return False
 
 def notif_nouveau_ticket(ticket_code, appareil, panne):
-    """Notification pour nouveau ticket"""
-    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
-    message = f"Nouveau ticket {ticket_code} - {appareil} - {panne}"
-    # Discord
+    """Notification pour nouveau ticket - Discord uniquement"""
     envoyer_notification_discord(f"Nouveau ticket **{ticket_code}** - {appareil} - {panne}", "🆕")
-    # App
-    ajouter_notification_app("nouveau_ticket", utilisateur, message, ticket_code)
 
 def notif_changement_statut(ticket_code, ancien_statut, nouveau_statut):
-    """Notification pour changement de statut"""
-    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
-    message = f"{ticket_code} : {ancien_statut} → {nouveau_statut}"
-    # Discord
+    """Notification pour changement de statut - Discord uniquement"""
     envoyer_notification_discord(f"**{ticket_code}** : {ancien_statut} → **{nouveau_statut}**", "🔄")
-    # App
-    ajouter_notification_app("statut", utilisateur, message, ticket_code)
 
 def notif_accord_client(ticket_code, accepte=True):
-    """Notification pour accord/refus client"""
-    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
+    """Notification pour accord/refus client - Discord uniquement"""
     if accepte:
-        message = f"{ticket_code} : Client a ACCEPTÉ le devis"
         envoyer_notification_discord(f"**{ticket_code}** : Client a ACCEPTÉ le devis ✅", "✅")
-        ajouter_notification_app("accord", utilisateur, message, ticket_code)
     else:
-        message = f"{ticket_code} : Client a REFUSÉ le devis"
         envoyer_notification_discord(f"**{ticket_code}** : Client a REFUSÉ le devis", "❌")
-        ajouter_notification_app("refus", utilisateur, message, ticket_code)
 
 def notif_reparation_terminee(ticket_code):
-    """Notification pour réparation terminée"""
-    utilisateur = st.session_state.get("utilisateur_connecte", "Système")
-    message = f"{ticket_code} : Réparation terminée ! Prêt pour récupération"
-    # Discord
+    """Notification pour réparation terminée - Discord uniquement"""
     envoyer_notification_discord(f"**{ticket_code}** : Réparation terminée ! Prêt pour récupération", "🎉")
-    # App
-    ajouter_notification_app("termine", utilisateur, message, ticket_code)
 
 def notif_connexion(utilisateur, interface):
-    """Notification de connexion"""
-    message = f"s'est connecté à {interface}"
-    envoyer_notification_discord(message, "🟢")
-    ajouter_notification_app("connexion", utilisateur, f"Connexion à {interface}", None)
+    """Notification de connexion - Discord uniquement"""
+    envoyer_notification_discord(f"s'est connecté à {interface}", "🟢")
 
 def notif_deconnexion(utilisateur):
-    """Notification de déconnexion"""
+    """Notification de déconnexion - Discord uniquement"""
     envoyer_notification_discord("s'est déconnecté", "🔴")
-    ajouter_notification_app("deconnexion", utilisateur, "Déconnexion", None)
 
-def widget_chat_notifications():
-    """Widget de chat et notifications flottant en bas à droite"""
+def widget_discord():
+    """Widget Discord intégré en bas de page"""
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     if not utilisateur:
         return
     
-    # Initialiser l'état du widget
-    if "chat_widget_open" not in st.session_state:
-        st.session_state.chat_widget_open = False
-    if "chat_widget_tab" not in st.session_state:
-        st.session_state.chat_widget_tab = "chat"
+    # ID du serveur Discord
+    discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
     
-    # Compteur notifications non lues
-    nb_non_lues = get_notifications_non_lues()
-    
-    # CSS pour le widget flottant
-    st.markdown("""
-    <style>
-    .chat-fab {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        color: white;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
-        z-index: 9999;
-        border: none;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .chat-fab:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 25px rgba(249, 115, 22, 0.5);
-    }
-    .chat-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #ef4444;
-        color: white;
-        font-size: 12px;
-        font-weight: 700;
-        min-width: 20px;
-        height: 20px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .chat-widget-container {
-        position: fixed;
-        bottom: 100px;
-        right: 24px;
-        width: 350px;
-        max-height: 500px;
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-        z-index: 9998;
-        overflow: hidden;
-        border: 1px solid #e2e8f0;
-    }
-    .chat-widget-header {
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        color: white;
-        padding: 12px 16px;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .chat-widget-tabs {
-        display: flex;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .chat-widget-tab {
-        flex: 1;
-        padding: 10px;
-        text-align: center;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        color: #64748b;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s;
-    }
-    .chat-widget-tab:hover {
-        background: #f8fafc;
-    }
-    .chat-widget-tab.active {
-        color: #f97316;
-        border-bottom-color: #f97316;
-    }
-    .chat-widget-body {
-        padding: 12px;
-        max-height: 350px;
-        overflow-y: auto;
-    }
-    .chat-msg {
-        padding: 8px 12px;
-        border-radius: 12px;
-        margin-bottom: 8px;
-        font-size: 13px;
-    }
-    .chat-msg-me {
-        background: #f0fdf4;
-        border-left: 3px solid #22c55e;
-    }
-    .chat-msg-other {
-        background: #f8fafc;
-        border-left: 3px solid #94a3b8;
-    }
-    .chat-msg-author {
-        font-size: 10px;
-        font-weight: 600;
-        margin-bottom: 2px;
-    }
-    .notif-item {
-        padding: 8px 12px;
-        border-radius: 8px;
-        margin-bottom: 6px;
-        border-left: 3px solid #f97316;
-    }
-    .notif-unread {
-        background: #fff7ed;
-    }
-    .notif-read {
-        background: #f8fafc;
-    }
-    .notif-date {
-        font-size: 10px;
-        color: #94a3b8;
-    }
-    .notif-text {
-        font-size: 12px;
-        color: #1e293b;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Bouton flottant pour ouvrir/fermer
-    badge_html = f'<span class="chat-badge">{nb_non_lues}</span>' if nb_non_lues > 0 else ''
-    
-    # Utiliser des colonnes invisibles en bas pour placer le contenu
-    if st.session_state.chat_widget_open:
-        # Le widget est ouvert - afficher le contenu dans un expander en bas
-        st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-        
-        with st.container():
-            st.markdown("""
-            <div style="background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:12px 16px;
-                        border-radius:16px 16px 0 0;font-weight:600;display:flex;justify-content:space-between;">
-                <span>💬 Communication équipe</span>
-                <span style="font-size:12px;">👤 """ + utilisateur + """</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            tab_chat, tab_notif = st.tabs(["💬 Chat", f"🔔 Notifications ({nb_non_lues})"])
-            
-            with tab_chat:
-                # Zone de saisie du message
-                col_msg, col_btn = st.columns([5, 1])
-                with col_msg:
-                    nouveau_msg = st.text_input("Message", key="chat_input", placeholder="Votre message...", label_visibility="collapsed")
-                with col_btn:
-                    if st.button("📤", key="send_chat", use_container_width=True):
-                        if nouveau_msg and nouveau_msg.strip():
-                            envoyer_message_equipe(utilisateur, nouveau_msg.strip())
-                            st.rerun()
-                
-                # Afficher les messages
-                messages = get_messages_equipe(limit=20)
-                
-                # Container avec scroll
-                chat_html = '<div style="max-height:250px;overflow-y:auto;padding:8px 0;">'
-                
-                if messages:
-                    for m in messages:
-                        date_str = m.get('date_creation', '')
-                        try:
-                            dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
-                            date_affiche = dt.strftime("%H:%M")
-                        except:
-                            date_affiche = ""
-                        
-                        auteur = m.get('auteur', '')
-                        is_me = auteur == utilisateur
-                        
-                        # Trouver la couleur du membre
-                        couleur = "#64748b"
-                        try:
-                            membres = get_membres_equipe()
-                            for membre in membres:
-                                if membre['nom'] == auteur:
-                                    couleur = membre.get('couleur', '#64748b')
-                                    break
-                        except:
-                            pass
-                        
-                        bg = '#f0fdf4' if is_me else '#f8fafc'
-                        chat_html += f'''
-                        <div style="padding:8px 12px;border-radius:10px;margin-bottom:6px;background:{bg};border-left:3px solid {couleur};">
-                            <div style="font-size:10px;color:{couleur};font-weight:600;">{auteur} • {date_affiche}</div>
-                            <div style="font-size:13px;color:#1e293b;">{m.get('message', '')}</div>
-                        </div>
-                        '''
-                else:
-                    chat_html += '<div style="text-align:center;color:#94a3b8;padding:20px;">Aucun message</div>'
-                
-                chat_html += '</div>'
-                st.markdown(chat_html, unsafe_allow_html=True)
-            
-            with tab_notif:
-                # Marquer comme lues
-                if nb_non_lues > 0:
-                    if st.button("✓ Tout marquer comme lu", key="mark_read", use_container_width=True):
-                        marquer_notifications_lues()
-                        st.rerun()
-                
-                # Afficher les notifications
-                notifications = get_notifications_app(limit=15)
-                
-                notif_html = '<div style="max-height:280px;overflow-y:auto;">'
-                
-                if notifications:
-                    for n in notifications:
-                        date_str = n.get('date_creation', '')[:16]
-                        try:
-                            dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
-                            date_affiche = dt.strftime("%d/%m %H:%M")
-                        except:
-                            date_affiche = date_str[-5:]
-                        
-                        type_notif = n.get('type', '')
-                        icons = {
-                            'nouveau_ticket': '🆕',
-                            'statut': '🔄',
-                            'accord': '✅',
-                            'refus': '❌',
-                            'termine': '🎉',
-                            'connexion': '🟢',
-                            'deconnexion': '🔴'
-                        }
-                        icon = icons.get(type_notif, '📢')
-                        bg_color = "#fff7ed" if n.get('lu') == 0 else "#f8fafc"
-                        
-                        notif_html += f'''
-                        <div style="background:{bg_color};padding:8px 12px;border-radius:8px;margin-bottom:6px;border-left:3px solid #f97316;">
-                            <div style="font-size:10px;color:#94a3b8;">{date_affiche} • {n.get('auteur', '')}</div>
-                            <div style="font-size:12px;color:#1e293b;">{icon} {n.get('message', '')}</div>
-                        </div>
-                        '''
-                else:
-                    notif_html += '<div style="text-align:center;color:#94a3b8;padding:20px;">Aucune notification</div>'
-                
-                notif_html += '</div>'
-                st.markdown(notif_html, unsafe_allow_html=True)
-            
-            # Bouton fermer
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("✕ Fermer", key="close_chat_widget", use_container_width=True):
-                    st.session_state.chat_widget_open = False
-                    st.rerun()
-    
-    # Bouton flottant toujours visible en bas à droite
-    fab_icon = "✕" if st.session_state.chat_widget_open else "💬"
-    st.markdown(f"""
-    <div style="position:fixed;bottom:24px;right:24px;z-index:9999;">
-        <div onclick="window.parent.postMessage({{type:'streamlit:setComponentValue',value:true}},'*')" 
-             style="width:60px;height:60px;border-radius:50%;
-                    background:linear-gradient(135deg,#f97316,#ea580c);
-                    color:white;font-size:24px;display:flex;align-items:center;justify-content:center;
-                    cursor:pointer;box-shadow:0 4px 20px rgba(249,115,22,0.4);position:relative;">
-            {fab_icon}
-            {badge_html}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Bouton Streamlit caché pour toggle (car onclick JS ne fonctionne pas bien)
-    col_spacer, col_toggle = st.columns([10, 1])
-    with col_toggle:
-        if st.button("💬" if not st.session_state.chat_widget_open else "✕", key="toggle_chat_fab", help="Ouvrir/Fermer le chat"):
-            st.session_state.chat_widget_open = not st.session_state.chat_widget_open
-            st.rerun()
+    # Afficher le widget Discord dans un expander
+    with st.expander("💬 Chat équipe Discord", expanded=False):
+        st.markdown(f"""
+        <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
+                width="100%" height="400" allowtransparency="true" frameborder="0" 
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                style="border-radius:12px;">
+        </iframe>
+        """, unsafe_allow_html=True)
+        st.caption("💡 Cliquez sur 'Rejoindre' pour accéder au chat complet dans Discord")
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -6103,7 +5704,7 @@ def ui_accueil():
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
     # Widget chat/notifications dans la sidebar
-    widget_chat_notifications()
+    widget_discord()
     
     # === HEADER NAV ===
     st.markdown(f"""
@@ -8780,48 +8381,69 @@ def staff_config():
         """, unsafe_allow_html=True)
     
     with tab8:
-        st.markdown("### 🔔 Notifications Discord")
-        st.markdown("Recevez des notifications automatiques dans Discord quand des événements se produisent.")
+        st.markdown("### 🔔 Discord")
         
-        discord_webhook = st.text_input(
-            "URL Webhook Discord", 
-            value=get_param("DISCORD_WEBHOOK") or "",
-            placeholder="https://discord.com/api/webhooks/...",
-            type="password"
-        )
+        col_d1, col_d2 = st.columns(2)
         
-        if st.button("💾 Enregistrer", key="save_discord", type="primary"):
-            set_param("DISCORD_WEBHOOK", discord_webhook)
-            st.success("✅ Webhook Discord enregistré!")
-        
-        st.markdown("---")
-        
-        # Test du webhook
-        st.markdown("**Tester la connexion**")
-        if st.button("🔔 Envoyer une notification test", key="test_discord"):
-            if discord_webhook:
-                success = envoyer_notification_discord("Test de connexion depuis Klikphone SAV! 🎉", "✅")
-                if success:
-                    st.success("✅ Notification envoyée! Vérifiez votre channel Discord.")
+        with col_d1:
+            st.markdown("**📢 Notifications automatiques**")
+            st.caption("Recevez des notifications dans Discord")
+            
+            discord_webhook = st.text_input(
+                "URL Webhook", 
+                value=get_param("DISCORD_WEBHOOK") or "",
+                placeholder="https://discord.com/api/webhooks/...",
+                type="password",
+                key="discord_webhook_input"
+            )
+            
+            if st.button("💾 Enregistrer webhook", key="save_discord", type="primary"):
+                set_param("DISCORD_WEBHOOK", discord_webhook)
+                st.success("✅ Webhook enregistré!")
+            
+            if st.button("🔔 Tester", key="test_discord"):
+                if discord_webhook:
+                    success = envoyer_notification_discord("Test de connexion depuis Klikphone SAV! 🎉", "✅")
+                    if success:
+                        st.success("✅ Notification envoyée!")
+                    else:
+                        st.error("❌ Erreur lors de l'envoi")
                 else:
-                    st.error("❌ Erreur lors de l'envoi. Vérifiez l'URL du webhook.")
-            else:
-                st.warning("⚠️ Entrez d'abord l'URL du webhook")
+                    st.warning("⚠️ Entrez d'abord l'URL du webhook")
+        
+        with col_d2:
+            st.markdown("**💬 Widget Chat intégré**")
+            st.caption("Affiche le chat Discord dans l'app")
+            
+            discord_server_id = st.text_input(
+                "ID du serveur Discord", 
+                value=get_param("DISCORD_SERVER_ID") or "1467817646216056964",
+                placeholder="1234567890123456789",
+                key="discord_server_input"
+            )
+            
+            if st.button("💾 Enregistrer ID serveur", key="save_discord_server", type="primary"):
+                set_param("DISCORD_SERVER_ID", discord_server_id)
+                st.success("✅ ID serveur enregistré!")
+            
+            # Aperçu du widget
+            st.markdown("**Aperçu:**")
+            st.markdown(f"""
+            <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
+                    width="100%" height="200" allowtransparency="true" frameborder="0" 
+                    sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                    style="border-radius:8px;">
+            </iframe>
+            """, unsafe_allow_html=True)
         
         st.markdown("---")
         st.markdown("""
         **📋 Notifications envoyées automatiquement:**
-        - 🆕 Nouveau ticket créé
-        - 🔄 Changement de statut
-        - ✅ Client a accepté/refusé le devis
-        - 🎉 Réparation terminée
-        - 🟢 Connexion d'un membre de l'équipe
-        - 🔴 Déconnexion
+        🆕 Nouveau ticket | 🔄 Changement statut | ✅ Accord client | 🎉 Réparation terminée | 🟢🔴 Connexion/Déconnexion
         
-        **💡 Comment obtenir l'URL webhook:**
-        1. Dans Discord, clic droit sur un channel → Modifier le channel
-        2. Intégrations → Webhooks → Nouveau webhook
-        3. Copier l'URL du webhook
+        **💡 Aide:**
+        - **Webhook**: Channel → Modifier → Intégrations → Webhooks → Nouveau → Copier URL
+        - **ID Serveur**: Paramètres serveur → Widget → Activer → Copier l'ID
         """)
 
 # =============================================================================
@@ -8832,7 +8454,7 @@ def ui_tech():
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     
     # Widget chat/notifications dans la sidebar
-    widget_chat_notifications()
+    widget_discord()
     
     col1, col2, col3, col4 = st.columns([5, 1.5, 1.5, 1.5])
     with col1:
