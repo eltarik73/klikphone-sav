@@ -3444,7 +3444,7 @@ def notif_deconnexion(utilisateur):
     envoyer_notification_discord("s'est déconnecté", "🔴")
 
 def widget_discord():
-    """Widget Discord fixe en bas à gauche"""
+    """Widget Discord fixe en bas à gauche via HTML"""
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     if not utilisateur:
         return
@@ -3452,97 +3452,83 @@ def widget_discord():
     # ID du serveur Discord
     discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
     
-    # Initialiser l'état du widget
-    if "discord_widget_open" not in st.session_state:
-        st.session_state.discord_widget_open = False
-    
-    # CSS pour le widget fixe en bas à gauche
-    st.markdown("""
+    # Injecter le widget Discord fixe en bas à gauche
+    st.markdown(f"""
     <style>
-    .discord-widget-fixed {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        z-index: 9999;
-    }
-    .discord-fab {
-        width: 56px;
-        height: 56px;
+    #discord-widget-container {{
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 20px !important;
+        z-index: 999999 !important;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }}
+    #discord-toggle-btn {{
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 20px !important;
+        z-index: 1000000 !important;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: #5865F2;
         color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
-        font-size: 24px;
-        border: none;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .discord-fab:hover {
+        box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
+        transition: transform 0.2s;
+    }}
+    #discord-toggle-btn:hover {{
         transform: scale(1.1);
-        box-shadow: 0 6px 20px rgba(88, 101, 242, 0.5);
-    }
-    .discord-panel {
-        position: fixed;
-        bottom: 90px;
-        left: 20px;
-        width: 300px;
-        background: #2f3136;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        z-index: 9998;
-        overflow: hidden;
-    }
-    .discord-header {
-        background: #5865F2;
+    }}
+    #discord-widget-container.hidden {{
+        display: none !important;
+    }}
+    #discord-close-btn {{
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
         color: white;
-        padding: 12px 16px;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        z-index: 10;
+    }}
     </style>
+    
+    <div id="discord-widget-container" class="hidden">
+        <button id="discord-close-btn" onclick="toggleDiscord()">✕</button>
+        <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
+                width="300" height="400" allowtransparency="true" frameborder="0" 
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
+        </iframe>
+    </div>
+    
+    <button id="discord-toggle-btn" onclick="toggleDiscord()">💬</button>
+    
+    <script>
+    function toggleDiscord() {{
+        var widget = document.getElementById('discord-widget-container');
+        var btn = document.getElementById('discord-toggle-btn');
+        if (widget.classList.contains('hidden')) {{
+            widget.classList.remove('hidden');
+            btn.style.display = 'none';
+        }} else {{
+            widget.classList.add('hidden');
+            btn.style.display = 'flex';
+        }}
+    }}
+    </script>
     """, unsafe_allow_html=True)
-    
-    # Afficher le panneau si ouvert
-    if st.session_state.discord_widget_open:
-        st.markdown(f"""
-        <div class="discord-panel">
-            <div class="discord-header">
-                <span>💬 Chat Klikphone</span>
-            </div>
-            <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
-                    width="300" height="350" allowtransparency="true" frameborder="0" 
-                    sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
-            </iframe>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Bouton fixe Discord en bas à gauche (dans la sidebar pour Streamlit)
-    with st.sidebar:
-        st.markdown("---")
-        st.markdown("### 💬 Discord")
-        
-        if st.session_state.discord_widget_open:
-            if st.button("✕ Fermer le chat", key="close_discord", use_container_width=True):
-                st.session_state.discord_widget_open = False
-                st.rerun()
-        else:
-            if st.button("💬 Ouvrir le chat", key="open_discord", use_container_width=True, type="primary"):
-                st.session_state.discord_widget_open = True
-                st.rerun()
-        
-        # Lien direct vers Discord
-        st.markdown(f"""
-        <a href="https://discord.com/channels/{discord_server_id}" target="_blank" 
-           style="display:block;text-align:center;padding:8px;background:#5865F2;color:white;
-                  border-radius:8px;text-decoration:none;font-weight:500;margin-top:8px;">
-            🚀 Ouvrir Discord
-        </a>
-        """, unsafe_allow_html=True)
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
