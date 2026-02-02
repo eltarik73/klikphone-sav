@@ -2547,15 +2547,24 @@ def _get_pg_connection():
 
 
 def _pg_connect():
-    """Récupère la connexion Postgres persistante."""
+    """Récupère la connexion Postgres persistante avec throttle du ping."""
+    import time
     conn = _get_pg_connection()
-    # Vérifier si la connexion est encore valide
-    try:
-        conn.cursor().execute("SELECT 1")
-    except:
-        # Connexion fermée, on clear le cache et on réessaie
-        _get_pg_connection.clear()
-        conn = _get_pg_connection()
+    
+    # Throttle du SELECT 1 : seulement toutes les 60 secondes
+    last_ping = st.session_state.get("_pg_last_ping", 0)
+    now = time.time()
+    
+    if now - last_ping > 60:
+        try:
+            conn.cursor().execute("SELECT 1")
+            st.session_state["_pg_last_ping"] = now
+        except:
+            # Connexion fermée, on clear le cache et on réessaie
+            _get_pg_connection.clear()
+            conn = _get_pg_connection()
+            st.session_state["_pg_last_ping"] = now
+    
     return conn
 
 
@@ -2795,6 +2804,24 @@ def init_db():
             except:
                 pass
     
+    # === INDEX POUR PERFORMANCE ===
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_tickets_statut ON tickets(statut)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_date ON tickets(date_depot)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_code ON tickets(ticket_code)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_client ON tickets(client_id)",
+        "CREATE INDEX IF NOT EXISTS idx_clients_tel ON clients(telephone)",
+    ]
+    for sql in indexes:
+        try:
+            c.execute(sql)
+            conn.commit()
+        except:
+            try:
+                conn.rollback()
+            except:
+                pass
+    
     # Initialiser les membres équipe par défaut
     c.execute("SELECT COUNT(*) FROM membres_equipe")
     if c.fetchone()[0] == 0:
@@ -2994,7 +3021,7 @@ def check_client_exists(tel):
     conn.close()
     return dict(r) if r else None
 
-#@st.cache_data(ttl=5)  # DISABLED for performance
+@st.cache_data(ttl=3)
 def get_all_clients():
     """Récupère tous les clients - CACHED 30s"""
     conn = get_db()
@@ -3125,6 +3152,7 @@ def supprimer_ticket(ticket_id):
     # Invalider les caches
     try:
         clear_tickets_cache()
+        clear_kpi_cache()
         clear_commandes_cache()
         clear_ticket_full_cache()
     except:
@@ -3140,7 +3168,7 @@ def search_clients(query):
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
-#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 20 secondes pour les commandes
+@st.cache_data(ttl=3)  # Cache 20 secondes pour les commandes
 def _get_commandes_pieces_cached(ticket_id, statut):
     """Version cachée de get_commandes_pieces"""
     conn = get_db()
@@ -3281,6 +3309,7 @@ def creer_ticket(client_id, cat, marque, modele, modele_autre, panne, panne_deta
     conn.commit()
     conn.close()
     clear_tickets_cache()
+    clear_kpi_cache()
     
     # Notification Discord
     appareil = modele_autre if modele_autre else f"{marque} {modele}"
@@ -3298,7 +3327,7 @@ def get_ticket(tid=None, code=None):
     conn.close()
     return dict(r) if r else None
 
-#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 10 secondes pour ticket individuel
+@st.cache_data(ttl=3)  # Cache 10 secondes pour ticket individuel
 def _get_ticket_full_cached(tid, code):
     """Version cachée de get_ticket_full"""
     conn = get_db()
@@ -3344,6 +3373,7 @@ def update_ticket(tid, **kw):
     conn.close()
     # Invalider les caches
     clear_tickets_cache()
+    clear_kpi_cache()
     clear_ticket_full_cache()
 
 def changer_statut(tid, statut):
@@ -3405,6 +3435,7 @@ def changer_statut(tid, statut):
     conn.close()
     # Invalider les caches
     clear_tickets_cache()
+    clear_kpi_cache()
     clear_ticket_full_cache()
     
     # Notification Discord pour changement de statut
@@ -3441,7 +3472,7 @@ def ajouter_historique(tid, texte):
             pass
     conn.close()
 
-#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 15 secondes pour les tickets
+@st.cache_data(ttl=3)  # Cache 15 secondes pour les tickets
 def _chercher_tickets_cached(statut, tel, code, nom):
     """Version cachée de chercher_tickets"""
     conn = get_db()
@@ -3487,6 +3518,37 @@ def clear_all_caches():
         pass
     try:
         _get_commandes_cached.clear()
+    except:
+        pass
+    try:
+        get_kpi_counts.clear()
+    except:
+        pass
+
+@st.cache_data(ttl=5)
+def get_kpi_counts():
+    """Compte les tickets par statut directement en SQL (rapide)"""
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("""
+            SELECT statut, COUNT(*) as n
+            FROM tickets
+            GROUP BY statut
+        """)
+        rows = c.fetchall()
+        conn.close()
+        
+        counts = {r["statut"]: int(r["n"]) for r in rows}
+        total = sum(counts.values())
+        return total, counts
+    except:
+        return 0, {}
+
+def clear_kpi_cache():
+    """Invalide le cache KPI"""
+    try:
+        get_kpi_counts.clear()
     except:
         pass
 
@@ -6016,13 +6078,15 @@ def ui_accueil():
             st.rerun()
     
     # === KPI CARDS CLIQUABLES ===
-    all_tickets = chercher_tickets()
+    # Utiliser SQL pour compter (rapide) au lieu de charger tous les tickets
+    nb_total, counts = get_kpi_counts()
+    nb_attente = counts.get("En attente de diagnostic", 0)
+    nb_encours = counts.get("En cours de réparation", 0)
+    nb_attente_piece = counts.get("En attente de pièce", 0)
+    nb_attente_accord = counts.get("En attente d'accord client", 0)
+    
+    # Compter les commandes en attente (séparément)
     commandes_attente = get_commandes_pieces(statut="A commander")
-    nb_total = len(all_tickets)
-    nb_attente = len([t for t in all_tickets if t.get('statut') == "En attente de diagnostic"])
-    nb_encours = len([t for t in all_tickets if t.get('statut') == "En cours de réparation"])
-    nb_attente_piece = len([t for t in all_tickets if t.get('statut') == "En attente de pièce"])
-    nb_attente_accord = len([t for t in all_tickets if t.get('statut') == "En attente d'accord client"])
     nb_commandes = len(commandes_attente)
     
     # Filtre actif
@@ -6100,25 +6164,44 @@ def staff_liste_demandes():
             st.session_state.filtre_kpi = None
             st.rerun()
     
-    # === FILTER BAR ===
-    col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
-    with col1:
-        # Si filtre KPI actif, pré-sélectionner le statut
-        default_idx = 0
-        if filtre_kpi and filtre_kpi in STATUTS:
-            default_idx = STATUTS.index(filtre_kpi) + 1
-        f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, index=default_idx, key="f_statut", label_visibility="collapsed")
-    with col2:
-        f_code = st.text_input("N° Ticket", key="f_code", placeholder="🔍 KP-...", label_visibility="collapsed")
-    with col3:
-        f_tel = st.text_input("Téléphone", key="f_tel", placeholder="📞 06...", label_visibility="collapsed")
-    with col4:
-        f_nom = st.text_input("Nom", key="f_nom", placeholder="👤 Nom client", label_visibility="collapsed")
-    with col5:
-        # Filtre par technicien
-        membres = get_membres_equipe()
-        tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
-        f_tech = st.selectbox("Tech", tech_options, key="f_tech", label_visibility="collapsed")
+    # === FILTER BAR avec st.form (évite rerun à chaque frappe) ===
+    # Initialiser les filtres dans session_state si pas présents
+    if "_filters" not in st.session_state:
+        st.session_state._filters = {"statut": "Tous", "code": "", "tel": "", "nom": "", "tech": "👥 Tous"}
+    
+    filters = st.session_state._filters
+    
+    with st.form("filter_form", clear_on_submit=False):
+        col1, col2, col3, col4, col5, col6 = st.columns([2, 1.5, 1.5, 1.5, 1.5, 1])
+        with col1:
+            # Si filtre KPI actif, pré-sélectionner le statut
+            default_idx = 0
+            if filtre_kpi and filtre_kpi in STATUTS:
+                default_idx = STATUTS.index(filtre_kpi) + 1
+            elif filters["statut"] != "Tous" and filters["statut"] in STATUTS:
+                default_idx = STATUTS.index(filters["statut"]) + 1
+            f_statut = st.selectbox("Statut", ["Tous"] + STATUTS, index=default_idx, label_visibility="collapsed")
+        with col2:
+            f_code = st.text_input("N° Ticket", value=filters.get("code", ""), placeholder="🔍 KP-...", label_visibility="collapsed")
+        with col3:
+            f_tel = st.text_input("Téléphone", value=filters.get("tel", ""), placeholder="📞 06...", label_visibility="collapsed")
+        with col4:
+            f_nom = st.text_input("Nom", value=filters.get("nom", ""), placeholder="👤 Nom client", label_visibility="collapsed")
+        with col5:
+            # Filtre par technicien
+            membres = get_membres_equipe()
+            tech_options = ["👥 Tous"] + [m['nom'] for m in membres]
+            tech_idx = 0
+            if filters.get("tech") in tech_options:
+                tech_idx = tech_options.index(filters["tech"])
+            f_tech = st.selectbox("Tech", tech_options, index=tech_idx, label_visibility="collapsed")
+        with col6:
+            submitted = st.form_submit_button("🔍", use_container_width=True)
+    
+    # Mettre à jour les filtres si formulaire soumis
+    if submitted:
+        st.session_state._filters = {"statut": f_statut, "code": f_code, "tel": f_tel, "nom": f_nom, "tech": f_tech}
+        filters = st.session_state._filters
     
     # 1. Récupérer TOUS les tickets (sans filtre statut)
     all_tickets = chercher_tickets()
@@ -6787,6 +6870,7 @@ def staff_traiter_demande(tid):
                 if st.button("↩️", key=f"btn_unpaye_{tid}", help="Annuler le paiement"):
                     update_ticket(tid, paye=0)
                     clear_tickets_cache()
+                    clear_kpi_cache()
                     clear_ticket_full_cache()
                     st.rerun()
         else:
@@ -6796,6 +6880,7 @@ def staff_traiter_demande(tid):
                 update_ticket(tid, paye=1, acompte=total_ttc)
                 # Forcer l'invalidation du cache
                 clear_tickets_cache()
+                clear_kpi_cache()
                 clear_ticket_full_cache()
                 st.rerun()
         
