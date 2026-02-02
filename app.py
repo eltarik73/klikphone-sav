@@ -6448,10 +6448,10 @@ def staff_liste_demandes():
             # Combiner marque + modèle pour affichage clair
             appareil_full = f"{marque} {modele}".strip()
             
-            # Ajouter type_ecran si présent (en bleu)
+            # Ajouter type_ecran/précision si présent (en bleu, bien visible)
             type_ecran_badge = ""
-            if type_ecran:
-                type_ecran_badge = f'<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:9px;margin-left:4px;">{type_ecran}</span>'
+            if type_ecran and type_ecran.strip():
+                type_ecran_badge = f'<div style="background:#3b82f6;color:white;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;margin-top:2px;display:inline-block;">{type_ecran}</div>'
             
             if len(appareil_full) > 22:
                 appareil_display = appareil_full[:20] + "..."
@@ -6532,8 +6532,9 @@ def staff_liste_demandes():
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="width:28px;height:28px;border-radius:6px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{device_icon}</div>
                     <div style="min-width:0;overflow:hidden;">
-                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}{type_ecran_badge}</div>
+                        <div style="font-size:12px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{appareil_full}">{appareil_display}</div>
                         <div style="font-size:10px;color:#737373;">{categorie}</div>
+                        {type_ecran_badge}
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -6824,10 +6825,12 @@ def staff_traiter_demande(tid):
         with col_te2:
             st.markdown('<div style="height:28px;"></div>', unsafe_allow_html=True)
             if st.button("OK", key=f"save_type_ecran_{tid}", type="primary", use_container_width=True):
-                if new_type_ecran != type_ecran_actuel:
-                    update_ticket(tid, type_ecran=new_type_ecran)
-                    st.success("✓")
-                    st.rerun()
+                # Toujours sauvegarder au clic sur OK
+                update_ticket(tid, type_ecran=new_type_ecran)
+                clear_tickets_cache()
+                clear_kpi_cache()
+                st.success("✓ Sauvegardé")
+                st.rerun()
         
         # Technicien
         membres = get_membres_equipe()
@@ -9039,9 +9042,11 @@ def ui_tech():
             appareil_complet = f"{marque} {modele_nom}".strip()
             appareil_display = appareil_complet[:22] + "..." if len(appareil_complet) > 24 else appareil_complet
             
-            # Type d'écran pour affichage
+            # Type d'écran/précision pour affichage
             type_ecran = t.get('type_ecran', '')
-            type_ecran_badge = f'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:3px;font-size:9px;margin-left:4px;">{type_ecran}</span>' if type_ecran else ''
+            type_ecran_badge = ""
+            if type_ecran and type_ecran.strip():
+                type_ecran_badge = f'<span style="background:#3b82f6;color:white;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;margin-left:6px;">{type_ecran}</span>'
             
             categorie = t.get('categorie', 'Smartphone')
             device_icons = {"Smartphone": "📱", "Tablette": "📟", "PC Portable": "💻", "Console": "🎮", "Commande": "📦"}
@@ -9062,7 +9067,7 @@ def ui_tech():
                 client_nom = f"{t.get('client_nom','')} {t.get('client_prenom','')}".strip()[:16]
                 st.markdown(f'<div style="font-size:12px;color:#374151;">{client_nom}</div>', unsafe_allow_html=True)
             with row_cols[2]:
-                st.markdown(f'<div style="display:flex;align-items:center;gap:6px;"><span>{device_icon}</span><span style="font-size:12px;" title="{appareil_complet}">{appareil_display}</span>{type_ecran_badge}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span>{device_icon}</span><span style="font-size:12px;" title="{appareil_complet}">{appareil_display}</span>{type_ecran_badge}</div>', unsafe_allow_html=True)
             with row_cols[3]:
                 if tech_display != "—":
                     st.markdown(f'<span style="background:{tech_color};color:white;padding:3px 8px;border-radius:12px;font-size:10px;">{tech_display}</span>', unsafe_allow_html=True)
