@@ -9127,28 +9127,12 @@ def tech_detail_ticket(tid):
     camby_badge = '<span style="background:#8b5cf6;color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;">CAMBY</span>' if t.get('client_carte_camby') else ""
     
     # Type d'écran / Précision
-    type_ecran = t.get('type_ecran', '')
+    type_ecran = (t.get('type_ecran') or '').strip()
     panne_base = t.get('panne', '')
-    if panne_base == "Écran casse":
-        precision_label = "Type écran"
-    else:
-        precision_label = "Précision"
+    precision_label = "Type écran" if panne_base == "Écran casse" else "Précision"
     
-    # Badge pour type_ecran si présent
-    type_ecran_html = ""
-    if type_ecran and type_ecran.strip():
-        type_ecran_html = f"""
-            <div>
-                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div>
-                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;color:white;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div>
-            </div>
-        """
-    
-    # Grid columns: 3 si pas de type_ecran, 4 si type_ecran présent
-    grid_cols = "repeat(4,1fr)" if type_ecran_html else "repeat(3,1fr)"
-    
-    st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:16px;padding:24px;margin-bottom:20px;color:white;">
+    # Construire le header HTML
+    header_html = f'''<div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:16px;padding:24px;margin-bottom:20px;color:white;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
             <div>
                 <div style="font-size:2rem;font-weight:800;letter-spacing:-0.02em;">🎫 {t['ticket_code']}</div>
@@ -9156,23 +9140,31 @@ def tech_detail_ticket(tid):
             </div>
             <span class="badge {status_class}" style="font-size:0.95rem;padding:10px 18px;">{statut_actuel}</span>
         </div>
-        <div style="display:grid;grid-template-columns:{grid_cols};gap:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);">
-            <div>
+        <div style="display:flex;flex-wrap:wrap;gap:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);">
+            <div style="flex:1;min-width:120px;">
                 <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Appareil</div>
                 <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📱 {modele_txt}</div>
             </div>
-            <div>
+            <div style="flex:1;min-width:120px;">
                 <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Réparation</div>
                 <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">🔧 {panne}</div>
-            </div>
-            {type_ecran_html}
-            <div>
+            </div>'''
+    
+    # Ajouter type_ecran si présent
+    if type_ecran:
+        header_html += f'''<div style="flex:1;min-width:120px;">
+                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div>
+                <div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div>
+            </div>'''
+    
+    header_html += f'''<div style="flex:1;min-width:120px;">
                 <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Téléphone</div>
                 <div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📞 {t.get('client_tel','N/A')}</div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>'''
+    
+    st.markdown(header_html, unsafe_allow_html=True)
     
     # === WORKFLOW VISUEL ===
     # Déterminer l'étape actuelle
