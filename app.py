@@ -3596,8 +3596,24 @@ def generer_message(template_key, ticket, client):
     if not appareil:
         appareil = ticket.get('categorie', 'Appareil')
     
-    # Prix
-    prix = ticket.get('prix_estime') or ticket.get('prix_final') or ticket.get('prix_supp') or 0
+    # Prix - utiliser les bons noms de colonnes
+    devis = ticket.get('devis') or 0
+    prix_supp = ticket.get('prix_supp') or 0
+    tarif_final = ticket.get('tarif_final') or 0
+    
+    # Priorité: tarif_final > devis + prix_supp > devis
+    if tarif_final:
+        prix = tarif_final
+    elif devis or prix_supp:
+        prix = float(devis or 0) + float(prix_supp or 0)
+    else:
+        prix = 0
+    
+    # Formater le prix
+    if prix:
+        prix_str = f"{float(prix):.2f}".replace('.00', '')
+    else:
+        prix_str = "À définir"
     
     # Réparation
     reparation = ticket.get('panne', '') or ticket.get('panne_detail', '')
@@ -3611,7 +3627,7 @@ def generer_message(template_key, ticket, client):
         appareil=appareil,
         panne=ticket.get('panne', '') or ticket.get('panne_detail', 'À diagnostiquer'),
         reparation=reparation,
-        prix=prix,
+        prix=prix_str,
         ticket_code=ticket.get('ticket_code', '')
     )
     
