@@ -2715,7 +2715,8 @@ def init_db():
         "SMTP_FROM": "",
         "SMTP_FROM_NAME": "Klikphone",
         "DISCORD_WEBHOOK": "https://discord.com/api/webhooks/1467818235994046519/73YIHJz3Wm-bSQ5-SDZhktGk3HQ6G6LJ-txeCePhbC_OWpT8dcYhjoeSYmnfiMoTKr8y",
-        "DISCORD_SERVER_ID": "1467817646216056964"
+        "DISCORD_SERVER_ID": "1467817646216056964",
+        "DISCORD_INVITE": "https://discord.gg/cH92yENyNc"
     }
     for k, v in params.items():
         c.execute("INSERT OR IGNORE INTO params (cle, valeur) VALUES (?, ?)", (k, v))
@@ -3449,37 +3450,32 @@ def widget_discord():
     if not utilisateur:
         return
     
-    # ID du serveur Discord
-    discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
+    # Lien d'invitation Discord
+    discord_invite = get_param("DISCORD_INVITE") or "https://discord.gg/cH92yENyNc"
     
     # Séparateur
     st.markdown("---")
     
     # Afficher le widget Discord dans un expander
-    with st.expander("💬 **Chat équipe Discord** - Cliquez pour ouvrir", expanded=False):
+    with st.expander("💬 Chat équipe Discord", expanded=False):
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.components.v1.html(f"""
-                <iframe src="https://discord.com/widget?id={discord_server_id}&theme=dark" 
-                        width="100%" height="400" frameborder="0"
-                        style="border-radius:12px;"
+            # Code iframe exact de Discord
+            st.components.v1.html("""
+                <iframe src="https://discord.com/widget?id=1467817646216056964&theme=dark" 
+                        width="350" height="500" allowtransparency="true" frameborder="0" 
                         sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
                 </iframe>
-            """, height=410)
+            """, height=510)
         with col2:
             st.markdown("""
-            **💡 Aide**
+            **Aide**
             
-            - Cliquez sur **Rejoindre** pour accéder au chat
-            - Installez l'app Discord sur votre téléphone pour les notifications
+            Cliquez sur **Rejoindre** dans le widget pour accéder au chat Discord
+            
+            Installez l'app Discord sur votre téléphone pour recevoir les notifications
             """)
-            st.markdown(f"""
-            <a href="https://discord.com/channels/{discord_server_id}" target="_blank" 
-               style="display:block;text-align:center;padding:12px;background:#5865F2;color:white;
-                      border-radius:8px;text-decoration:none;font-weight:600;">
-                🚀 Ouvrir Discord
-            </a>
-            """, unsafe_allow_html=True)
+            st.link_button("🚀 Rejoindre Discord", discord_invite, use_container_width=True)
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -8438,9 +8434,17 @@ def staff_config():
                 key="discord_server_input"
             )
             
-            if st.button("💾 Enregistrer ID serveur", key="save_discord_server", type="primary"):
+            discord_invite = st.text_input(
+                "Lien d'invitation", 
+                value=get_param("DISCORD_INVITE") or "https://discord.gg/cH92yENyNc",
+                placeholder="https://discord.gg/xxxxx",
+                key="discord_invite_input"
+            )
+            
+            if st.button("💾 Enregistrer", key="save_discord_server", type="primary"):
                 set_param("DISCORD_SERVER_ID", discord_server_id)
-                st.success("✅ ID serveur enregistré!")
+                set_param("DISCORD_INVITE", discord_invite)
+                st.success("✅ Configuration enregistrée!")
             
             # Aperçu du widget
             st.markdown("**Aperçu:**")
