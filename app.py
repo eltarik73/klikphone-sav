@@ -3569,111 +3569,298 @@ def notif_deconnexion(utilisateur):
     ajouter_notification_app("deconnexion", utilisateur, "Déconnexion", None)
 
 def widget_chat_notifications():
-    """Widget de chat et notifications dans la sidebar"""
+    """Widget de chat et notifications flottant en bas à droite"""
     utilisateur = st.session_state.get("utilisateur_connecte", "")
     if not utilisateur:
         return
     
-    with st.sidebar:
-        st.markdown(f"### 💬 Communication")
+    # Initialiser l'état du widget
+    if "chat_widget_open" not in st.session_state:
+        st.session_state.chat_widget_open = False
+    if "chat_widget_tab" not in st.session_state:
+        st.session_state.chat_widget_tab = "chat"
+    
+    # Compteur notifications non lues
+    nb_non_lues = get_notifications_non_lues()
+    
+    # CSS pour le widget flottant
+    st.markdown("""
+    <style>
+    .chat-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+        z-index: 9999;
+        border: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .chat-fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 25px rgba(249, 115, 22, 0.5);
+    }
+    .chat-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #ef4444;
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        min-width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .chat-widget-container {
+        position: fixed;
+        bottom: 100px;
+        right: 24px;
+        width: 350px;
+        max-height: 500px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        z-index: 9998;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    .chat-widget-header {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        padding: 12px 16px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .chat-widget-tabs {
+        display: flex;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .chat-widget-tab {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        color: #64748b;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .chat-widget-tab:hover {
+        background: #f8fafc;
+    }
+    .chat-widget-tab.active {
+        color: #f97316;
+        border-bottom-color: #f97316;
+    }
+    .chat-widget-body {
+        padding: 12px;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    .chat-msg {
+        padding: 8px 12px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+    .chat-msg-me {
+        background: #f0fdf4;
+        border-left: 3px solid #22c55e;
+    }
+    .chat-msg-other {
+        background: #f8fafc;
+        border-left: 3px solid #94a3b8;
+    }
+    .chat-msg-author {
+        font-size: 10px;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    .notif-item {
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        border-left: 3px solid #f97316;
+    }
+    .notif-unread {
+        background: #fff7ed;
+    }
+    .notif-read {
+        background: #f8fafc;
+    }
+    .notif-date {
+        font-size: 10px;
+        color: #94a3b8;
+    }
+    .notif-text {
+        font-size: 12px;
+        color: #1e293b;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Bouton flottant pour ouvrir/fermer
+    badge_html = f'<span class="chat-badge">{nb_non_lues}</span>' if nb_non_lues > 0 else ''
+    
+    # Utiliser des colonnes invisibles en bas pour placer le contenu
+    if st.session_state.chat_widget_open:
+        # Le widget est ouvert - afficher le contenu dans un expander en bas
+        st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
         
-        # Compteur notifications non lues
-        nb_non_lues = get_notifications_non_lues()
-        
-        tab_notif, tab_chat = st.tabs([f"🔔 Notifs ({nb_non_lues})", "💬 Chat"])
-        
-        with tab_notif:
-            # Marquer comme lues quand on ouvre
-            if nb_non_lues > 0:
-                if st.button("✓ Tout marquer comme lu", key="mark_read", use_container_width=True):
-                    marquer_notifications_lues()
-                    st.rerun()
+        with st.container():
+            st.markdown("""
+            <div style="background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:12px 16px;
+                        border-radius:16px 16px 0 0;font-weight:600;display:flex;justify-content:space-between;">
+                <span>💬 Communication équipe</span>
+                <span style="font-size:12px;">👤 """ + utilisateur + """</span>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Afficher les notifications
-            notifications = get_notifications_app(limit=20)
-            if notifications:
-                for n in notifications:
-                    date_str = n.get('date_creation', '')[:16].replace('T', ' ')
-                    try:
-                        dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
-                        date_affiche = dt.strftime("%d/%m %H:%M")
-                    except:
-                        date_affiche = date_str[-5:]
-                    
-                    # Icône selon le type
-                    type_notif = n.get('type', '')
-                    icons = {
-                        'nouveau_ticket': '🆕',
-                        'statut': '🔄',
-                        'accord': '✅',
-                        'refus': '❌',
-                        'termine': '🎉',
-                        'connexion': '🟢',
-                        'deconnexion': '🔴'
-                    }
-                    icon = icons.get(type_notif, '📢')
-                    
-                    # Style non lu
-                    bg_color = "#fff7ed" if n.get('lu') == 0 else "#f8fafc"
-                    
-                    st.markdown(f"""
-                    <div style="background:{bg_color};padding:8px;border-radius:8px;margin-bottom:6px;border-left:3px solid #f97316;">
-                        <div style="font-size:10px;color:#94a3b8;">{date_affiche} • {n.get('auteur', '')}</div>
-                        <div style="font-size:12px;color:#1e293b;">{icon} {n.get('message', '')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Aucune notification")
-        
-        with tab_chat:
-            # Zone de saisie du message
-            col_msg, col_btn = st.columns([4, 1])
-            with col_msg:
-                nouveau_msg = st.text_input("Message", key="chat_input", placeholder="Votre message...", label_visibility="collapsed")
-            with col_btn:
-                if st.button("📤", key="send_chat", use_container_width=True):
-                    if nouveau_msg and nouveau_msg.strip():
-                        envoyer_message_equipe(utilisateur, nouveau_msg.strip())
+            tab_chat, tab_notif = st.tabs(["💬 Chat", f"🔔 Notifications ({nb_non_lues})"])
+            
+            with tab_chat:
+                # Zone de saisie du message
+                col_msg, col_btn = st.columns([5, 1])
+                with col_msg:
+                    nouveau_msg = st.text_input("Message", key="chat_input", placeholder="Votre message...", label_visibility="collapsed")
+                with col_btn:
+                    if st.button("📤", key="send_chat", use_container_width=True):
+                        if nouveau_msg and nouveau_msg.strip():
+                            envoyer_message_equipe(utilisateur, nouveau_msg.strip())
+                            st.rerun()
+                
+                # Afficher les messages
+                messages = get_messages_equipe(limit=20)
+                
+                # Container avec scroll
+                chat_html = '<div style="max-height:250px;overflow-y:auto;padding:8px 0;">'
+                
+                if messages:
+                    for m in messages:
+                        date_str = m.get('date_creation', '')
+                        try:
+                            dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
+                            date_affiche = dt.strftime("%H:%M")
+                        except:
+                            date_affiche = ""
+                        
+                        auteur = m.get('auteur', '')
+                        is_me = auteur == utilisateur
+                        
+                        # Trouver la couleur du membre
+                        couleur = "#64748b"
+                        try:
+                            membres = get_membres_equipe()
+                            for membre in membres:
+                                if membre['nom'] == auteur:
+                                    couleur = membre.get('couleur', '#64748b')
+                                    break
+                        except:
+                            pass
+                        
+                        bg = '#f0fdf4' if is_me else '#f8fafc'
+                        chat_html += f'''
+                        <div style="padding:8px 12px;border-radius:10px;margin-bottom:6px;background:{bg};border-left:3px solid {couleur};">
+                            <div style="font-size:10px;color:{couleur};font-weight:600;">{auteur} • {date_affiche}</div>
+                            <div style="font-size:13px;color:#1e293b;">{m.get('message', '')}</div>
+                        </div>
+                        '''
+                else:
+                    chat_html += '<div style="text-align:center;color:#94a3b8;padding:20px;">Aucun message</div>'
+                
+                chat_html += '</div>'
+                st.markdown(chat_html, unsafe_allow_html=True)
+            
+            with tab_notif:
+                # Marquer comme lues
+                if nb_non_lues > 0:
+                    if st.button("✓ Tout marquer comme lu", key="mark_read", use_container_width=True):
+                        marquer_notifications_lues()
                         st.rerun()
+                
+                # Afficher les notifications
+                notifications = get_notifications_app(limit=15)
+                
+                notif_html = '<div style="max-height:280px;overflow-y:auto;">'
+                
+                if notifications:
+                    for n in notifications:
+                        date_str = n.get('date_creation', '')[:16]
+                        try:
+                            dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+                            date_affiche = dt.strftime("%d/%m %H:%M")
+                        except:
+                            date_affiche = date_str[-5:]
+                        
+                        type_notif = n.get('type', '')
+                        icons = {
+                            'nouveau_ticket': '🆕',
+                            'statut': '🔄',
+                            'accord': '✅',
+                            'refus': '❌',
+                            'termine': '🎉',
+                            'connexion': '🟢',
+                            'deconnexion': '🔴'
+                        }
+                        icon = icons.get(type_notif, '📢')
+                        bg_color = "#fff7ed" if n.get('lu') == 0 else "#f8fafc"
+                        
+                        notif_html += f'''
+                        <div style="background:{bg_color};padding:8px 12px;border-radius:8px;margin-bottom:6px;border-left:3px solid #f97316;">
+                            <div style="font-size:10px;color:#94a3b8;">{date_affiche} • {n.get('auteur', '')}</div>
+                            <div style="font-size:12px;color:#1e293b;">{icon} {n.get('message', '')}</div>
+                        </div>
+                        '''
+                else:
+                    notif_html += '<div style="text-align:center;color:#94a3b8;padding:20px;">Aucune notification</div>'
+                
+                notif_html += '</div>'
+                st.markdown(notif_html, unsafe_allow_html=True)
             
-            st.markdown("---")
-            
-            # Afficher les messages
-            messages = get_messages_equipe(limit=30)
-            if messages:
-                for m in messages:
-                    date_str = m.get('date_creation', '')
-                    try:
-                        dt = datetime.strptime(date_str[:16], "%Y-%m-%d %H:%M")
-                        date_affiche = dt.strftime("%H:%M")
-                    except:
-                        date_affiche = date_str[-5:]
-                    
-                    auteur = m.get('auteur', '')
-                    is_me = auteur == utilisateur
-                    
-                    # Trouver la couleur du membre
-                    couleur = "#64748b"
-                    membres = get_membres_equipe()
-                    for membre in membres:
-                        if membre['nom'] == auteur:
-                            couleur = membre.get('couleur', '#64748b')
-                            break
-                    
-                    st.markdown(f"""
-                    <div style="padding:6px 10px;border-radius:10px;margin-bottom:4px;
-                                background:{'#f0fdf4' if is_me else '#f8fafc'};
-                                border-left:3px solid {couleur};">
-                        <div style="font-size:10px;color:{couleur};font-weight:600;">{auteur} • {date_affiche}</div>
-                        <div style="font-size:13px;color:#1e293b;">{m.get('message', '')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Aucun message")
-            
-            # Bouton rafraîchir
-            if st.button("🔄 Rafraîchir", key="refresh_chat", use_container_width=True):
-                st.rerun()
+            # Bouton fermer
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("✕ Fermer", key="close_chat_widget", use_container_width=True):
+                    st.session_state.chat_widget_open = False
+                    st.rerun()
+    
+    # Bouton flottant toujours visible en bas à droite
+    fab_icon = "✕" if st.session_state.chat_widget_open else "💬"
+    st.markdown(f"""
+    <div style="position:fixed;bottom:24px;right:24px;z-index:9999;">
+        <div onclick="window.parent.postMessage({{type:'streamlit:setComponentValue',value:true}},'*')" 
+             style="width:60px;height:60px;border-radius:50%;
+                    background:linear-gradient(135deg,#f97316,#ea580c);
+                    color:white;font-size:24px;display:flex;align-items:center;justify-content:center;
+                    cursor:pointer;box-shadow:0 4px 20px rgba(249,115,22,0.4);position:relative;">
+            {fab_icon}
+            {badge_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Bouton Streamlit caché pour toggle (car onclick JS ne fonctionne pas bien)
+    col_spacer, col_toggle = st.columns([10, 1])
+    with col_toggle:
+        if st.button("💬" if not st.session_state.chat_widget_open else "✕", key="toggle_chat_fab", help="Ouvrir/Fermer le chat"):
+            st.session_state.chat_widget_open = not st.session_state.chat_widget_open
+            st.rerun()
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -5996,7 +6183,7 @@ def ui_accueil():
             st.rerun()
 
 # === TABS ===
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "📄 Attestation", "⚙️ Config"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📋 Demandes", "➕ Nouvelle", "👥 Clients", "📦 Commandes", "💬 Équipe", "📄 Attestation", "⚙️ Config"])
     
     with tab1:
         staff_liste_demandes()
@@ -6007,8 +6194,10 @@ def ui_accueil():
     with tab4:
         staff_commandes_pieces()
     with tab5:
-        staff_attestation()
+        staff_chat_equipe()
     with tab6:
+        staff_attestation()
+    with tab7:
         staff_config()
     
     # Footer
