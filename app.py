@@ -2881,7 +2881,7 @@ def check_client_exists(tel):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=5)
+#@st.cache_data(ttl=5)  # DISABLED for performance
 def get_all_clients():
     """Récupère tous les clients - CACHED 30s"""
     conn = get_db()
@@ -3027,7 +3027,7 @@ def search_clients(query):
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
-@st.cache_data(ttl=5)  # Cache 20 secondes pour les commandes
+#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 20 secondes pour les commandes
 def _get_commandes_pieces_cached(ticket_id, statut):
     """Version cachée de get_commandes_pieces"""
     conn = get_db()
@@ -3185,7 +3185,7 @@ def get_ticket(tid=None, code=None):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=5)  # Cache 10 secondes pour ticket individuel
+#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 10 secondes pour ticket individuel
 def _get_ticket_full_cached(tid, code):
     """Version cachée de get_ticket_full"""
     conn = get_db()
@@ -3328,7 +3328,7 @@ def ajouter_historique(tid, texte):
             pass
     conn.close()
 
-@st.cache_data(ttl=5)  # Cache 15 secondes pour les tickets
+#@st.cache_data(ttl=5)  # DISABLED for performance  # Cache 15 secondes pour les tickets
 def _chercher_tickets_cached(statut, tel, code, nom):
     """Version cachée de chercher_tickets"""
     conn = get_db()
@@ -3406,7 +3406,7 @@ def fmt_prix(p):
     return f"{p:.2f} €" if p else "N/A"
 
 def envoyer_notification_discord(message, emoji="📢"):
-    """Envoie une notification vers Discord via webhook"""
+    """Envoie une notification vers Discord via webhook (non bloquant)"""
     try:
         import requests
         webhook_url = get_param("DISCORD_WEBHOOK")
@@ -3423,7 +3423,7 @@ def envoyer_notification_discord(message, emoji="📢"):
         response = requests.post(
             webhook_url,
             json={"content": contenu},
-            timeout=5
+            timeout=2  # Timeout court pour ne pas bloquer
         )
         return response.status_code == 204
     except:
@@ -3455,47 +3455,6 @@ def notif_connexion(utilisateur, interface):
 def notif_deconnexion(utilisateur):
     """Notification de déconnexion - Discord uniquement"""
     envoyer_notification_discord("s'est déconnecté", "🔴")
-
-def widget_discord():
-    """Widget Discord en bas de page"""
-    utilisateur = st.session_state.get("utilisateur_connecte", "")
-    if not utilisateur:
-        return
-    
-    # Lien d'invitation Discord
-    discord_invite = get_param("DISCORD_INVITE") or "https://discord.gg/cH92yENyNc"
-    discord_server_id = get_param("DISCORD_SERVER_ID") or "1467817646216056964"
-    
-    # Séparateur
-    st.markdown("---")
-    
-    # Afficher le widget Discord dans un expander
-    with st.expander("💬 Chat équipe Discord", expanded=False):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            # Code iframe exact de Discord
-            st.components.v1.html("""
-                <iframe src="https://discord.com/widget?id=1467817646216056964&theme=dark" 
-                        width="350" height="500" allowtransparency="true" frameborder="0" 
-                        sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts">
-                </iframe>
-            """, height=510)
-        with col2:
-            st.markdown("""
-            **💡 Aide**
-            
-            Le widget affiche les membres en ligne.
-            
-            Pour discuter, ouvrez Discord :
-            """)
-            
-            # Bouton pour ouvrir Discord (membres existants)
-            st.link_button("💬 Ouvrir Discord", f"https://discord.com/channels/{discord_server_id}", use_container_width=True, type="primary")
-            
-            st.markdown("---")
-            st.caption("Inviter un collègue :")
-            # Bouton pour inviter (nouveaux membres)
-            st.link_button("📨 Lien d'invitation", discord_invite, use_container_width=True)
 
 def qr_url(data):
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={urllib.parse.quote(data)}"
@@ -5829,9 +5788,6 @@ def ui_accueil():
         staff_attestation()
     with tab6:
         staff_config()
-    
-    # Widget Discord en bas
-    widget_discord()
     
     # Footer
     st.markdown("""
@@ -8689,9 +8645,6 @@ def ui_tech():
     with tab_archives:
         st.info("💡 Cliquez sur un dossier archivé pour le rouvrir si nécessaire")
         afficher_liste_tickets_tech(tickets_archives, "archives")
-    
-    # Widget Discord en bas
-    widget_discord()
 
 def tech_detail_ticket(tid):
     t = get_ticket_full(tid=tid)
@@ -9492,9 +9445,8 @@ def ui_auth(mode):
             st.session_state.auth = True
             st.rerun()
         
-        # Liste des membres de l'équipe
-        membres = get_membres_equipe()
-        noms_membres = [m['nom'] for m in membres]
+        # Liste des membres (sans appel DB pour rapidité)
+        noms_membres = ["Marina", "Jonathan", "Tarik", "Oualid", "Agent accueil"]
         
         # Sélection de l'utilisateur
         st.markdown("**Qui êtes-vous ?**")
