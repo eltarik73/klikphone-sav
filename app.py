@@ -3101,9 +3101,16 @@ def delete_commande_piece(commande_id):
     clear_commandes_cache()
 
 # Fonctions membres équipe
-@st.cache_data(ttl=10)
 def get_membres_equipe():
     """Récupère tous les membres de l'équipe"""
+    # Liste par défaut
+    default_membres = [
+        {"id": 1, "nom": "Marina", "role": "Technicien", "couleur": "#EC4899"},
+        {"id": 2, "nom": "Jonathan", "role": "Technicien", "couleur": "#22C55E"},
+        {"id": 3, "nom": "Tarik", "role": "Manager", "couleur": "#8B5CF6"},
+        {"id": 4, "nom": "Oualid", "role": "Accueil", "couleur": "#3B82F6"},
+        {"id": 5, "nom": "Agent accueil", "role": "Accueil", "couleur": "#F97316"},
+    ]
     try:
         conn = get_db()
         c = conn.cursor()
@@ -3112,16 +3119,9 @@ def get_membres_equipe():
         conn.close()
         if membres:
             return membres
-    except Exception as e:
-        pass
-    # Liste par défaut si erreur ou vide
-    return [
-        {"id": 1, "nom": "Marina", "role": "Technicien", "couleur": "#EC4899"},
-        {"id": 2, "nom": "Jonathan", "role": "Technicien", "couleur": "#22C55E"},
-        {"id": 3, "nom": "Tarik", "role": "Manager", "couleur": "#8B5CF6"},
-        {"id": 4, "nom": "Oualid", "role": "Accueil", "couleur": "#3B82F6"},
-        {"id": 5, "nom": "Agent accueil", "role": "Accueil", "couleur": "#F97316"},
-    ]
+        return default_membres
+    except:
+        return default_membres
 
 def ajouter_membre_equipe(nom, role, couleur):
     """Ajoute un membre à l'équipe"""
