@@ -3483,6 +3483,16 @@ def changer_statut(tid, statut):
     clear_kpi_cache()
     clear_ticket_full_cache()
     
+    # Si le statut passe à "Pièce reçue", marquer aussi les commandes de pièces comme reçues
+    if statut == "Pièce reçue":
+        try:
+            commandes = get_commandes_pieces(ticket_id=tid, statut="Commandée")
+            for cmd in commandes:
+                update_commande_piece(cmd['id'], statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
+            clear_commandes_cache()
+        except:
+            pass
+    
     # Notification Discord pour changement de statut
     try:
         t = get_ticket(tid=tid)
@@ -4386,12 +4396,14 @@ def ticket_client_html(t, for_email=False):
     # HTML conditionnel
     type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
     rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
+    rep_supp_appareil_html = f'<div class="info-row" style="background:#f3e8ff;padding:2px 4px;border-radius:4px;"><span class="label" style="color:#7c3aed;">Rép. supp.</span><span class="value" style="color:#7c3aed;">{rep_supp}</span></div>' if rep_supp and prix_supp else ""
     comment_html = f'<div class="notes-box"><div class="notes-title">💬 Commentaire</div>{comment_public}</div>' if comment_public else ""
     
     # Version EMAIL (colorée)
     if for_email:
         type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">{precision_icon} {precision_label}: {type_ecran}</div>' if type_ecran else ""
         rep_supp_email = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
+        rep_supp_appareil_email = f'<div style="color:#7c3aed;margin-top:5px;">🔧 Rép. supp.: {rep_supp}</div>' if rep_supp and prix_supp else ""
         comment_section = f"""
         <div style="background:#fff7ed;border-radius:8px;padding:12px;margin:15px 0;">
             <div style="font-weight:600;color:#ea580c;font-size:12px;margin-bottom:5px;">💬 Commentaire</div>
@@ -4440,6 +4452,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <div style="font-weight:600;">{t.get('marque','')} {modele_txt}</div>
 <div style="color:#64748b;margin-top:5px;">Motif: {panne}</div>
 {type_ecran_email}
+{rep_supp_appareil_email}
 </div>
 <div class="tarif-box">
 <div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
@@ -4529,6 +4542,7 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
             <span class="value">{panne}</span>
         </div>
         {type_ecran_html}
+        {rep_supp_appareil_html}
         <div class="info-row">
             <span class="label">Date dépôt</span>
             <span class="value">{fmt_date(t.get('date_depot',''))}</span>
@@ -4587,6 +4601,9 @@ def ticket_staff_html(t):
     
     # Précision dans section appareil
     type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
+    
+    # Réparation supplémentaire dans section appareil
+    rep_supp_info_html = f'<div class="info-row" style="background:#f3e8ff;padding:2px 4px;border-radius:4px;"><span class="label" style="color:#7c3aed;">Rép. supp.</span><span class="value" style="color:#7c3aed;">{rep_supp} ({prix_supp:.2f}€)</span></div>' if rep_supp and prix_supp else ""
     
     # Notes
     notes_client_html = f'<div class="notes-box"><div class="notes-title">📋 Note client</div>{notes_client}</div>' if notes_client else ""
@@ -4660,6 +4677,7 @@ def ticket_staff_html(t):
                 <span class="value">{panne}</span>
             </div>
             {type_ecran_html}
+            {rep_supp_info_html}
         </div>
         <div class="security-box">
             <div class="title">🔐 CODES DE SÉCURITÉ</div>
@@ -6131,10 +6149,6 @@ def ui_accueil():
     nb_attente_piece = counts.get("En attente de pièce", 0)
     nb_attente_accord = counts.get("En attente d'accord client", 0)
     
-    # Le total n'inclut pas les réparations archivées (Clôturé)
-    nb_cloture = counts.get("Clôturé", 0)
-    nb_total_actif = nb_total - nb_cloture
-    
     # Compter les commandes en attente (séparément)
     commandes_attente = get_commandes_pieces(statut="A commander")
     nb_commandes = len(commandes_attente)
@@ -6146,7 +6160,7 @@ def ui_accueil():
     col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
     with col_k1:
         selected = filtre_actif is None
-        if st.button(f"📋 **{nb_total_actif}**\nTotal", key="kpi_total", use_container_width=True, type="primary" if selected else "secondary"):
+        if st.button(f"📋 **{nb_total}**\nTotal", key="kpi_total", use_container_width=True, type="primary" if selected else "secondary"):
             st.session_state.filtre_kpi = None
             st.session_state.edit_id = None  # Revenir à la liste
             st.rerun()
@@ -6674,6 +6688,11 @@ def staff_traiter_demande(tid):
         if t.get('type_ecran'):
             html_lines.append(f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">{precision_label}</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>')
         
+        # Réparation supplémentaire si présente
+        if t.get('reparation_supp') and t.get('prix_supp'):
+            html_lines.append(f'<div class="detail-row" style="background:#f3e8ff;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#7c3aed;">🔧 Rép. supp.</span><span class="detail-value" style="color:#7c3aed;font-weight:600;">{t.get("reparation_supp")} - {t.get("prix_supp"):.2f} €</span></div>')
+        
+        html_lines.append(f'<div class="detail-row"><span class="detail-label">N°</span><span class="detail-value" style="font-weight:700;">{t.get("ticket_code","")}</span></div>')
         html_lines.append(f'<div class="detail-row"><span class="detail-label">Dépôt</span><span class="detail-value">{fmt_date(t.get("date_depot",""))}</span></div>')
         
         # Date récupération si présente
@@ -6807,25 +6826,7 @@ def staff_traiter_demande(tid):
             update_ticket(tid, technicien_assigne=tech_name)
             st.rerun()
         
-        # Réparation supplémentaire (entre technicien et type d'écran)
-        st.markdown('<div style="padding:8px;background:#f8fafc;border-radius:8px;border:1px dashed #94a3b8;margin-top:8px;">', unsafe_allow_html=True)
-        st.markdown('<span style="font-size:11px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
-        col_rep1, col_rep2 = st.columns([2, 1])
-        with col_rep1:
-            rep_supp_actuel = t.get('reparation_supp') or ""
-            rep_supp_val = st.text_input("Desc.", value=rep_supp_actuel, placeholder="Ex: Nappe Face ID...", key=f"rep_supp_{tid}", label_visibility="collapsed")
-        with col_rep2:
-            prix_supp_actuel = float(t.get('prix_supp') or 0)
-            prix_supp_val = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Auto-save réparation supp avec log
-        if rep_supp_val != rep_supp_actuel or prix_supp_val != prix_supp_actuel:
-            update_ticket(tid, reparation_supp=rep_supp_val, prix_supp=prix_supp_val)
-            if rep_supp_val and prix_supp_val > 0:
-                ajouter_historique(tid, f"Rép. supp: {rep_supp_val} ({prix_supp_val}€)")
-        
-        # Précision sur la réparation / Type d'écran (après réparation supplémentaire)
+        # Précision sur la réparation (pour toutes les pannes)
         type_ecran_actuel = t.get('type_ecran') or ""
         if new_panne == "Écran casse":
             label_precision = "📱 Type d'écran"
@@ -6847,6 +6848,24 @@ def staff_traiter_demande(tid):
                 clear_kpi_cache()
                 st.success("✓ Sauvegardé")
                 st.rerun()
+        
+        # Réparation supplémentaire
+        st.markdown('<div style="padding:8px;background:#f8fafc;border-radius:8px;border:1px dashed #94a3b8;margin-top:8px;">', unsafe_allow_html=True)
+        st.markdown('<span style="font-size:11px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
+        col_rep1, col_rep2 = st.columns([2, 1])
+        with col_rep1:
+            rep_supp_actuel = t.get('reparation_supp') or ""
+            rep_supp_val = st.text_input("Desc.", value=rep_supp_actuel, placeholder="Ex: Nappe Face ID...", key=f"rep_supp_{tid}", label_visibility="collapsed")
+        with col_rep2:
+            prix_supp_actuel = float(t.get('prix_supp') or 0)
+            prix_supp_val = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Auto-save réparation supp avec log
+        if rep_supp_val != rep_supp_actuel or prix_supp_val != prix_supp_actuel:
+            update_ticket(tid, reparation_supp=rep_supp_val, prix_supp=prix_supp_val)
+            if rep_supp_val and prix_supp_val > 0:
+                ajouter_historique(tid, f"Rép. supp: {rep_supp_val} ({prix_supp_val}€)")
         
         # Date récupération simplifiée
         st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
@@ -6903,7 +6922,7 @@ def staff_traiter_demande(tid):
         if devis != devis_actuel or acompte != acompte_actuel:
             update_ticket(tid, devis_estime=devis, acompte=acompte)
         
-        # Calcul reste (utilise prix_supp_val défini plus haut)
+        # Calcul reste
         paye = t.get('paye', 0)
         total_ttc = float(devis) + float(prix_supp_val)
         reste = max(0, total_ttc - float(acompte))
@@ -6939,21 +6958,7 @@ def staff_traiter_demande(tid):
         # Auto-save statut
         if new_statut != statut_actuel:
             changer_statut(tid, new_statut)
-            # Si "Rendu au client" → archiver automatiquement (passer en Clôturé)
-            if new_statut == "Rendu au client":
-                changer_statut(tid, "Clôturé")
-                ajouter_historique(tid, "📦 Rendu au client → Archivé automatiquement")
-                st.success("✅ Rendu au client — réparation archivée")
             st.rerun()
-        
-        # Bouton "Rendu au client" quand réparation terminée
-        if statut_actuel == "Réparation terminée":
-            if st.button("🤝 RENDU AU CLIENT", key=f"btn_rendu_{tid}", type="primary", use_container_width=True):
-                changer_statut(tid, "Rendu au client")
-                changer_statut(tid, "Clôturé")
-                ajouter_historique(tid, "🤝 Rendu au client → Archivé automatiquement")
-                st.success("✅ Rendu au client — réparation archivée")
-                st.rerun()
         
         if statut_actuel == "En attente d'accord client":
             if st.button("✅ CLIENT A ACCEPTÉ", key=f"btn_accord_{tid}", type="primary", use_container_width=True):
@@ -7606,6 +7611,13 @@ Vous pouvez passer à la boutique.
                         if st.button("📦 Reçue", key=f"cmd_recv_{cmd_id}", type="primary", use_container_width=True):
                             from datetime import datetime
                             update_commande_piece(cmd_id, statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            # Changer aussi le statut du ticket en "Pièce reçue"
+                            if cmd.get('ticket_id'):
+                                changer_statut(cmd['ticket_id'], "Pièce reçue")
+                                ajouter_historique(cmd['ticket_id'], f"📬 Pièce reçue: {cmd.get('description', '')}")
+                                clear_tickets_cache()
+                                clear_kpi_cache()
+                                clear_ticket_full_cache()
                             st.rerun()
                     with col5:
                         # Icônes contact direct
@@ -9136,6 +9148,12 @@ def tech_detail_ticket(tid):
     if type_ecran:
         header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div></div>'
     
+    # Ajouter réparation supplémentaire si présente
+    rep_supp_tech = t.get('reparation_supp') or ''
+    prix_supp_tech = t.get('prix_supp') or 0
+    if rep_supp_tech and prix_supp_tech:
+        header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Rép. supp.</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#a855f7;padding:4px 10px;border-radius:8px;">🔧 {rep_supp_tech} - {prix_supp_tech:.2f}€</span></div></div>'
+    
     header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Téléphone</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📞 {t.get("client_tel","N/A")}</div></div></div></div>'
     
     st.markdown(header_html, unsafe_allow_html=True)
@@ -9532,7 +9550,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                 st.success("✅ Réparation terminée!")
                 st.rerun()
         
-        # Si terminé → Informer le client + Rendu au client
+        # Si terminé → Informer le client
         elif statut_actuel == "Réparation terminée":
             st.markdown("""
             <div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:2px solid #22c55e;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
@@ -9556,15 +9574,6 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
                     box-shadow:0 4px 15px rgba(37,211,102,0.3);
                 ">📱 Informer le client (WhatsApp)</a>
                 """, unsafe_allow_html=True)
-            
-            # Bouton Rendu au client → archive automatiquement
-            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-            if st.button("🤝 RENDU AU CLIENT → Archiver", key=f"tech_rendu_{tid}", type="primary", use_container_width=True):
-                changer_statut(tid, "Rendu au client")
-                changer_statut(tid, "Clôturé")
-                ajouter_historique(tid, "🤝 Rendu au client → Archivé automatiquement")
-                st.success("✅ Rendu au client — réparation archivée")
-                st.rerun()
         
         # Rendu ou Clôturé
         elif statut_actuel in ["Rendu au client", "Clôturé"]:
@@ -9584,13 +9593,7 @@ Merci de nous confirmer votre accord pour procéder à la réparation.
         if nouveau_statut != statut_actuel:
             if st.button(f"✅ Appliquer", key=f"tech_apply_status_{tid}", type="primary", use_container_width=True):
                 changer_statut(tid, nouveau_statut)
-                # Si "Rendu au client" → archiver automatiquement (passer en Clôturé)
-                if nouveau_statut == "Rendu au client":
-                    changer_statut(tid, "Clôturé")
-                    ajouter_historique(tid, "📦 Rendu au client → Archivé automatiquement")
-                    st.success("✅ Rendu au client — réparation archivée")
-                else:
-                    st.success(f"Statut changé : {nouveau_statut}")
+                st.success(f"Statut changé : {nouveau_statut}")
                 st.rerun()
     
     # === SECTION INFÉRIEURE: CONTACTER LE CLIENT ===
