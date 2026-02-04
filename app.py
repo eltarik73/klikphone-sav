@@ -327,12 +327,14 @@ BRAND_LOGOS = {
     "MSI": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff0000'%3E%3Cpath d='M2 7v10h3V9h2l2 8h2l2-8h2v8h3V7H2z'/%3E%3C/svg%3E",
 }
 
-def load_css():
-    st.markdown("""
+@st.cache_resource
+def _get_css():
+    """Retourne le CSS complet - mis en cache pour ne pas le recalculer à chaque rerun"""
+    return """
 <style>
 /* ============================================
    KLIKPHONE SAV - DESIGN SYSTEM v3.0
-   Premium • Modern • Glass Morphism
+   Premium - Modern - Glass Morphism
    ============================================ */
 
 /* === FORCE LIGHT MODE === */
@@ -2529,7 +2531,11 @@ a[href*="streamlit.io"] {display:none !important;}
 }
 
 </style>
-""", unsafe_allow_html=True)
+"""
+
+def load_css():
+    """Injecte le CSS depuis le cache - instantané après le 1er chargement"""
+    st.markdown(_get_css(), unsafe_allow_html=True)
 # =============================================================================
 # DATABASE
 # =============================================================================
@@ -2592,16 +2598,17 @@ def _get_pg_connection():
 
 
 def _pg_connect():
-    """Récupère la connexion Postgres persistante avec throttle du ping."""
+    """Récupère la connexion Postgres persistante avec throttle du ping + auto-rollback."""
     import time
+    from psycopg2.extensions import TRANSACTION_STATUS_INERROR
     conn = _get_pg_connection()
     
-    # Rollback automatique si transaction échouée (InFailedSqlTransaction)
-    try:
-        if conn.info.transaction_status == psycopg2.extensions.TRANSACTION_STATUS_INERROR:
+    # Auto-rollback si transaction en erreur (fix InFailedSqlTransaction)
+    if conn.get_transaction_status() == TRANSACTION_STATUS_INERROR:
+        try:
             conn.rollback()
-    except Exception:
-        pass
+        except Exception:
+            pass
     
     # Throttle du SELECT 1 : seulement toutes les 60 secondes
     last_ping = st.session_state.get("_pg_last_ping", 0)
@@ -2609,17 +2616,12 @@ def _pg_connect():
     
     if now - last_ping > 60:
         try:
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            cur.close()
+            conn.cursor().execute("SELECT 1")
             st.session_state["_pg_last_ping"] = now
         except Exception:
-            # Rollback puis retry
             try:
                 conn.rollback()
-                cur = conn.cursor()
-                cur.execute("SELECT 1")
-                cur.close()
+                conn.cursor().execute("SELECT 1")
                 st.session_state["_pg_last_ping"] = now
             except Exception:
                 # Connexion fermée, on clear le cache et on réessaie
@@ -2683,7 +2685,6 @@ class _PgCursorWrapper:
         try:
             self._cur.execute(sql2, params)
         except Exception as e:
-            # Si transaction en erreur, rollback et retry une fois
             try:
                 self._cur.connection.rollback()
                 self._cur.execute(sql2, params)
@@ -2715,11 +2716,12 @@ class _PgConnProxy:
 
     def cursor(self):
         # Auto-rollback si transaction en erreur avant de créer un curseur
-        try:
-            if self._conn.info.transaction_status == psycopg2.extensions.TRANSACTION_STATUS_INERROR:
+        from psycopg2.extensions import TRANSACTION_STATUS_INERROR
+        if self._conn.get_transaction_status() == TRANSACTION_STATUS_INERROR:
+            try:
                 self._conn.rollback()
-        except Exception:
-            pass
+            except Exception:
+                pass
         cur = self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         return _PgCursorWrapper(cur)
 
@@ -2787,8 +2789,12 @@ def get_db():
     return _SqliteConnProxy(st.session_state._sqlite_conn)
 
 def init_db():
+    # Ne s'exécuter qu'une seule fois par session
+    if st.session_state.get("_db_initialized"):
+        return
     # Sur Supabase/Postgres, le schéma est créé via le SQL Editor.
     if is_postgres():
+        st.session_state["_db_initialized"] = True
         return
     conn = get_db()
     c = conn.cursor()
@@ -2995,6 +3001,7 @@ def init_db():
             pass
     
     conn.commit()
+    st.session_state["_db_initialized"] = True
 
 def get_param(k):
     """Récupère un paramètre (avec cache)"""
@@ -3108,7 +3115,7 @@ def check_client_exists(tel):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=3)
+@st.cache_data(ttl=30)
 def get_all_clients():
     """Récupère tous les clients - CACHED 30s"""
     conn = get_db()
@@ -3255,7 +3262,7 @@ def search_clients(query):
 # Fonctions commandes de pièces
 FOURNISSEURS = ["Utopya", "Piece2mobile", "Amazon", "Mobilax", "Autre"]
 
-@st.cache_data(ttl=3)  # Cache 20 secondes pour les commandes
+@st.cache_data(ttl=30)  # Cache 30 secondes pour les commandes
 def _get_commandes_pieces_cached(ticket_id, statut):
     """Version cachée de get_commandes_pieces"""
     conn = get_db()
@@ -3414,7 +3421,7 @@ def get_ticket(tid=None, code=None):
     conn.close()
     return dict(r) if r else None
 
-@st.cache_data(ttl=3)  # Cache 10 secondes pour ticket individuel
+@st.cache_data(ttl=20)  # Cache 20 secondes pour ticket individuel
 def _get_ticket_full_cached(tid, code):
     """Version cachée de get_ticket_full"""
     conn = get_db()
@@ -3559,7 +3566,7 @@ def ajouter_historique(tid, texte):
             pass
     conn.close()
 
-@st.cache_data(ttl=3)  # Cache 15 secondes pour les tickets
+@st.cache_data(ttl=20)  # Cache 20 secondes pour les tickets
 def _chercher_tickets_cached(statut, tel, code, nom):
     """Version cachée de chercher_tickets"""
     conn = get_db()
@@ -3612,7 +3619,7 @@ def clear_all_caches():
     except:
         pass
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=30)
 def get_kpi_counts():
     """Compte les tickets par statut directement en SQL (rapide)"""
     try:
@@ -6238,6 +6245,7 @@ def ui_accueil():
     </div>
     """, unsafe_allow_html=True)
 
+@optional_fragment
 def staff_liste_demandes():
     # Si un ticket est sélectionné, afficher directement le traitement
     if st.session_state.get("edit_id"):
@@ -7216,6 +7224,7 @@ Merci de nous confirmer votre accord.
         widget_envoyer_message(t, client_info, key_prefix=f"msg_{tid}")
 
 
+@optional_fragment
 def staff_gestion_clients():
     """Gestion des clients - Liste, modification, export, suppression"""
     
@@ -7752,6 +7761,7 @@ Vous pouvez passer à la boutique.
             else:
                 st.error("La description est obligatoire")
 
+@optional_fragment
 def staff_attestation():
     """Générer une attestation de non-reparabilite"""
     st.markdown("""<div class="detail-card-header">📄 Attestation de Non-Réparabilité</div>""", unsafe_allow_html=True)
@@ -7986,6 +7996,7 @@ def generate_attestation_html(nom, prenom, adresse, marque, modele, imei, etat, 
 </html>
 """
 
+@optional_fragment
 def staff_nouvelle_demande():
     st.markdown("<p class='section-title'>Nouvelle demande manuelle</p>", unsafe_allow_html=True)
     
@@ -8042,6 +8053,7 @@ def staff_nouvelle_demande():
                 update_ticket(t['id'], devis_estime=devis, acompte=acompte)
             st.success(f"Demande créée : {code}")
 
+@optional_fragment
 def staff_config():
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🏪 Boutique", "📧 Email", "💬 Messages", "📚 Catalogue", "👥 Équipe", "🔒 Sécurité", "💳 Caisse", "🔔 Discord"])
     
