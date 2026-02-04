@@ -2596,19 +2596,36 @@ def _pg_connect():
     import time
     conn = _get_pg_connection()
     
+    # Rollback automatique si transaction échouée (InFailedSqlTransaction)
+    try:
+        if conn.info.transaction_status == psycopg2.extensions.TRANSACTION_STATUS_INERROR:
+            conn.rollback()
+    except Exception:
+        pass
+    
     # Throttle du SELECT 1 : seulement toutes les 60 secondes
     last_ping = st.session_state.get("_pg_last_ping", 0)
     now = time.time()
     
     if now - last_ping > 60:
         try:
-            conn.cursor().execute("SELECT 1")
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
             st.session_state["_pg_last_ping"] = now
-        except:
-            # Connexion fermée, on clear le cache et on réessaie
-            _get_pg_connection.clear()
-            conn = _get_pg_connection()
-            st.session_state["_pg_last_ping"] = now
+        except Exception:
+            # Rollback puis retry
+            try:
+                conn.rollback()
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.close()
+                st.session_state["_pg_last_ping"] = now
+            except Exception:
+                # Connexion fermée, on clear le cache et on réessaie
+                _get_pg_connection.clear()
+                conn = _get_pg_connection()
+                st.session_state["_pg_last_ping"] = now
     
     return conn
 
@@ -2643,19 +2660,35 @@ class _PgCursorWrapper:
         s = sql2.lstrip().lower()
         if s.startswith("insert into clients") and "returning" not in s and "on conflict" not in s:
             sql2 = sql2.rstrip().rstrip(";") + " RETURNING id"
-            self._cur.execute(sql2, params)
+            try:
+                self._cur.execute(sql2, params)
+            except Exception:
+                self._cur.connection.rollback()
+                self._cur.execute(sql2, params)
             row = self._cur.fetchone()
             self.lastrowid = row[0] if row else None
             return self
 
         if s.startswith("insert into tickets") and "returning" not in s and "on conflict" not in s:
             sql2 = sql2.rstrip().rstrip(";") + " RETURNING id"
-            self._cur.execute(sql2, params)
+            try:
+                self._cur.execute(sql2, params)
+            except Exception:
+                self._cur.connection.rollback()
+                self._cur.execute(sql2, params)
             row = self._cur.fetchone()
             self.lastrowid = row[0] if row else None
             return self
 
-        self._cur.execute(sql2, params)
+        try:
+            self._cur.execute(sql2, params)
+        except Exception as e:
+            # Si transaction en erreur, rollback et retry une fois
+            try:
+                self._cur.connection.rollback()
+                self._cur.execute(sql2, params)
+            except Exception:
+                raise e
         return self
 
     def executemany(self, sql, seq_of_params):
@@ -2681,11 +2714,20 @@ class _PgConnProxy:
         self._conn = conn
 
     def cursor(self):
+        # Auto-rollback si transaction en erreur avant de créer un curseur
+        try:
+            if self._conn.info.transaction_status == psycopg2.extensions.TRANSACTION_STATUS_INERROR:
+                self._conn.rollback()
+        except Exception:
+            pass
         cur = self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         return _PgCursorWrapper(cur)
 
     def commit(self):
         return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
 
     def close(self):
         # Ne PAS fermer la connexion persistante
@@ -3482,16 +3524,6 @@ def changer_statut(tid, statut):
     clear_tickets_cache()
     clear_kpi_cache()
     clear_ticket_full_cache()
-    
-    # Si le statut passe à "Pièce reçue", marquer aussi les commandes de pièces comme reçues
-    if statut == "Pièce reçue":
-        try:
-            commandes = get_commandes_pieces(ticket_id=tid, statut="Commandée")
-            for cmd in commandes:
-                update_commande_piece(cmd['id'], statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
-            clear_commandes_cache()
-        except:
-            pass
     
     # Notification Discord pour changement de statut
     try:
@@ -4396,14 +4428,12 @@ def ticket_client_html(t, for_email=False):
     # HTML conditionnel
     type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
     rep_supp_html = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
-    rep_supp_appareil_html = f'<div class="info-row" style="background:#f3e8ff;padding:2px 4px;border-radius:4px;"><span class="label" style="color:#7c3aed;">Rép. supp.</span><span class="value" style="color:#7c3aed;">{rep_supp}</span></div>' if rep_supp and prix_supp else ""
     comment_html = f'<div class="notes-box"><div class="notes-title">💬 Commentaire</div>{comment_public}</div>' if comment_public else ""
     
     # Version EMAIL (colorée)
     if for_email:
         type_ecran_email = f'<div style="color:#3b82f6;margin-top:5px;">{precision_icon} {precision_label}: {type_ecran}</div>' if type_ecran else ""
         rep_supp_email = f'<div class="tarif-row"><span>{rep_supp}</span><span>{prix_supp:.2f} €</span></div>' if rep_supp and prix_supp else ""
-        rep_supp_appareil_email = f'<div style="color:#7c3aed;margin-top:5px;">🔧 Rép. supp.: {rep_supp}</div>' if rep_supp and prix_supp else ""
         comment_section = f"""
         <div style="background:#fff7ed;border-radius:8px;padding:12px;margin:15px 0;">
             <div style="font-weight:600;color:#ea580c;font-size:12px;margin-bottom:5px;">💬 Commentaire</div>
@@ -4452,7 +4482,6 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
 <div style="font-weight:600;">{t.get('marque','')} {modele_txt}</div>
 <div style="color:#64748b;margin-top:5px;">Motif: {panne}</div>
 {type_ecran_email}
-{rep_supp_appareil_email}
 </div>
 <div class="tarif-box">
 <div class="tarif-row"><span>Devis estimé</span><span>{devis:.2f} €</span></div>
@@ -4542,7 +4571,6 @@ body {{ font-family: Arial, sans-serif; font-size: 14px; margin: 0; padding: 20p
             <span class="value">{panne}</span>
         </div>
         {type_ecran_html}
-        {rep_supp_appareil_html}
         <div class="info-row">
             <span class="label">Date dépôt</span>
             <span class="value">{fmt_date(t.get('date_depot',''))}</span>
@@ -4601,9 +4629,6 @@ def ticket_staff_html(t):
     
     # Précision dans section appareil
     type_ecran_html = f'<div class="info-row"><span class="label">{precision_label}</span><span class="value">{type_ecran}</span></div>' if type_ecran else ""
-    
-    # Réparation supplémentaire dans section appareil
-    rep_supp_info_html = f'<div class="info-row" style="background:#f3e8ff;padding:2px 4px;border-radius:4px;"><span class="label" style="color:#7c3aed;">Rép. supp.</span><span class="value" style="color:#7c3aed;">{rep_supp} ({prix_supp:.2f}€)</span></div>' if rep_supp and prix_supp else ""
     
     # Notes
     notes_client_html = f'<div class="notes-box"><div class="notes-title">📋 Note client</div>{notes_client}</div>' if notes_client else ""
@@ -4677,7 +4702,6 @@ def ticket_staff_html(t):
                 <span class="value">{panne}</span>
             </div>
             {type_ecran_html}
-            {rep_supp_info_html}
         </div>
         <div class="security-box">
             <div class="title">🔐 CODES DE SÉCURITÉ</div>
@@ -6688,11 +6712,6 @@ def staff_traiter_demande(tid):
         if t.get('type_ecran'):
             html_lines.append(f'<div class="detail-row" style="background:#dbeafe;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#1d4ed8;">{precision_label}</span><span class="detail-value" style="color:#1d4ed8;font-weight:600;">{t.get("type_ecran")}</span></div>')
         
-        # Réparation supplémentaire si présente
-        if t.get('reparation_supp') and t.get('prix_supp'):
-            html_lines.append(f'<div class="detail-row" style="background:#f3e8ff;border-radius:6px;padding:4px 8px;"><span class="detail-label" style="color:#7c3aed;">🔧 Rép. supp.</span><span class="detail-value" style="color:#7c3aed;font-weight:600;">{t.get("reparation_supp")} - {t.get("prix_supp"):.2f} €</span></div>')
-        
-        html_lines.append(f'<div class="detail-row"><span class="detail-label">N°</span><span class="detail-value" style="font-weight:700;">{t.get("ticket_code","")}</span></div>')
         html_lines.append(f'<div class="detail-row"><span class="detail-label">Dépôt</span><span class="detail-value">{fmt_date(t.get("date_depot",""))}</span></div>')
         
         # Date récupération si présente
@@ -6809,23 +6828,6 @@ def staff_traiter_demande(tid):
             if new_panne_detail != panne_detail:
                 update_ticket(tid, panne_detail=new_panne_detail)
         
-        # Technicien
-        membres = get_membres_equipe()
-        membres_options = ["-- Non assigné --"] + [f"{m['nom']} ({m['role']})" for m in membres]
-        tech_actuel = t.get('technicien_assigne') or ""
-        tech_idx = 0
-        for i, opt in enumerate(membres_options):
-            if tech_actuel and tech_actuel in opt:
-                tech_idx = i
-                break
-        technicien = st.selectbox("👨‍🔧 Technicien", membres_options, index=tech_idx, key=f"technicien_{tid}")
-        tech_name = technicien if technicien != "-- Non assigné --" else ""
-        
-        # Auto-save technicien
-        if tech_name != tech_actuel:
-            update_ticket(tid, technicien_assigne=tech_name)
-            st.rerun()
-        
         # Précision sur la réparation (pour toutes les pannes)
         type_ecran_actuel = t.get('type_ecran') or ""
         if new_panne == "Écran casse":
@@ -6849,23 +6851,22 @@ def staff_traiter_demande(tid):
                 st.success("✓ Sauvegardé")
                 st.rerun()
         
-        # Réparation supplémentaire
-        st.markdown('<div style="padding:8px;background:#f8fafc;border-radius:8px;border:1px dashed #94a3b8;margin-top:8px;">', unsafe_allow_html=True)
-        st.markdown('<span style="font-size:11px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
-        col_rep1, col_rep2 = st.columns([2, 1])
-        with col_rep1:
-            rep_supp_actuel = t.get('reparation_supp') or ""
-            rep_supp_val = st.text_input("Desc.", value=rep_supp_actuel, placeholder="Ex: Nappe Face ID...", key=f"rep_supp_{tid}", label_visibility="collapsed")
-        with col_rep2:
-            prix_supp_actuel = float(t.get('prix_supp') or 0)
-            prix_supp_val = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Technicien
+        membres = get_membres_equipe()
+        membres_options = ["-- Non assigné --"] + [f"{m['nom']} ({m['role']})" for m in membres]
+        tech_actuel = t.get('technicien_assigne') or ""
+        tech_idx = 0
+        for i, opt in enumerate(membres_options):
+            if tech_actuel and tech_actuel in opt:
+                tech_idx = i
+                break
+        technicien = st.selectbox("👨‍🔧 Technicien", membres_options, index=tech_idx, key=f"technicien_{tid}")
+        tech_name = technicien if technicien != "-- Non assigné --" else ""
         
-        # Auto-save réparation supp avec log
-        if rep_supp_val != rep_supp_actuel or prix_supp_val != prix_supp_actuel:
-            update_ticket(tid, reparation_supp=rep_supp_val, prix_supp=prix_supp_val)
-            if rep_supp_val and prix_supp_val > 0:
-                ajouter_historique(tid, f"Rép. supp: {rep_supp_val} ({prix_supp_val}€)")
+        # Auto-save technicien
+        if tech_name != tech_actuel:
+            update_ticket(tid, technicien_assigne=tech_name)
+            st.rerun()
         
         # Date récupération simplifiée
         st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
@@ -6921,6 +6922,24 @@ def staff_traiter_demande(tid):
         # Auto-save devis/acompte
         if devis != devis_actuel or acompte != acompte_actuel:
             update_ticket(tid, devis_estime=devis, acompte=acompte)
+        
+        # Réparation supplémentaire
+        st.markdown('<div style="padding:8px;background:#f8fafc;border-radius:8px;border:1px dashed #94a3b8;margin-top:8px;">', unsafe_allow_html=True)
+        st.markdown('<span style="font-size:11px;color:#475569;font-weight:600;">➕ Réparation supplémentaire</span>', unsafe_allow_html=True)
+        col_rep1, col_rep2 = st.columns([2, 1])
+        with col_rep1:
+            rep_supp_actuel = t.get('reparation_supp') or ""
+            rep_supp_val = st.text_input("Desc.", value=rep_supp_actuel, placeholder="Ex: Nappe Face ID...", key=f"rep_supp_{tid}", label_visibility="collapsed")
+        with col_rep2:
+            prix_supp_actuel = float(t.get('prix_supp') or 0)
+            prix_supp_val = st.number_input("€", value=prix_supp_actuel, min_value=0.0, step=5.0, key=f"prix_supp_{tid}", label_visibility="collapsed")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Auto-save réparation supp avec log
+        if rep_supp_val != rep_supp_actuel or prix_supp_val != prix_supp_actuel:
+            update_ticket(tid, reparation_supp=rep_supp_val, prix_supp=prix_supp_val)
+            if rep_supp_val and prix_supp_val > 0:
+                ajouter_historique(tid, f"Rép. supp: {rep_supp_val} ({prix_supp_val}€)")
         
         # Calcul reste
         paye = t.get('paye', 0)
@@ -7611,13 +7630,6 @@ Vous pouvez passer à la boutique.
                         if st.button("📦 Reçue", key=f"cmd_recv_{cmd_id}", type="primary", use_container_width=True):
                             from datetime import datetime
                             update_commande_piece(cmd_id, statut="Reçue", date_reception=datetime.now().strftime("%Y-%m-%d %H:%M"))
-                            # Changer aussi le statut du ticket en "Pièce reçue"
-                            if cmd.get('ticket_id'):
-                                changer_statut(cmd['ticket_id'], "Pièce reçue")
-                                ajouter_historique(cmd['ticket_id'], f"📬 Pièce reçue: {cmd.get('description', '')}")
-                                clear_tickets_cache()
-                                clear_kpi_cache()
-                                clear_ticket_full_cache()
                             st.rerun()
                     with col5:
                         # Icônes contact direct
@@ -9147,12 +9159,6 @@ def tech_detail_ticket(tid):
     # Ajouter type_ecran si présent
     if type_ecran:
         header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">{precision_label}</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#3b82f6;padding:4px 10px;border-radius:8px;">📋 {type_ecran}</span></div></div>'
-    
-    # Ajouter réparation supplémentaire si présente
-    rep_supp_tech = t.get('reparation_supp') or ''
-    prix_supp_tech = t.get('prix_supp') or 0
-    if rep_supp_tech and prix_supp_tech:
-        header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Rép. supp.</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;"><span style="background:#a855f7;padding:4px 10px;border-radius:8px;">🔧 {rep_supp_tech} - {prix_supp_tech:.2f}€</span></div></div>'
     
     header_html += f'<div style="flex:1;min-width:120px;"><div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;">Téléphone</div><div style="font-size:1.05rem;font-weight:600;margin-top:4px;">📞 {t.get("client_tel","N/A")}</div></div></div></div>'
     
