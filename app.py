@@ -6132,6 +6132,13 @@ def client_step6():
 # =============================================================================
 # INTERFACE STAFF (ACCUEIL) - STYLE PORTAIL STAFF
 # =============================================================================
+# Décorateur fragment conditionnel (compatibilité Streamlit < 1.33)
+def optional_fragment(func):
+    """Applique @st.fragment si disponible, sinon retourne la fonction telle quelle"""
+    if hasattr(st, 'fragment'):
+        return st.fragment(func)
+    return func
+
 def ui_accueil():
     # Vérification auth
     if not st.session_state.get("auth"):
@@ -7486,13 +7493,6 @@ def staff_gestion_clients():
                 if st.button("Suivant →", key="clients_next"):
                     st.session_state.clients_page = current_page + 1
                     st.rerun()
-
-# Décorateur fragment conditionnel (compatibilité Streamlit < 1.33)
-def optional_fragment(func):
-    """Applique @st.fragment si disponible, sinon retourne la fonction telle quelle"""
-    if hasattr(st, 'fragment'):
-        return st.fragment(func)
-    return func
 
 @optional_fragment
 def staff_commandes_pieces():
