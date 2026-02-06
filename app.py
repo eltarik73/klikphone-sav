@@ -6338,6 +6338,13 @@ def staff_liste_demandes():
         st.session_state._filters = {"statut": f_statut, "code": f_code, "tel": f_tel, "nom": f_nom, "tech": f_tech}
         filters = st.session_state._filters
     
+    # Utiliser les valeurs de filters (qui sont à jour après submit)
+    filter_code = filters.get("code", "").strip()
+    filter_tel = filters.get("tel", "").strip()
+    filter_nom = filters.get("nom", "").strip()
+    filter_tech = filters.get("tech", "👥 Tous")
+    filter_statut = filters.get("statut", "Tous")
+    
     # 1. Récupérer TOUS les tickets (sans filtre statut)
     all_tickets = chercher_tickets()
     
@@ -6346,35 +6353,35 @@ def staff_liste_demandes():
     tous_archives = [t for t in all_tickets if t.get('statut') == 'Clôturé']
     
     # 3. Appliquer le filtre de statut UNIQUEMENT sur les actifs
-    statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (f_statut if f_statut != "Tous" else None)
+    statut_filtre = filtre_kpi if filtre_kpi and filtre_kpi in STATUTS else (filter_statut if filter_statut != "Tous" else None)
     if statut_filtre:
         tous_actifs = [t for t in tous_actifs if t.get('statut') == statut_filtre]
     
     # 4. Appliquer les autres filtres sur actifs ET archives
     # Filtrer par code
-    if f_code and f_code.strip():
-        code_norm = normalize_search(f_code.strip())
+    if filter_code:
+        code_norm = normalize_search(filter_code)
         tous_actifs = [t for t in tous_actifs if code_norm in normalize_search(t.get('ticket_code', ''))]
         tous_archives = [t for t in tous_archives if code_norm in normalize_search(t.get('ticket_code', ''))]
     
     # Filtrer par téléphone  
-    if f_tel and f_tel.strip():
-        tel_norm = normalize_search(f_tel.strip())
+    if filter_tel:
+        tel_norm = normalize_search(filter_tel)
         tous_actifs = [t for t in tous_actifs if tel_norm in normalize_search(t.get('client_tel', ''))]
         tous_archives = [t for t in tous_archives if tel_norm in normalize_search(t.get('client_tel', ''))]
     
     # Filtrer par nom (avec normalisation sans accents)
-    if f_nom and f_nom.strip():
-        nom_norm = normalize_search(f_nom.strip())
+    if filter_nom:
+        nom_norm = normalize_search(filter_nom)
         def match_nom(t):
             return nom_norm in normalize_search(t.get('client_nom', '')) or nom_norm in normalize_search(t.get('client_prenom', ''))
         tous_actifs = [t for t in tous_actifs if match_nom(t)]
         tous_archives = [t for t in tous_archives if match_nom(t)]
     
     # Filtrer par technicien si sélectionné
-    if f_tech != "👥 Tous":
-        tous_actifs = [t for t in tous_actifs if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
-        tous_archives = [t for t in tous_archives if t.get('technicien_assigne') and f_tech in t.get('technicien_assigne', '')]
+    if filter_tech != "👥 Tous":
+        tous_actifs = [t for t in tous_actifs if t.get('technicien_assigne') and filter_tech in t.get('technicien_assigne', '')]
+        tous_archives = [t for t in tous_archives if t.get('technicien_assigne') and filter_tech in t.get('technicien_assigne', '')]
     
     # Utiliser les listes filtrées
     tickets_actifs = tous_actifs
@@ -7438,16 +7445,26 @@ def staff_gestion_clients():
             st.rerun()
     
     # Recherche avec formulaire (évite rerun à chaque frappe)
+    if "_client_search" not in st.session_state:
+        st.session_state._client_search = ""
+    
     with st.form(key="search_clients_form", clear_on_submit=False):
         col_search, col_btn = st.columns([5, 1])
         with col_search:
-            search = st.text_input("🔍 Rechercher un client", placeholder="Nom, prénom, téléphone ou société...", key="search_clients", label_visibility="collapsed")
+            search = st.text_input("🔍 Rechercher un client", value=st.session_state._client_search, placeholder="Nom, prénom, téléphone ou société...", key="search_clients_input", label_visibility="collapsed")
         with col_btn:
             search_submitted = st.form_submit_button("🔍", use_container_width=True)
     
+    # Mettre à jour la recherche si formulaire soumis
+    if search_submitted:
+        st.session_state._client_search = search
+    
+    # Utiliser la valeur stockée pour la recherche
+    search_query = st.session_state._client_search
+    
     # Liste des clients
-    if search and len(search) >= 2:
-        clients = search_clients(search)
+    if search_query and len(search_query) >= 2:
+        clients = chercher_clients(search_query)
     else:
         clients = get_all_clients()
     
@@ -7815,12 +7832,20 @@ def staff_attestation():
     use_existing = st.checkbox("Rechercher un client existant", key="att_use_existing")
     
     if use_existing:
+        if "_att_search_query" not in st.session_state:
+            st.session_state._att_search_query = ""
+        
         with st.form(key="att_search_form", clear_on_submit=False):
             col_s, col_b = st.columns([4, 1])
             with col_s:
-                search_query = st.text_input("🔍 Rechercher", key="att_search", placeholder="Nom, prénom ou téléphone...", label_visibility="collapsed")
+                search_input = st.text_input("🔍 Rechercher", value=st.session_state._att_search_query, key="att_search_input", placeholder="Nom, prénom ou téléphone...", label_visibility="collapsed")
             with col_b:
                 att_search_btn = st.form_submit_button("🔍", use_container_width=True)
+        
+        if att_search_btn:
+            st.session_state._att_search_query = search_input
+        
+        search_query = st.session_state._att_search_query
         
         if search_query and len(search_query) >= 2:
             clients_found = search_clients(search_query)
