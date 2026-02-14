@@ -1,7 +1,0 @@
-streamlit
-psycopg2-binary
-pandas
-openpyxl
-requests
-qrcode[pil]
-Pillow
